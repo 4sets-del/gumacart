@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -32,6 +32,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import WelcomeTutorial from '../components/WelcomeTutorial';
+import CoachMark from '../components/CoachMark';
 import { COLORS, SPACING, RADIUS, SHADOWS } from '../constants/theme';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
@@ -41,12 +42,12 @@ const { width: SCREEN_W } = Dimensions.get('window');
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { id: '1', label: 'Clothing',    emoji: '👕' },
-  { id: '2', label: 'Electronics', emoji: '💻' },
-  { id: '3', label: 'Books',       emoji: '📚' },
-  { id: '4', label: 'Furniture',   emoji: '🛋️' },
-  { id: '5', label: 'Sports',      emoji: '⚽' },
-  { id: '6', label: 'Others',      emoji: '📦' },
+  { id: '1', label: 'Clothing',    emoji: '👕', color: '#E85D75', tint: '#FBE3E8' },
+  { id: '2', label: 'Electronics', emoji: '💻', color: '#2F80ED', tint: '#E3EEFD' },
+  { id: '3', label: 'Books',       emoji: '📚', color: '#8E6FCE', tint: '#EEE7FA' },
+  { id: '4', label: 'Furniture',   emoji: '🛋️', color: '#C97B3C', tint: '#F6E7D8' },
+  { id: '5', label: 'Sports',      emoji: '⚽', color: '#0F9B8E', tint: '#DFF5F2' },
+  { id: '6', label: 'Others',      emoji: '📦', color: '#6B7280', tint: '#EDEEF0' },
 ];
 
 const LISTING_TYPES = [
@@ -70,6 +71,13 @@ const PRICE_CONFIG = {
   donate: { color: '#e74c3c' },
 };
 
+const SORT_OPTIONS = [
+  { id: 'newest',    label: 'Newest First',      icon: '🆕' },
+  { id: 'oldest',    label: 'Oldest First',       icon: '⏳' },
+  { id: 'priceLow',  label: 'Price: Low to High', icon: '⬆️' },
+  { id: 'priceHigh', label: 'Price: High to Low', icon: '⬇️' },
+];
+
 // ─── SUB-COMPONENTS ──────────────────────────────────────────────────────────
 
 function CategoryChip({ item, selected, onPress }) {
@@ -79,15 +87,21 @@ function CategoryChip({ item, selected, onPress }) {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.categoryIcon, selected && styles.categoryIconActive]}>
+      <View
+        style={[
+          styles.categoryIcon,
+          { backgroundColor: item.tint, borderColor: item.tint },
+          selected && { borderColor: item.color, borderWidth: 2 },
+        ]}
+      >
         <Text style={styles.categoryEmoji}>{item.emoji}</Text>
         {selected && (
-          <View style={styles.categoryCheck}>
+          <View style={[styles.categoryCheck, { backgroundColor: item.color }]}>
             <Ionicons name="checkmark" size={11} color="#fff" />
           </View>
         )}
       </View>
-      <Text style={[styles.categoryLabel, selected && styles.categoryLabelActive]}>
+      <Text style={[styles.categoryLabel, selected && { color: item.color, fontWeight: '700' }]}>
         {item.label}
       </Text>
     </TouchableOpacity>
@@ -155,11 +169,13 @@ export default function HomeScreen({ navigation }) {
   // Filter modal state
   const [showFilterModal, setShowFilterModal]   = useState(false);
   const [selectedTypes, setSelectedTypes]       = useState([]);
+  const [sortBy, setSortBy]                     = useState('newest');
 
   const user = auth.currentUser;
 
   // Show the welcome tutorial once, on first launch after verifying.
   const [showWelcome, setShowWelcome] = useState(false);
+  const [showCoachMarks, setShowCoachMarks] = useState(false);
   useEffect(() => {
     const checkWelcome = async () => {
       if (!user) return;
@@ -173,12 +189,40 @@ export default function HomeScreen({ navigation }) {
     checkWelcome();
   }, []);
 
-  const dismissWelcome = async () => {
+  // After the intro slides finish, walk the user through the key icons
+  // with arrows pointing at each one.
+  const handleWelcomeDone = () => {
     setShowWelcome(false);
+    setShowCoachMarks(true);
+  };
+
+  const finishCoachMarks = async () => {
+    setShowCoachMarks(false);
     try {
       await setDoc(doc(db, 'users', user.uid), { hasSeenWelcome: true }, { merge: true });
     } catch (e) {}
   };
+
+  // Refs so CoachMark can measure each icon's on-screen position.
+  const homeNavRef = useRef(null);
+  const notifRef = useRef(null);
+  const cartRef = useRef(null);
+  const searchRef = useRef(null);
+  const filterNavRef = useRef(null);
+  const postNavRef = useRef(null);
+  const messagesNavRef = useRef(null);
+  const profileNavRef = useRef(null);
+
+  const coachSteps = [
+    { ref: notifRef, title: 'Notifications', text: "Get notified here about new messages, followers, and updates on your listings." },
+    { ref: cartRef, title: 'Cart', text: "Items you're interested in buying are saved here for quick access." },
+    { ref: searchRef, title: 'Search', text: 'Tap here to search for specific listings or sellers across the marketplace.' },
+    { ref: homeNavRef, title: 'Home', text: 'This is your Home tab — browse the latest listings here anytime.' },
+    { ref: filterNavRef, title: 'Filter', text: 'Narrow listings down by type — Sale, Buy, Barter, or Donate.' },
+    { ref: postNavRef, title: 'Post a Listing', text: 'Tap the plus button anytime to list an item for sale, request, barter, or donation.' },
+    { ref: messagesNavRef, title: 'Messages', text: 'Chat directly with buyers and sellers, and continue conversations here.' },
+    { ref: profileNavRef, title: 'Profile', text: 'View your profile, manage your listings, and access settings here.' },
+  ];
 
   // ── Firestore: load listings ──
   useEffect(() => {
@@ -266,6 +310,25 @@ export default function HomeScreen({ navigation }) {
     return matchCat && matchType && matchSearch;
   });
 
+  // ── Sorted listings ──
+  // 'newest' needs no extra work — the Firestore query already orders by
+  // createdAt desc. Price sorts push listings without a numeric price
+  // (buy/barter/donate without one) to the end instead of treating them as 0.
+  const sortedListings = (() => {
+    if (sortBy === 'oldest') return [...filtered].reverse();
+    if (sortBy === 'priceLow' || sortBy === 'priceHigh') {
+      return [...filtered].sort((a, b) => {
+        const aHas = typeof a.price === 'number';
+        const bHas = typeof b.price === 'number';
+        if (aHas && bHas) return sortBy === 'priceLow' ? a.price - b.price : b.price - a.price;
+        if (aHas && !bHas) return -1;
+        if (!aHas && bHas) return 1;
+        return 0;
+      });
+    }
+    return filtered;
+  })();
+
   const sectionLabel = () => {
     if (searchText) return 'Results';
     if (selectedCategories.length > 0) return selectedCategories.join(' / ');
@@ -277,7 +340,8 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.safe} edges={['left','right']}>
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
-      <WelcomeTutorial visible={showWelcome} onClose={dismissWelcome} />
+      <WelcomeTutorial visible={showWelcome} onClose={handleWelcomeDone} />
+      <CoachMark visible={showCoachMarks} steps={coachSteps} onFinish={finishCoachMarks} />
 
       <ScrollView
         style={styles.scroll}
@@ -297,16 +361,26 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Notifications')}>
+            <TouchableOpacity
+              ref={notifRef}
+              collapsable={false}
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate('Notifications')}
+            >
               <Ionicons name="notifications" size={22} color={COLORS.primary} />
               {notifCount > 0 && (
                 <View style={styles.badge}><Text style={styles.badgeText}>{notifCount}</Text></View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Cart')}>
+            <TouchableOpacity
+              ref={cartRef}
+              collapsable={false}
+              style={styles.iconBtn}
+              onPress={() => navigation.navigate('Cart')}
+            >
               <Ionicons name="cart" size={22} color={COLORS.primary} />
               {cartIds.length > 0 && (
-                <View style={styles.badge}>
+                <View style={styles.badgeCart}>
                   <Text style={styles.badgeText}>{cartIds.length > 9 ? '9+' : cartIds.length}</Text>
                 </View>
               )}
@@ -316,6 +390,8 @@ export default function HomeScreen({ navigation }) {
 
         {/* ── SEARCH BAR ── */}
         <TouchableOpacity
+          ref={searchRef}
+          collapsable={false}
           style={styles.searchWrap}
           activeOpacity={0.85}
           onPress={() => navigation.navigate('Search')}
@@ -365,11 +441,17 @@ export default function HomeScreen({ navigation }) {
         {/* ── LISTINGS HEADER ── */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>{sectionLabel()}</Text>
-          <Text style={styles.sectionCount}>{filtered.length} items</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={styles.sectionCount}>{filtered.length} items</Text>
+            <TouchableOpacity style={styles.sortPill} activeOpacity={0.7} onPress={() => setShowFilterModal(true)}>
+              <Ionicons name="swap-vertical" size={13} color={COLORS.primary} />
+              <Text style={styles.sortPillText}>{SORT_OPTIONS.find((s) => s.id === sortBy)?.label}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* ── 2-COLUMN GRID ── */}
-        {filtered.length === 0 ? (
+        {sortedListings.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIconBox}>
               <Text style={styles.emptyIcon}>📭</Text>
@@ -387,7 +469,7 @@ export default function HomeScreen({ navigation }) {
           </View>
         ) : (
           <View style={styles.grid}>
-            {filtered.map((item) => (
+            {sortedListings.map((item) => (
               <View key={item.id} style={styles.gridItem}>
                 <ListingCard
                   item={item}
@@ -456,6 +538,24 @@ export default function HomeScreen({ navigation }) {
               })}
             </View>
 
+            <Text style={styles.sortSectionTitle}>Sort by</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sortRow}>
+              {SORT_OPTIONS.map((opt) => {
+                const isActive = sortBy === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.sortChip, isActive && styles.sortChipActive]}
+                    onPress={() => setSortBy(opt.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.sortChipEmoji}>{opt.icon}</Text>
+                    <Text style={[styles.sortChipText, isActive && styles.sortChipTextActive]}>{opt.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             {selectedTypes.length > 0 && (
               <View style={styles.activeDotsRow}>
                 <Text style={styles.activeDotsLabel}>
@@ -491,44 +591,44 @@ export default function HomeScreen({ navigation }) {
       {/* paddingBottom adapts per phone: ~48px for 3-button nav, ~20px for a
           gesture bar, 0 if the phone has neither. Minimum 10 keeps spacing. */}
       <View style={[styles.bottomNav, { paddingBottom: insets.bottom + 10 }]}>
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity ref={homeNavRef} collapsable={false} style={styles.navItem}>
           <Ionicons name="home" size={24} color={COLORS.primary} />
           <Text style={[styles.navLabel, { color: COLORS.primary, fontWeight: '700' }]}>Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => setShowFilterModal(true)}>
+        <TouchableOpacity ref={filterNavRef} collapsable={false} style={styles.navItem} onPress={() => setShowFilterModal(true)}>
           <Ionicons
             name="filter"
             size={24}
-            color={COLORS.primary}
+            color={selectedTypes.length > 0 ? COLORS.accent : COLORS.textMuted}
           />
-          <Text style={[styles.navLabel, { color: COLORS.primary }, selectedTypes.length > 0 && { fontWeight: '700' }]}>
+          <Text style={[styles.navLabel, selectedTypes.length > 0 ? { color: COLORS.accent, fontWeight: '700' } : { color: COLORS.textMuted }]}>
             Filter{selectedTypes.length > 0 ? ` (${selectedTypes.length})` : ''}
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItemCenter} onPress={() => navigation.navigate('CreateListing')}>
+        <TouchableOpacity ref={postNavRef} collapsable={false} style={styles.navItemCenter} onPress={() => navigation.navigate('CreateListing')}>
           <View style={styles.postButton}>
             <Ionicons name="add" size={30} color="#fff" />
           </View>
-          <Text style={[styles.navLabel, { marginTop: 2, color: COLORS.primary }]}>Post</Text>
+          <Text style={[styles.navLabel, { marginTop: 2, color: COLORS.accent, fontWeight: '700' }]}>Post</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Messages')}>
+        <TouchableOpacity ref={messagesNavRef} collapsable={false} style={styles.navItem} onPress={() => navigation.navigate('Messages')}>
           <View style={{ position: 'relative' }}>
-            <Ionicons name="chatbubbles" size={24} color={COLORS.primary} />
+            <Ionicons name="chatbubbles" size={24} color={COLORS.textMuted} />
             {unreadConvoCount > 0 && (
               <View style={styles.msgBadge}>
                 <Text style={styles.msgBadgeText}>{unreadConvoCount > 9 ? '9+' : unreadConvoCount}</Text>
               </View>
             )}
           </View>
-          <Text style={[styles.navLabel, { color: COLORS.primary }]}>Messages</Text>
+          <Text style={[styles.navLabel, { color: COLORS.textMuted }]}>Messages</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
-          <Ionicons name="person" size={24} color={COLORS.primary} />
-          <Text style={[styles.navLabel, { color: COLORS.primary }]}>Profile</Text>
+        <TouchableOpacity ref={profileNavRef} collapsable={false} style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
+          <Ionicons name="person" size={24} color={COLORS.textMuted} />
+          <Text style={[styles.navLabel, { color: COLORS.textMuted }]}>Profile</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -552,6 +652,7 @@ const styles = StyleSheet.create({
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 40, height: 40, borderRadius: RADIUS.full, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', ...SHADOWS.sm },
   badge: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.accent, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  badgeCart: { position: 'absolute', top: 2, right: 2, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
   badgeText: { fontSize: 9, color: COLORS.white, fontWeight: '700' },
 
   // Search
@@ -582,6 +683,8 @@ const styles = StyleSheet.create({
   // Section header
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginHorizontal: SPACING.lg, marginTop: SPACING.md, marginBottom: SPACING.sm },
   sectionCount: { fontSize: 13, color: COLORS.textMuted, marginBottom: 4 },
+  sortPill: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sortPillText: { fontSize: 11, color: COLORS.primary, fontWeight: '700' },
 
   // Grid
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.md, gap: 10 },
@@ -625,6 +728,13 @@ const styles = StyleSheet.create({
   typeCardLabel: { fontSize: 15.5, fontWeight: '800', color: '#1A1A1A', marginBottom: 4 },
   typeCardDesc: { fontSize: 11.5, color: '#9A9A9A', lineHeight: 16 },
   typeCardCheck: { position: 'absolute', top: 14, right: 14, width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
+  sortSectionTitle: { fontSize: 14, fontWeight: '800', color: '#1A1A1A', marginTop: 4, marginBottom: 10 },
+  sortRow: { gap: 8, paddingBottom: 4 },
+  sortChip: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#F5F5F5', borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, borderWidth: 1.5, borderColor: '#F5F5F5' },
+  sortChipActive: { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary },
+  sortChipEmoji: { fontSize: 14 },
+  sortChipText: { fontSize: 12.5, color: '#666', fontWeight: '600' },
+  sortChipTextActive: { color: COLORS.primary, fontWeight: '800' },
   activeDotsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 12 },
   activeDotsLabel: { fontSize: 13, color: '#666', fontWeight: '600' },
   activeDots: { flexDirection: 'row', gap: 6 },
@@ -640,7 +750,7 @@ const styles = StyleSheet.create({
   navItem: { flex: 1, alignItems: 'center', paddingVertical: 2 },
   navItemCenter: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   navLabel: { fontSize: 10, color: '#999', fontWeight: '500', marginTop: 3 },
-  postButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center', marginTop: -22, elevation: 8 },
+  postButton: { width: 56, height: 56, borderRadius: 28, backgroundColor: COLORS.accent, alignItems: 'center', justifyContent: 'center', marginTop: -22, elevation: 8, shadowColor: COLORS.accent, shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
   msgBadge: { position: 'absolute', top: -4, right: -8, backgroundColor: '#e74c3c', borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff' },
   msgBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 });

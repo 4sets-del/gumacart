@@ -15,7 +15,7 @@ const SLIDES = [
     emoji: "🛍️",
     color: "#2E7D32",
     title: "Welcome to GumaCart",
-    text: "Your campus marketplace for Southern Leyte State University. Buy, sell, barter, and donate with fellow students — safely and easily.",
+    text: "Your campus marketplace for Southern Luzon State University. Buy, sell, barter, and donate with fellow students — safely and easily.",
   },
   {
     icon: "pricetags",

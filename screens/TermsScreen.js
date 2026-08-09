@@ -16,7 +16,7 @@ const LIGHT_BG = "#F0F4ED";
 const TERMS = [
   {
     title: "1. Eligibility",
-    content: `SLSU-GumaCart is exclusively available to currently enrolled students and faculty members of Southern Leyte State University (SLSU). By using this app, you confirm that you are a legitimate member of the SLSU community.\n\nUsers who are found to be non-members of the SLSU community may have their accounts suspended or permanently removed.`,
+    content: `SLSU-GumaCart is exclusively available to currently enrolled students and faculty members of Southern Luzon State University (SLSU). By using this app, you confirm that you are a legitimate member of the SLSU community.\n\nUsers who are found to be non-members of the SLSU community may have their accounts suspended or permanently removed.`,
   },
   {
     title: "2. Acceptable Use",

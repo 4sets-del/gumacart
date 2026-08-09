@@ -79,7 +79,7 @@ export default function AboutScreen({ navigation }) {
           <View style={styles.storyCard}>
             <Text style={styles.storyQuote}>"</Text>
             <Text style={styles.storyText}>
-              Many students at Southern Leyte State University find it hard to buy and sell things around the campus. Some students need cheap items for their studies and daily life, while others have things they want to sell but have no safe and easy way to do it inside the school.
+              Many students at Southern Luzon State University find it hard to buy and sell things around the campus. Some students need cheap items for their studies and daily life, while others have things they want to sell but have no safe and easy way to do it inside the school.
             </Text>
             <Text style={styles.storyText}>
               The apps most people use for buying and selling are open to everyone. This means students often deal with strangers, which can feel unsafe and hard to trust. These apps were also not made for the needs of a school community.
@@ -88,7 +88,7 @@ export default function AboutScreen({ navigation }) {
               To help solve this problem, the researchers created a marketplace made only for the SLSU community. The app lets verified students and faculty buy, sell, barter, and donate items more safely, because everyone on the app is part of the same university.
             </Text>
             <Text style={styles.storyText}>
-              This app is <Text style={styles.storyAppName}>SLSU-GumaCart</Text> — a safe, campus-only marketplace made by students of Southern Leyte State University for their own community.
+              This app is <Text style={styles.storyAppName}>SLSU-GumaCart</Text> — a safe, campus-only marketplace made by students of Southern Luzon State University for their own community.
             </Text>
           </View>
         </View>
@@ -148,7 +148,7 @@ export default function AboutScreen({ navigation }) {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Made with ❤️ for the SLSU Community</Text>
-          <Text style={styles.footerSub}>© 2026 SLSU-GumaCart · Southern Leyte State University</Text>
+          <Text style={styles.footerSub}>© 2026 SLSU-GumaCart · Southern Luzon State University</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
