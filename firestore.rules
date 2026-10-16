@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isBanned() {
+      return request.auth != null
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'banned';
+    }
+    function isActivelyBanned() {
+      return isBanned() && (
+        !('bannedUntil' in get(/databases/$(database)/documents/users/$(request.auth.uid)).data)
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.bannedUntil == null
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.bannedUntil > request.time
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if request.auth != null;
+
+      allow create: if (request.auth.uid == userId
+                        && request.resource.data.role == 'student'
+                        && request.resource.data.get('facultyRequest', 'none') in ['none', 'pending'])
+                    || isAdmin();
+
+      allow delete: if request.auth.uid == userId || isAdmin();
+
+      allow update: if isAdmin();
+
+      allow update: if request.auth.uid == userId
+        && resource.data.role == 'banned'
+        && resource.data.bannedUntil != null
+        && resource.data.bannedUntil < request.time
+        && request.resource.data.role == 'student'
+        && request.resource.data.bannedUntil == null;
+
+      allow update: if request.auth.uid == userId
+        && !isActivelyBanned()
+        && request.resource.data.role == resource.data.role
+        && (
+             request.resource.data.get('facultyRequest', 'none') == resource.data.get('facultyRequest', 'none')
+             || request.resource.data.get('facultyRequest', 'none') in ['none', 'pending']
+           );
+
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['avgRating', 'totalReviews']);
+
+      match /cart/{cartItemId} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+      match /followers/{followerId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && (request.auth.uid == followerId || isAdmin());
+      }
+      match /following/{followingId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      }
+      match /notifications/{notifId} {
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      }
+    }
+
+    match /appeals/{appealId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /listings/{listingId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && !isActivelyBanned();
+      allow update, delete: if request.auth.uid == resource.data.sellerId || isAdmin();
+    }
+    match /conversations/{convId} {
+      allow read, write: if request.auth != null && !isActivelyBanned();
+      match /messages/{msgId} {
+        allow read, write: if request.auth != null && !isActivelyBanned();
+      }
+    }
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null && !isActivelyBanned();
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.reviewerId || isAdmin());
+    }
+    match /reports/{reportId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if isAdmin();
+    }
+    match /wishlists/{userId}/items/{itemId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+  }
+}
