@@ -52,7 +52,8 @@
         }
       ],
       "expo-image-picker",
-      "expo-font"
+      "expo-font",
+      "expo-video"
     ],
     "extra": {
       "eas": {
