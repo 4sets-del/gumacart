@@ -5,7 +5,7 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   collection, getDocs, query, orderBy, where,
-  doc, updateDoc, deleteDoc, serverTimestamp, getDoc, writeBatch, addDoc,
+  doc, updateDoc, deleteDoc, serverTimestamp, getDoc, addDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import ScreenHeader from "../components/ScreenHeader";

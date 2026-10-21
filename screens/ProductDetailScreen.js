@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Alert, Linking, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Alert, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -87,7 +87,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     setTimeout(() => fullscreenRef.current?.scrollToIndex({ index, animated: false }), 100);
   };
 
-  const handleCall = () => Linking.openURL(`tel:${product.contactNumber}`).catch(() => Alert.alert("Error", "Could not open phone app."));
 
   const REPORT_REASONS = ["Spam or misleading", "Inappropriate content", "Scam or fraud", "Prohibited item", "Other"];
 

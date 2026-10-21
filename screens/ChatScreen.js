@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { VideoView, useVideoPlayer } from 'expo-video';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc,
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, limit,
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
@@ -75,11 +75,24 @@ export default function ChatScreen({ route, navigation }) {
     if (otherUserId) fetchOtherUserPhoto();
   }, [otherUserId]);
 
+  // Only the latest messages are loaded; "Load earlier messages" grows the
+  // window, so long chats open quickly.
+  const PAGE = 50;
+  const [messageLimit, setMessageLimit] = useState(PAGE);
+  const [hasEarlier, setHasEarlier] = useState(false);
+  const loadingEarlierRef = useRef(false);
+
+  const loadEarlier = () => {
+    loadingEarlierRef.current = true; // keep the scroll position instead of jumping to the end
+    setMessageLimit((n) => n + PAGE);
+  };
+
   useEffect(() => {
     if (!conversationId) return;
     const q = query(
       collection(db, "conversations", conversationId, "messages"),
-      orderBy("createdAt", "asc"),
+      orderBy("createdAt", "desc"),
+      limit(messageLimit),
     );
     // If this user previously deleted the conversation, only show messages
     // sent after that moment (the other person still has the full history).
@@ -88,6 +101,7 @@ export default function ChatScreen({ route, navigation }) {
     const show = () => setMessages(
       latestDocs
         .map((d) => ({ id: d.id, ...d.data() }))
+        .reverse() // newest-first from the query; display oldest-first
         .filter((m) => !clearedAtMs || !m.createdAt?.toMillis || m.createdAt.toMillis() > clearedAtMs),
     );
     getDoc(doc(db, "conversations", conversationId))
@@ -95,11 +109,14 @@ export default function ChatScreen({ route, navigation }) {
       .catch(() => {});
     const unsubscribe = onSnapshot(q, (snapshot) => {
       latestDocs = snapshot.docs;
+      setHasEarlier(snapshot.size >= messageLimit);
       show();
-      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      if (!loadingEarlierRef.current) {
+        setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+      }
     });
     return unsubscribe;
-  }, [conversationId]);
+  }, [conversationId, messageLimit]);
 
   // Safety net: whenever the viewer is hidden, make sure playback stops.
   useEffect(() => {
@@ -367,9 +384,20 @@ export default function ChatScreen({ route, navigation }) {
           ref={scrollRef}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+          onContentSizeChange={() => {
+            // After loading earlier messages, stay where the user is reading.
+            if (loadingEarlierRef.current) { loadingEarlierRef.current = false; return; }
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }}
           showsVerticalScrollIndicator={false}
         >
+          {hasEarlier && (
+            <TouchableOpacity style={styles.loadEarlierBtn} activeOpacity={0.7} onPress={loadEarlier}>
+              <Ionicons name="time-outline" size={14} color={COLORS.primary} />
+              <Text style={styles.loadEarlierText}>Load earlier messages</Text>
+            </TouchableOpacity>
+          )}
+
           {items.length === 0 && (
             <View style={styles.emptyChat}>
               <View style={styles.emptyChatIcon}>
@@ -549,6 +577,8 @@ const styles = StyleSheet.create({
   messagesList: { flex: 1, backgroundColor: COLORS.white },
   messagesContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, flexGrow: 1 },
 
+  loadEarlierBtn: { flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 6, backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 10 },
+  loadEarlierText: { fontSize: 12.5, fontWeight: "700", color: COLORS.primary },
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 },
   emptyChatIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: GREEN_LIGHT, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   emptyChatTitle: { fontSize: 17, fontFamily: FONTS.heading, color: "#333", marginBottom: 6 },

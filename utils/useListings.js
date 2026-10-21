@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebaseConfig';
 
 // One shared Firestore listener for active listings, used by every screen
@@ -16,17 +17,45 @@ let unsubscribe = null;
 let stopTimer = null;
 const subscribers = new Set();
 
-const millis = (ts) => (ts?.toMillis ? ts.toMillis() : Date.now()); // pending server timestamps count as "now"
+// Pending server timestamps count as "now"; listings restored from the
+// on-phone copy carry a plain createdAtMs number instead.
+const millis = (item) => (item.createdAt?.toMillis ? item.createdAt.toMillis() : item.createdAtMs || Date.now());
+
+// The newest listings are also saved on the phone so Home can show them
+// instantly on the next launch while Firestore connects.
+const STORAGE_KEY = 'gumacart:lastListings';
+const SAVED_COUNT = 60;
+
+function saveToPhone(items) {
+  const slim = items.slice(0, SAVED_COUNT).map(({ createdAt, updatedAt, approvedAt, rejectedAt, ...rest }) => ({
+    ...rest,
+    createdAtMs: createdAt?.toMillis ? createdAt.toMillis() : null,
+  }));
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(slim)).catch(() => {});
+}
+
+async function restoreFromPhone() {
+  try {
+    const raw = await AsyncStorage.getItem(STORAGE_KEY);
+    // Only fill in if Firestore hasn't already answered.
+    if (raw && !cache) {
+      cache = JSON.parse(raw);
+      subscribers.forEach((fn) => fn());
+    }
+  } catch (e) {}
+}
 
 function start() {
   if (unsubscribe) return;
+  if (!cache) restoreFromPhone();
   unsubscribe = onSnapshot(
     query(collection(db, 'listings'), where('status', '==', 'active')),
     (snap) => {
       cache = snap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+        .sort((a, b) => millis(b) - millis(a));
       loaded = true;
+      saveToPhone(cache);
       subscribers.forEach((fn) => fn());
     },
     (e) => {
@@ -51,6 +80,7 @@ onAuthStateChanged(auth, (user) => {
   if (!user) {
     clearTimeout(stopTimer);
     stop();
+    AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
   }
 });
 

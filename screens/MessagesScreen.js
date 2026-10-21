@@ -5,10 +5,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, serverTimestamp,
+  collection, query, where, onSnapshot, orderBy, doc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
 import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
+import { getUserBasics } from "../utils/userCache";
 import { Image as CachedImage } from "expo-image";
 import { COLORS, colorForName, FONTS } from "../constants/theme";
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
@@ -57,15 +58,7 @@ export default function MessagesScreen({ navigation }) {
             }
             const otherId = data.participants.find((id) => id !== user.uid);
             const unread = data.unreadCount?.[user.uid] || 0;
-            let otherUserName = "Unknown";
-            let otherUserPhoto = null;
-            try {
-              const otherUserDoc = await getDoc(doc(db, "users", otherId));
-              if (otherUserDoc.exists()) {
-                otherUserName = otherUserDoc.data()?.name || "Unknown";
-                otherUserPhoto = otherUserDoc.data()?.photoURL || null;
-              }
-            } catch (e) {}
+            const { name: otherUserName, photoURL: otherUserPhoto } = await getUserBasics(otherId);
             return {
               id: docSnap.id, otherUserName, otherUserPhoto, otherUserId: otherId,
               lastMessage: data.lastMessage || "", lastMessageTime: data.lastMessageTime,

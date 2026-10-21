@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, Animated, StatusBar, ActivityIndicator, Dimensions,
 } from 'react-native';
-import Svg, { Path, Rect, Ellipse, Circle } from 'react-native-svg';
+import Svg, { Path, Rect, Ellipse } from 'react-native-svg';
 import { FONTS } from '../constants/theme';
 
 const GREEN = '#2E6B3E';

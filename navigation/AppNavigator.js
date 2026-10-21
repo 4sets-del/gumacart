@@ -6,7 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '../context/AuthContext';
 import { COLORS, GRADIENTS } from '../constants/theme';
@@ -37,7 +37,6 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
-import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
 const Stack = createStackNavigator();
