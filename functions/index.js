@@ -38,13 +38,6 @@ async function sendExpoPush(messages) {
   }
 }
 
-async function tokensForUser(userId) {
-  const snap = await db.collection("users").doc(userId).get();
-  if (!snap.exists) return [];
-  const data = snap.data();
-  return Array.isArray(data.pushTokens) ? data.pushTokens : [];
-}
-
 async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey }) {
   const style = NOTIF_STYLES[styleKey] || NOTIF_STYLES.system;
   const notifCol = db.collection("users").doc(userId).collection("notifications");
@@ -72,16 +65,17 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
     });
   }
 
-  const tokens = await tokensForUser(userId);
+  // One read for both the push tokens and the user's notification settings.
+  const userSnap = await db.collection("users").doc(userId).get();
+  if (!userSnap.exists) return;
+  const userData = userSnap.data();
+  const tokens = Array.isArray(userData.pushTokens) ? userData.pushTokens : [];
   if (!tokens.length) return;
 
-  try {
-    const prefSnap = await db.collection("users").doc(userId).get();
-    const prefs = prefSnap.data()?.notifPrefs || {};
-    if (storeType === "message" && prefs.messages === false) return;
-    if (storeType === "follow" && prefs.followers === false) return;
-    if (storeType === "review" && prefs.reviews === false) return;
-  } catch (e) {}
+  const prefs = userData.notifPrefs || {};
+  if (storeType === "message" && prefs.messages === false) return;
+  if (storeType === "follow" && prefs.followers === false) return;
+  if (storeType === "review" && prefs.reviews === false) return;
 
   const messages = tokens.map((token) => {
     const msg = {
