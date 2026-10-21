@@ -13,9 +13,9 @@ import { COLORS, RADIUS, FONTS } from "../constants/theme";
 const GREEN = COLORS.primary;
 
 const STEPS = [
-  { id: 1, title: "School Email", icon: "📧" },
-  { id: 2, title: "Student ID Number", icon: "🪪" },
-  { id: 3, title: "ID Photo", icon: "📷" },
+  { id: 1, title: "School Email", icon: "mail" },
+  { id: 2, title: "Student ID Number", icon: "card" },
+  { id: 3, title: "ID Photo", icon: "camera" },
 ];
 
 export default function VerificationScreen({ navigation }) {
@@ -147,6 +147,15 @@ export default function VerificationScreen({ navigation }) {
             </View>
           )}
 
+          {/* Progress bar */}
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressText}>Step {currentStep} of {STEPS.length}</Text>
+            <Text style={styles.progressPct}>{Math.round(((currentStep - 1) / STEPS.length) * 100)}% done</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${(currentStep / STEPS.length) * 100}%` }]} />
+          </View>
+
           {/* Progress Steps */}
           <View style={styles.stepsRow}>
             {STEPS.map((step, index) => (
@@ -156,7 +165,7 @@ export default function VerificationScreen({ navigation }) {
                     {currentStep > step.id ? (
                       <Ionicons name="checkmark" size={18} color="#fff" />
                     ) : (
-                      <Text style={[styles.stepNum, currentStep >= step.id && styles.stepNumActive]}>{step.id}</Text>
+                      <Ionicons name={step.icon} size={16} color={currentStep >= step.id ? GREEN : COLORS.textMuted} />
                     )}
                   </View>
                   <Text style={[styles.stepLabel, currentStep >= step.id && styles.stepLabelActive]}>{step.title}</Text>
@@ -235,12 +244,40 @@ export default function VerificationScreen({ navigation }) {
                 )}
               </TouchableOpacity>
 
+              {/* Example of a good ID photo, so fewer submissions get rejected */}
+              <Text style={styles.exampleLabel}>A good photo looks like this</Text>
+              <View style={styles.exampleCard}>
+                <View style={styles.exampleHeader}>
+                  <Ionicons name="school" size={14} color="#fff" />
+                  <Text style={styles.exampleHeaderText}>SOUTHERN LUZON STATE UNIVERSITY</Text>
+                </View>
+                <View style={styles.exampleBody}>
+                  <View style={styles.examplePhoto}>
+                    <Ionicons name="person" size={30} color={COLORS.textMuted} />
+                  </View>
+                  <View style={{ flex: 1, gap: 6 }}>
+                    <View style={[styles.exampleLine, { width: '85%' }]} />
+                    <View style={[styles.exampleLine, { width: '60%' }]} />
+                    <View style={[styles.exampleLine, { width: '70%' }]} />
+                  </View>
+                </View>
+                <View style={styles.exampleCheck}>
+                  <Ionicons name="checkmark-circle" size={22} color={GREEN} />
+                </View>
+              </View>
+
               <View style={styles.tipsBox}>
-                <Text style={styles.tipsTitle}>📋 Tips for a clear photo:</Text>
-                <Text style={styles.tipItem}>• Make sure the ID is flat and well-lit</Text>
-                <Text style={styles.tipItem}>• All text must be clearly readable</Text>
-                <Text style={styles.tipItem}>• Avoid glare or shadows on the ID</Text>
-                <Text style={styles.tipItem}>• Your photo on the ID must be visible</Text>
+                {[
+                  ["sunny-outline", "Flat and well-lit, no glare or shadows"],
+                  ["text-outline", "All text is clearly readable"],
+                  ["person-circle-outline", "Your photo on the ID is visible"],
+                  ["crop-outline", "The whole card fits in the frame"],
+                ].map(([icon, text]) => (
+                  <View key={text} style={styles.tipRow}>
+                    <Ionicons name={icon} size={16} color={COLORS.warning} />
+                    <Text style={styles.tipItem}>{text}</Text>
+                  </View>
+                ))}
               </View>
 
               <View style={styles.summaryBox}>
@@ -339,9 +376,22 @@ const styles = StyleSheet.create({
   photoPlaceholderSub: { fontSize: 12, color: "#999", marginTop: 4 },
   changePhotoBtn: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.55)", paddingVertical: 9, alignItems: "center", justifyContent: "center" },
   changePhotoText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  tipsBox: { backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 14, marginBottom: 16, width: "100%" },
-  tipsTitle: { fontSize: 13, fontWeight: "700", color: "#333", marginBottom: 8 },
-  tipItem: { fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 18 },
+  tipsBox: { backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 14, marginBottom: 16, width: "100%", gap: 8 },
+  tipRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  tipItem: { flex: 1, fontSize: 12.5, color: COLORS.textSecondary, lineHeight: 18 },
+  progressHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  progressText: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary },
+  progressPct: { fontSize: 12.5, color: COLORS.textMuted },
+  progressTrack: { height: 6, borderRadius: 3, backgroundColor: COLORS.surfaceAlt, overflow: "hidden", marginBottom: 20 },
+  progressFill: { height: "100%", borderRadius: 3, backgroundColor: GREEN },
+  exampleLabel: { alignSelf: "flex-start", fontSize: 13, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 8 },
+  exampleCard: { width: "100%", borderRadius: RADIUS.md, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, overflow: "hidden", marginBottom: 14 },
+  exampleHeader: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: GREEN, paddingHorizontal: 12, paddingVertical: 7 },
+  exampleHeaderText: { color: "#fff", fontSize: 10.5, fontWeight: "800", letterSpacing: 0.4 },
+  exampleBody: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14 },
+  examplePhoto: { width: 56, height: 68, borderRadius: 8, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  exampleLine: { height: 8, borderRadius: 4, backgroundColor: COLORS.surfaceAlt },
+  exampleCheck: { position: "absolute", top: 34, right: 10 },
   summaryBox: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, width: "100%", borderWidth: 1, borderColor: COLORS.border },
   summaryTitle: { fontSize: 15, fontFamily: FONTS.heading, color: "#111", marginBottom: 12 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
