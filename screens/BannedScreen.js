@@ -5,13 +5,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { signOut } from 'firebase/auth';
 import {
   collection, query, where, getDocs, addDoc, serverTimestamp, orderBy, limit,
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
+import { signOutUser } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 
 const RED = COLORS.error;
 const BG = COLORS.white;
@@ -95,7 +95,7 @@ export default function BannedScreen() {
     } finally { setSubmitting(false); }
   };
 
-  const handleSignOut = () => signOut(auth).catch(() => {});
+  const handleSignOut = () => signOutUser().catch(() => {});
 
   if (loading) {
     return (
@@ -199,14 +199,14 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG, paddingTop: STATUSBAR_TOP },
   container: { flexGrow: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   iconCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: COLORS.errorLight, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 10, letterSpacing: -0.4 },
+  title: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 10, letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 22 },
   reasonBox: { width: '100%', backgroundColor: COLORS.errorLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
-  reasonLabel: { fontSize: 11, fontWeight: '800', color: RED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
+  reasonLabel: { fontSize: 11, fontFamily: FONTS.heading, color: RED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
   reasonValue: { fontSize: 14.5, color: COLORS.textPrimary, lineHeight: 20, fontWeight: '600' },
   timerBox: { width: '100%', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 22, alignItems: 'center' },
-  timerTitle: { fontSize: 12, fontWeight: '800', color: '#B9770E', textTransform: 'uppercase', letterSpacing: 0.5 },
-  timerValue: { fontSize: 26, fontWeight: '800', color: '#8A5A0B', marginVertical: 4 },
+  timerTitle: { fontSize: 12, fontFamily: FONTS.heading, color: '#B9770E', textTransform: 'uppercase', letterSpacing: 0.5 },
+  timerValue: { fontSize: 26, fontFamily: FONTS.heading, color: '#8A5A0B', marginVertical: 4 },
   timerSub: { fontSize: 12.5, color: '#8A5A0B', textAlign: 'center' },
   timerHint: { fontSize: 12, color: '#A9863F', textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
   label: { alignSelf: 'flex-start', fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   submitBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   statusBox: { width: '100%', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 24, alignItems: 'center' },
-  statusTitle: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
+  statusTitle: { fontSize: 15, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
   statusText: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 19 },
   appealEcho: { fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic', marginTop: 10, textAlign: 'center' },
   signOutBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 30, padding: 10 },

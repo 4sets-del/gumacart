@@ -5,14 +5,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import {
-  collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, increment, deleteDoc, setDoc,
+  collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc, setDoc,
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, RADIUS, SHADOWS, GRADIENTS, colorForName } from "../constants/theme";
+import { COLORS, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 const GOLD = COLORS.star;
@@ -179,15 +179,15 @@ export default function SellerProfileScreen({ route, navigation }) {
 
   const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : seller?.avgRating || 0;
 
+  // The seller's stored avgRating/totalReviews are recalculated by the
+  // onReviewWrite Cloud Function; this screen shows the live average from
+  // the reviews it loads.
   const handleSubmitReview = async () => {
     if (myRating === 0) { Alert.alert("Rating required", "Please select a star rating."); return; }
     setSubmittingReview(true);
     try {
       if (editingReviewId) {
         await updateDoc(doc(db, "reviews", editingReviewId), { rating: myRating, comment: myReview.trim(), editedAt: serverTimestamp() });
-        const updated = reviews.map((r) => (r.id === editingReviewId ? { ...r, rating: myRating, comment: myReview.trim() } : r));
-        const newAvg = updated.reduce((sum, r) => sum + r.rating, 0) / updated.length;
-        await updateDoc(doc(db, "users", sellerId), { avgRating: Math.round(newAvg * 10) / 10 });
         setShowRatingModal(false); setEditingReviewId(null); setMyRating(0); setMyReview("");
         await loadAll();
         Alert.alert("✅ Review Updated!");
@@ -200,8 +200,6 @@ export default function SellerProfileScreen({ route, navigation }) {
         reviewerName: currentUser.displayName || "Anonymous",
         rating: myRating, comment: myReview.trim(), createdAt: serverTimestamp(),
       });
-      const newAvg = (avgRating * reviews.length + myRating) / (reviews.length + 1);
-      await updateDoc(doc(db, "users", sellerId), { avgRating: Math.round(newAvg * 10) / 10, totalReviews: increment(1) });
       setShowRatingModal(false); setMyRating(0); setMyReview("");
       await loadAll();
       Alert.alert("✅ Review Submitted!", "Thank you for your feedback.");
@@ -220,9 +218,6 @@ export default function SellerProfileScreen({ route, navigation }) {
       { text: "Delete", style: "destructive", onPress: async () => {
         try {
           await deleteDoc(doc(db, "reviews", review.id));
-          const remaining = reviews.filter((r) => r.id !== review.id);
-          const newAvg = remaining.length > 0 ? remaining.reduce((sum, r) => sum + r.rating, 0) / remaining.length : 0;
-          await updateDoc(doc(db, "users", sellerId), { avgRating: Math.round(newAvg * 10) / 10, totalReviews: remaining.length });
           await loadAll();
         } catch (e) { Alert.alert("Error", "Failed to delete review."); }
       }},
@@ -597,14 +592,14 @@ const styles = StyleSheet.create({
   heroCircleSmall: { position: "absolute", left: -30, bottom: -50, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(245,158,11,0.18)" },
   heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   heroBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  heroTitle: { fontSize: 18, fontWeight: "800", color: "#fff" },
+  heroTitle: { fontSize: 18, fontFamily: FONTS.heading, color: "#fff" },
 
   profileCard: { marginHorizontal: 16, marginTop: -44, backgroundColor: COLORS.white, borderRadius: 20, padding: 16, ...SHADOWS.md },
   identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 72, height: 72, borderRadius: 36 },
-  avatarText: { fontSize: 30, fontWeight: "800", color: GREEN },
-  sellerName: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  avatarText: { fontSize: 30, fontFamily: FONTS.heading, color: GREEN },
+  sellerName: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sellerEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
   heroMetaRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
@@ -613,7 +608,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   statItem: { flex: 1, alignItems: "center" },
   statDivider: { borderLeftWidth: 1, borderLeftColor: COLORS.border },
-  statNum: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  statNum: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
 
   actionBtns: { flexDirection: "row", gap: 10, marginTop: 16 },
@@ -626,7 +621,7 @@ const styles = StyleSheet.create({
   rateBtn: { width: 46, height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
 
   section: { paddingHorizontal: 16, marginTop: 22 },
-  sectionTitle: { fontSize: 17, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 12 },
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1, borderColor: COLORS.border },
   tabRow: { flexDirection: "row", marginBottom: 14, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3 },
   tab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: RADIUS.full },
@@ -661,7 +656,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
   modalSheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 30, maxHeight: "88%" },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 18 },
-  modalTitle: { fontSize: 21, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 4, letterSpacing: -0.3 },
+  modalTitle: { fontSize: 21, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4, letterSpacing: -0.3 },
   modalSubtitle: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 22 },
   starSelector: { alignItems: "center", marginBottom: 12 },
   ratingLabel: { fontSize: 16, color: COLORS.textPrimary, textAlign: "center", marginBottom: 24, fontWeight: "700" },
@@ -680,7 +675,7 @@ const styles = StyleSheet.create({
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
   reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontWeight: "800", color: "#111", marginBottom: 4 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
   reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
   reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
   reasonText: { flex: 1, fontSize: 15, color: "#222", fontWeight: "500" },
@@ -694,7 +689,7 @@ const styles = StyleSheet.create({
   proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA" },
   proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: "#fff", borderRadius: 13 },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
-  reportSubmitText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
   reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
 });

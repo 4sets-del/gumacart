@@ -5,13 +5,14 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import {
   updateProfile, updatePassword, EmailAuthProvider,
-  reauthenticateWithCredential, signOut,
+  reauthenticateWithCredential,
 } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
+import { signOutUser } from "../utils/auth";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
+import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 
@@ -104,7 +105,7 @@ export default function SettingsScreen({ navigation }) {
   const handleLogout = () => {
     Alert.alert("Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
-      { text: "Logout", style: "destructive", onPress: async () => await signOut(auth) },
+      { text: "Logout", style: "destructive", onPress: () => signOutUser().catch(() => {}) },
     ]);
   };
 
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
   modalSheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 4 },
+  modalTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
   modalSubtitle: { fontSize: 13, color: COLORS.textMuted, marginBottom: 16 },
   inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, marginTop: 14, marginBottom: 7 },
   inputWrapper: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, justifyContent: "center" },

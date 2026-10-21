@@ -1,6 +1,6 @@
 import { Platform, Alert } from 'react-native';
 import Constants from 'expo-constants';
-import { doc, updateDoc, arrayUnion, setDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
 // Detect Expo Go — push was removed from Expo Go in SDK 53.
@@ -27,6 +27,10 @@ if (!isExpoGo) {
     Device = null;
   }
 }
+
+// The push token registered for the signed-in user on this phone, so it can
+// be removed from their account when they log out.
+let currentToken = null;
 
 // Set debug=true to see alerts explaining exactly where registration stops.
 const DEBUG = false;
@@ -95,6 +99,7 @@ export async function registerForPushNotifications(userId) {
       projectId ? { projectId } : undefined
     );
     const token = tokenData.data;
+    currentToken = token;
 
     debugAlert('Got token: ' + token);
 
@@ -110,6 +115,18 @@ export async function registerForPushNotifications(userId) {
     debugAlert('ERROR: ' + (e?.message || e));
     return null;
   }
+}
+
+// Stop sending this account's notifications to this phone. Must run while
+// still signed in (the user doc is only writable by its owner).
+export async function unregisterPushToken(userId) {
+  if (!userId || !currentToken) return;
+  try {
+    await updateDoc(doc(db, 'users', userId), { pushTokens: arrayRemove(currentToken) });
+  } catch (e) {
+    // Not fatal: the server also prunes tokens Expo reports as dead.
+  }
+  currentToken = null;
 }
 
 export function addNotificationResponseListener(handler) {

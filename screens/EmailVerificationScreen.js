@@ -4,9 +4,10 @@ import {
   AppState, Platform,} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { sendEmailVerification, signOut, reload } from 'firebase/auth';
+import { sendEmailVerification, reload } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { COLORS, RADIUS } from '../constants/theme';
+import { signOutUser } from '../utils/auth';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
 const GREEN = COLORS.primary;
@@ -83,7 +84,7 @@ export default function EmailVerificationScreen({ navigation }) {
   const handleUseDifferentEmail = () => {
     Alert.alert('Use a different email?', 'This will sign you out so you can sign up again.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign Out', style: 'destructive', onPress: () => signOut(auth) },
+      { text: 'Sign Out', style: 'destructive', onPress: () => signOutUser() },
     ]);
   };
 
@@ -109,7 +110,7 @@ export default function EmailVerificationScreen({ navigation }) {
         <View style={styles.spamNote}>
           <Ionicons name="alert-circle-outline" size={16} color={COLORS.warning} style={{ marginRight: 8 }} />
           <Text style={styles.spamNoteText}>
-            Can't find it? Check your <Text style={{ fontWeight: '800' }}>Spam</Text> or <Text style={{ fontWeight: '800' }}>Junk</Text> folder. If it's there, tap <Text style={{ fontWeight: '800' }}>"Not Spam"</Text> so future emails reach your inbox.
+            Can't find it? Check your <Text style={{ fontFamily: FONTS.heading }}>Spam</Text> or <Text style={{ fontFamily: FONTS.heading }}>Junk</Text> folder. If it's there, tap <Text style={{ fontFamily: FONTS.heading }}>"Not Spam"</Text> so future emails reach your inbox.
           </Text>
         </View>
 
@@ -152,7 +153,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   iconCircle: { width: 104, height: 104, borderRadius: 52, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
-  title: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 8, textAlign: 'center', letterSpacing: -0.4 },
+  title: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8, textAlign: 'center', letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
   email: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginTop: 4, marginBottom: 16 },
   instructions: { fontSize: 13.5, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 18 },

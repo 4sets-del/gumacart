@@ -1,9 +1,10 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
-const fetch = require("node-fetch");
+// The v1 API keeps the existing deployed (1st gen) functions as they are.
+const functions = require("firebase-functions/v1");
+const { initializeApp } = require("firebase-admin/app");
+const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 
-admin.initializeApp();
-const db = admin.firestore();
+initializeApp();
+const db = getFirestore();
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
@@ -19,8 +20,10 @@ const NOTIF_STYLES = {
   report:   { channelId: "account", color: "#e67e22", titlePrefix: "🚩 " },
 };
 
+// Sends push messages through Expo and returns the tokens Expo reports as
+// no longer valid (app uninstalled, or the token was replaced).
 async function sendExpoPush(messages) {
-  if (!messages.length) return;
+  if (!messages.length) return [];
   try {
     const res = await fetch(EXPO_PUSH_URL, {
       method: "POST",
@@ -33,8 +36,13 @@ async function sendExpoPush(messages) {
     });
     const result = await res.json();
     if (result.errors) console.error("Expo push errors:", JSON.stringify(result.errors));
+    const tickets = Array.isArray(result.data) ? result.data : [];
+    return tickets
+      .map((ticket, i) => (ticket.status === "error" && ticket.details?.error === "DeviceNotRegistered" ? messages[i].to : null))
+      .filter(Boolean);
   } catch (e) {
     console.error("Expo push error:", e.message);
+    return [];
   }
 }
 
@@ -48,20 +56,20 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
       await existing.docs[0].ref.update({
         title, body, read: false,
         ...(data || {}),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
     } else {
       await notifCol.add({
         type: storeType, title, body, read: false, collapseKey,
         ...(data || {}),
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
       });
     }
   } else {
     await notifCol.add({
       type: storeType, title, body, read: false,
       ...(data || {}),
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+      createdAt: FieldValue.serverTimestamp(),
     });
   }
 
@@ -95,7 +103,10 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
     return msg;
   });
 
-  await sendExpoPush(messages);
+  const deadTokens = await sendExpoPush(messages);
+  if (deadTokens.length) {
+    await db.collection("users").doc(userId).update({ pushTokens: FieldValue.arrayRemove(...deadTokens) });
+  }
 }
 
 function suspensionPhrase(bannedUntil) {
@@ -343,5 +354,26 @@ exports.onReportResolved = functions
       body,
       data: { nav: "self" },
     });
+    return null;
+  });
+
+// Keeps each seller's avgRating / totalReviews in sync with their actual
+// reviews whenever a review is added, edited or deleted. Calculating it here
+// (instead of on the reviewer's phone) avoids drift from simultaneous reviews.
+exports.onReviewWrite = functions
+  .region("asia-southeast1")
+  .firestore
+  .document("reviews/{reviewId}")
+  .onWrite(async (change) => {
+    const sellerIds = new Set(
+      [change.before.data()?.sellerId, change.after.data()?.sellerId].filter(Boolean),
+    );
+    for (const sellerId of sellerIds) {
+      const snap = await db.collection("reviews").where("sellerId", "==", sellerId).get();
+      const ratings = snap.docs.map((d) => Number(d.data().rating)).filter((r) => r >= 1 && r <= 5);
+      const total = ratings.length;
+      const avg = total ? Math.round((ratings.reduce((a, b) => a + b, 0) / total) * 10) / 10 : 0;
+      await db.collection("users").doc(sellerId).set({ avgRating: avg, totalReviews: total }, { merge: true });
+    }
     return null;
   });
