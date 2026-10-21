@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Modal } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const GREEN = '#2E6B3E';
+const GREEN = '#1B6B3A';
 const PADDING = 8;
 
 // A sequential "coach mark" walkthrough: dims the screen, spotlights one

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, reload } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { registerForPushNotifications } from '../utils/notifications';
 
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const startTime = Date.now();
-    const MIN_SPLASH_MS = 1800;
+    const MIN_SPLASH_MS = 600;
 
     const finishLoading = () => {
       const elapsed = Date.now() - startTime;
@@ -105,18 +105,29 @@ export const AuthProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [user, emailVerified]);
 
-  // Re-check profile periodically so a mid-session ban takes effect and an
-  // expired suspension lifts without a full app restart.
+  // Listen to the profile so a mid-session ban (or unban) takes effect
+  // immediately. Firestore only sends data when the document changes, unlike
+  // the old 20-second polling which re-downloaded it ~180 times an hour.
+  const uid = user?.uid;
   useEffect(() => {
-    if (!user) return;
-    const interval = setInterval(async () => {
-      try {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        if (snap.exists()) await applyProfile(user.uid, snap.data());
-      } catch (e) {}
-    }, 20000);
-    return () => clearInterval(interval);
-  }, [user]);
+    if (!uid) return;
+    return onSnapshot(
+      doc(db, 'users', uid),
+      (snap) => { if (snap.exists()) applyProfile(uid, snap.data()); },
+      () => {},
+    );
+  }, [uid]);
+
+  // A temporary suspension ends at a set time without any document change,
+  // so schedule a re-check for that moment.
+  useEffect(() => {
+    if (!uid || userProfile?.role !== 'banned' || !userProfile?.bannedUntil) return;
+    const until = userProfile.bannedUntil?.toDate ? userProfile.bannedUntil.toDate() : new Date(userProfile.bannedUntil);
+    const ms = until.getTime() - Date.now();
+    if (ms <= 0) return;
+    const id = setTimeout(() => applyProfile(uid, userProfile), Math.min(ms + 1000, 2147483647));
+    return () => clearTimeout(id);
+  }, [uid, userProfile]);
 
   const { banned: isBanned } = computeBanState(userProfile);
 

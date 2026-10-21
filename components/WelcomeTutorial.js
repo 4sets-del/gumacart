@@ -6,14 +6,14 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 
 const { width } = Dimensions.get("window");
-const GREEN = "#2E7D32";
+const GREEN = "#1B6B3A";
 
 // Each slide teaches one core part of the app.
 const SLIDES = [
   {
     icon: "storefront",
     emoji: "🛍️",
-    color: "#2E7D32",
+    color: "#1B6B3A",
     title: "Welcome to GumaCart",
     text: "Your campus marketplace for Southern Luzon State University. Buy, sell, barter, and donate with fellow students — safely and easily.",
   },
@@ -27,7 +27,7 @@ const SLIDES = [
   {
     icon: "shield-checkmark",
     emoji: "✅",
-    color: "#2E7D32",
+    color: "#1B6B3A",
     title: "Verified students only",
     text: "Everyone verifies their SLSU student ID before posting. This keeps the marketplace trusted and safe for the whole campus.",
   },

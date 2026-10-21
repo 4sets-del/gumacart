@@ -1,55 +1,80 @@
 export const COLORS = {
   // Primary green palette
-  primary: '#2E7D32',
-  primaryLight: '#4CAF50',
-  primaryLighter: '#A5D6A7',
-  primaryPale: '#E8F5E9',
+  primary: '#1B6B3A',
+  primaryDark: '#145530',
+  primaryLight: '#2F8A50',
+  primaryLighter: '#A9D8B6',
+  primaryPale: '#E8F4EC',
 
   // Accent
-  accent: '#FF8F00',
-  accentLight: '#FFE082',
+  accent: '#F4A100',
+  accentLight: '#FFE7A8',
+  star: '#F5B923',
 
   // Neutrals
   white: '#FFFFFF',
-  background: '#F5F7F5',
+  background: '#F6F8F6',
   surface: '#FFFFFF',
-  surfaceAlt: '#F0F4F0',
+  surfaceAlt: '#F1F4F2',
 
   // Text
-  textPrimary: '#1A1A1A',
-  textSecondary: '#5A6A5A',
-  textMuted: '#9E9E9E',
+  textPrimary: '#1A1D1B',
+  textSecondary: '#59645C',
+  textMuted: '#98A29A',
   textOnPrimary: '#FFFFFF',
 
   // Borders
-  border: '#DDE8DD',
-  borderStrong: '#B8CCB8',
+  border: '#E6EBE7',
+  borderStrong: '#C9D3CB',
 
   // Semantic
-  success: '#2E7D32',
-  error: '#C62828',
-  errorLight: '#FFEBEE',
-  warning: '#E65100',
+  success: '#1B6B3A',
+  error: '#D64545',
+  errorLight: '#FDECEC',
+  warning: '#D9822B',
   warningLight: '#FFF3E0',
-  info: '#1565C0',
-  infoLight: '#E3F2FD',
+  info: '#2F6FB5',
+  infoLight: '#E6F0FA',
 
   // Transaction type badges
-  sell: '#1565C0',
-  sellBg: '#E3F2FD',
-  barter: '#6A1B9A',
-  barterBg: '#F3E5F5',
-  donate: '#2E7D32',
-  donateBg: '#E8F5E9',
+  sell: '#1B6B3A',
+  sellBg: '#E8F4EC',
+  buy: '#2F6FB5',
+  buyBg: '#E6F0FA',
+  barter: '#D9822B',
+  barterBg: '#FDF0E2',
+  donate: '#D64545',
+  donateBg: '#FDECEC',
 
   // Chat
-  bubbleSent: '#2E7D32',
-  bubbleReceived: '#F0F4F0',
+  bubbleSent: '#1B6B3A',
+  bubbleReceived: '#F1F4F2',
 
   // Overlay
   overlay: 'rgba(0,0,0,0.5)',
   overlayLight: 'rgba(0,0,0,0.08)',
 };
+
+// Colorful two-stop gradients for headers, banners and main buttons.
+export const GRADIENTS = {
+  primary: ['#1B6B3A', '#2E9A5A'],
+  primaryDeep: ['#14532B', '#1F7A44'],
+  sunset: ['#F59E0B', '#F97316'],
+  ocean: ['#2563EB', '#0EA5E9'],
+  berry: ['#7C3AED', '#C026D3'],
+  rose: ['#E11D48', '#F43F5E'],
+  teal: ['#0D9488', '#14B8A6'],
+};
+
+// Bright accents used to give icons and avatars their own color.
+export const ACCENTS = ['#16A34A', '#F59E0B', '#2563EB', '#7C3AED', '#E11D48', '#0D9488', '#EA580C', '#DB2777'];
+
+// Stable color for a name, so each person's avatar always gets the same color.
+export function colorForName(name = '') {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return ACCENTS[Math.abs(hash) % ACCENTS.length];
+}
 
 export const FONTS = {
   regular: 'System',
