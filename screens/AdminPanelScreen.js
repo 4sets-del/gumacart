@@ -4,10 +4,12 @@ import {
 } from 'react-native';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, getDocs, query, orderBy, where,
+  collection, getDocs, query, orderBy, where, limit, startAfter, getCountFromServer,
   doc, updateDoc, deleteDoc, serverTimestamp, getDoc, addDoc,
 } from "firebase/firestore";
-import { auth, db } from "../firebaseConfig";
+import { auth, db, functions } from "../firebaseConfig";
+import { httpsCallable } from "firebase/functions";
+import { useActiveListings } from "../utils/useListings";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 
@@ -17,11 +19,11 @@ const AMBER = COLORS.warning;
 const RED = COLORS.error;
 
 const TABS = [
-  { id: "verifications", label: "Verify",   icon: "🎓" },
-  { id: "listings",      label: "Listings", icon: "🛍️" },
-  { id: "reports",       label: "Reports",  icon: "🚩" },
-  { id: "appeals",       label: "Appeals",  icon: "📩" },
-  { id: "users",         label: "Users",    icon: "👥" },
+  { id: "verifications", label: "Verify",   icon: "school",      color: "#16A34A" },
+  { id: "listings",      label: "Listings", icon: "pricetags",   color: "#2563EB" },
+  { id: "reports",       label: "Reports",  icon: "flag",        color: "#E11D48" },
+  { id: "appeals",       label: "Appeals",  icon: "mail-open",   color: "#7C3AED" },
+  { id: "users",         label: "Users",    icon: "people",      color: "#EA580C" },
 ];
 
 const BAN_REASONS = [
@@ -47,8 +49,18 @@ export default function AdminPanelScreen({ navigation }) {
   const [reportSubTab, setReportSubTab] = useState("open");
   const [verifications, setVerifications] = useState([]);
   const [facultyRequests, setFacultyRequests] = useState([]);
+  // Only pending listings are loaded here; approved ones come from the shared
+  // active-listings listener the rest of the app already keeps in memory.
   const [listings, setListings]         = useState([]);
+  const { listings: activeListings }    = useActiveListings({ includeOwn: true });
+  // Users load page by page, only once the Users tab is opened.
   const [users, setUsers]               = useState([]);
+  const [usersCursor, setUsersCursor]   = useState(null);
+  const [usersLoaded, setUsersLoaded]   = useState(false);
+  const [hasMoreUsers, setHasMoreUsers] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  // Totals for the stat cards, counted on the server (no documents downloaded).
+  const [totals, setTotals]             = useState({ users: 0, listings: 0 });
   const [reports, setReports]           = useState([]);
   const [appeals, setAppeals]           = useState([]);
   const [viewerImage, setViewerImage]   = useState(null);
@@ -80,7 +92,21 @@ export default function AdminPanelScreen({ navigation }) {
     } catch (e) {} finally { setLoading(false); }
   };
 
-  const loadAll = async () => Promise.all([loadVerifications(), loadFacultyRequests(), loadListings(), loadUsers(), loadReports(), loadAppeals()]);
+  const loadTotals = async () => {
+    try {
+      const [u, l] = await Promise.all([
+        getCountFromServer(collection(db, "users")),
+        getCountFromServer(collection(db, "listings")),
+      ]);
+      setTotals({ users: u.data().count, listings: l.data().count });
+    } catch (e) {}
+  };
+
+  // Everything needed for the tab badges; the full user list waits for its tab.
+  const loadAll = async () => Promise.all([
+    loadTotals(), loadVerifications(), loadFacultyRequests(), loadListings(), loadReports(), loadAppeals(),
+    usersLoaded ? loadUsers() : null,
+  ]);
 
   const loadVerifications = async () => {
     try {
@@ -98,7 +124,7 @@ export default function AdminPanelScreen({ navigation }) {
 
   const loadListings = async () => {
     try {
-      const snap = await getDocs(query(collection(db, "listings"), orderBy("createdAt", "desc")));
+      const snap = await getDocs(query(collection(db, "listings"), where("status", "==", "pending")));
       setListings(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
     } catch (e) {}
   };
@@ -202,7 +228,7 @@ export default function AdminPanelScreen({ navigation }) {
           await markReportsResolved(group.reports, "resolved");
           await loadReports();
           await loadListings();
-          Alert.alert("✅ Resolved", "Listing removed. Seller and reporter(s) notified.");
+          Alert.alert("Resolved", "Listing removed. Seller and reporter(s) notified.");
         } catch (e) { Alert.alert("Error", "Could not resolve report."); }
       }},
     ]);
@@ -223,7 +249,7 @@ export default function AdminPanelScreen({ navigation }) {
           });
           await loadAppeals();
           await loadUsers();
-          Alert.alert("✅ Restored", "The user has been unbanned and notified.");
+          Alert.alert("Restored", "The user has been unbanned and notified.");
         } catch (e) { Alert.alert("Error", "Could not approve the appeal."); }
       }},
     ]);
@@ -265,12 +291,28 @@ export default function AdminPanelScreen({ navigation }) {
     ]);
   };
 
-  const loadUsers = async () => {
+  const USERS_PAGE = 50;
+  // Loads the first page (or the next one with `more`), newest accounts first.
+  const loadUsers = async (more = false) => {
+    if (loadingUsers) return;
+    setLoadingUsers(true);
     try {
-      const snap = await getDocs(query(collection(db, "users"), orderBy("createdAt", "desc")));
-      setUsers(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
-    } catch (e) {}
+      const base = [collection(db, "users"), orderBy("createdAt", "desc")];
+      const q = more && usersCursor
+        ? query(...base, startAfter(usersCursor), limit(USERS_PAGE))
+        : query(...base, limit(USERS_PAGE));
+      const snap = await getDocs(q);
+      const page = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setUsers((prev) => (more ? [...prev, ...page] : page));
+      setUsersCursor(snap.docs[snap.docs.length - 1] || null);
+      setHasMoreUsers(snap.size === USERS_PAGE);
+      setUsersLoaded(true);
+    } catch (e) {} finally { setLoadingUsers(false); }
   };
+
+  useEffect(() => {
+    if (activeTab === "users" && !usersLoaded) loadUsers();
+  }, [activeTab]);
 
   const onRefresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
 
@@ -412,7 +454,7 @@ export default function AdminPanelScreen({ navigation }) {
       }
       await loadUsers();
       await loadReports();
-      Alert.alert("✅ User banned", `${uName} was suspended (${durLabel}). They'll be notified.`);
+      Alert.alert("User banned", `${uName} was suspended (${durLabel}). They'll be notified.`);
     } catch (e) { Alert.alert("Error", "Could not ban the user."); }
   };
 
@@ -437,37 +479,15 @@ export default function AdminPanelScreen({ navigation }) {
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete Everything", style: "destructive", onPress: async () => {
-          const failed = [];
-          const wipe = async (label, snapPromise, refFor) => {
-            try {
-              const snap = await snapPromise;
-              for (const d of snap.docs) {
-                try { await deleteDoc(refFor(d)); } catch (e) {}
-              }
-            } catch (e) { failed.push(label); }
-          };
-          await wipe("listings", getDocs(query(collection(db, "listings"), where("sellerId", "==", userId))), (d) => doc(db, "listings", d.id));
-          await wipe("reviews-received", getDocs(query(collection(db, "reviews"), where("sellerId", "==", userId))), (d) => doc(db, "reviews", d.id));
-          await wipe("reviews-written", getDocs(query(collection(db, "reviews"), where("reviewerId", "==", userId))), (d) => doc(db, "reviews", d.id));
-          for (const sub of ["followers", "following", "cart", "notifications"]) {
-            await wipe(sub, getDocs(collection(db, "users", userId, sub)), (d) => doc(db, "users", userId, sub, d.id));
-          }
+          // Runs on the server: deletes the person's login so they can no
+          // longer sign in, and removes their data (see adminDeleteUser).
           try {
-            const allUsersSnap = await getDocs(collection(db, "users"));
-            for (const other of allUsersSnap.docs) {
-              if (other.id === userId) continue;
-              try { await deleteDoc(doc(db, "users", other.id, "followers", userId)); } catch (e) {}
-              try { await deleteDoc(doc(db, "users", other.id, "following", userId)); } catch (e) {}
-            }
-          } catch (e) { failed.push("cross-follows"); }
-          try { await deleteDoc(doc(db, "users", userId)); }
-          catch (e) { failed.push("user-doc: " + e.message); }
-          await loadUsers();
-          await loadListings();
-          if (failed.length === 0) {
-            Alert.alert("✅ Deleted", `${userName} and all associated data have been removed.`);
-          } else {
-            Alert.alert("Partly deleted", `${userName} was mostly removed, but these parts failed: ${failed.join(", ")}. Check Firestore rules for those.`);
+            await httpsCallable(functions, "adminDeleteUser")({ uid: userId });
+            setUsers((prev) => prev.filter((u) => u.id !== userId));
+            await loadListings();
+            Alert.alert("Deleted", `${userName}'s account and data have been removed.`);
+          } catch (e) {
+            Alert.alert("Could not delete", e.message || "Please try again.");
           }
         }},
       ]
@@ -528,20 +548,20 @@ export default function AdminPanelScreen({ navigation }) {
       />
 
       <View style={styles.statsCard}>
-        <StatBox num={users.length} label="Users" color="#111" />
+        <StatBox num={totals.users} label="Users" color="#EA580C" onPress={() => setActiveTab("users")} />
         <View style={styles.statDivider} />
-        <StatBox num={pendingCount} label="Pending" color={AMBER} />
+        <StatBox num={pendingCount} label="Pending" color={AMBER} onPress={() => { setActiveTab("verifications"); setVerifySubTab("pending"); }} />
         <View style={styles.statDivider} />
-        <StatBox num={listings.length} label="Listings" color={GREEN} />
+        <StatBox num={totals.listings} label="Listings" color="#2563EB" onPress={() => setActiveTab("listings")} />
         <View style={styles.statDivider} />
-        <StatBox num={verifications.filter((v) => v.verificationStatus === "verified").length} label="Verified" color="#2980b9" />
+        <StatBox num={verifications.filter((v) => v.verificationStatus === "verified").length} label="Verified" color={GREEN} onPress={() => setActiveTab("verifications")} />
       </View>
 
       <View style={styles.tabs}>
         {TABS.map((tab) => (
-          <TouchableOpacity key={tab.id} style={[styles.tab, activeTab === tab.id && styles.tabActive]} activeOpacity={0.7} onPress={() => setActiveTab(tab.id)}>
+          <TouchableOpacity key={tab.id} style={[styles.tab, activeTab === tab.id && { backgroundColor: tab.color + "1A" }]} activeOpacity={0.7} onPress={() => setActiveTab(tab.id)}>
             <View style={{ position: "relative" }}>
-              <Text style={styles.tabIcon}>{tab.icon}</Text>
+              <Ionicons name={activeTab === tab.id ? tab.icon : `${tab.icon}-outline`} size={21} color={activeTab === tab.id ? tab.color : COLORS.textMuted} />
               {tab.id === "verifications" && verifyBadgeCount > 0 && (
                 <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{verifyBadgeCount}</Text></View>
               )}
@@ -555,7 +575,7 @@ export default function AdminPanelScreen({ navigation }) {
                 <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{pendingAppealsCount}</Text></View>
               )}
             </View>
-            <Text style={[styles.tabLabel, activeTab === tab.id && styles.tabLabelActive]}>{tab.label}</Text>
+            <Text style={[styles.tabLabel, activeTab === tab.id && [styles.tabLabelActive, { color: tab.color }]]}>{tab.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -573,7 +593,7 @@ export default function AdminPanelScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.subTab, verifySubTab === "faculty" && styles.subTabActive]} activeOpacity={0.7} onPress={() => setVerifySubTab("faculty")}>
                 <Text style={[styles.subTabText, verifySubTab === "faculty" && styles.subTabTextActive]}>
-                  🎓 Faculty {facultyRequests.length > 0 ? `(${facultyRequests.length})` : ""}
+                  Faculty {facultyRequests.length > 0 ? `(${facultyRequests.length})` : ""}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.subTab, verifySubTab === "completed" && styles.subTabActive]} activeOpacity={0.7} onPress={() => setVerifySubTab("completed")}>
@@ -585,7 +605,7 @@ export default function AdminPanelScreen({ navigation }) {
 
             {verifySubTab === "faculty" ? (
               facultyRequests.length === 0 ? (
-                <EmptyState icon="🎓" text="No pending faculty requests" />
+                <EmptyState icon="school-outline" text="No pending faculty requests" />
               ) : (
                 facultyRequests.map((user) => (
                   <View key={user.id} style={styles.card}>
@@ -623,7 +643,7 @@ export default function AdminPanelScreen({ navigation }) {
               )
             ) : displayedVerifications.length === 0 ? (
               <EmptyState
-                icon={verifySubTab === "pending" ? "⏳" : "✅"}
+                icon={verifySubTab === "pending" ? "hourglass-outline" : "checkmark-done-outline"}
                 text={verifySubTab === "pending" ? "No pending verifications" : "No completed verifications yet"}
               />
             ) : (
@@ -679,11 +699,11 @@ export default function AdminPanelScreen({ navigation }) {
           <View style={styles.tabContent}>
             <View style={styles.subTabRow}>
               {["pending", "approved"].map((st) => {
-                const count = listings.filter((l) => st === "pending" ? l.status === "pending" : l.status === "active").length;
+                const count = st === "pending" ? listings.length : activeListings.length;
                 return (
                   <TouchableOpacity key={st} style={[styles.subTab, listingSubTab === st && styles.subTabActive]} activeOpacity={0.7} onPress={() => setListingSubTab(st)}>
                     <Text style={[styles.subTabText, listingSubTab === st && styles.subTabTextActive]}>
-                      {st === "pending" ? `⏳ Pending (${count})` : `✓ Approved (${count})`}
+                      {st === "pending" ? `Pending (${count})` : `✓ Approved (${count})`}
                     </Text>
                   </TouchableOpacity>
                 );
@@ -691,9 +711,9 @@ export default function AdminPanelScreen({ navigation }) {
             </View>
 
             {(() => {
-              const shown = listings.filter((l) => listingSubTab === "pending" ? l.status === "pending" : l.status === "active");
+              const shown = listingSubTab === "pending" ? listings : activeListings;
               if (shown.length === 0) {
-                return <EmptyState icon={listingSubTab === "pending" ? "⏳" : "🛍️"} text={listingSubTab === "pending" ? "No listings awaiting approval" : "No approved listings"} />;
+                return <EmptyState icon={listingSubTab === "pending" ? "hourglass-outline" : "bag-handle-outline"} text={listingSubTab === "pending" ? "No listings awaiting approval" : "No approved listings"} />;
               }
               return shown.map((listing) => (
                 <View key={listing.id} style={styles.card}>
@@ -702,7 +722,7 @@ export default function AdminPanelScreen({ navigation }) {
                       {listing.images?.[0] || listing.image ? (
                         <Image source={{ uri: listing.images?.[0] || listing.image }} style={styles.listingThumb} />
                       ) : (
-                        <Text style={styles.listingThumbPlaceholder}>🛍️</Text>
+                        <Ionicons name="image-outline" size={24} color={COLORS.textMuted} />
                       )}
                     </View>
                     <View style={styles.cardInfo}>
@@ -745,7 +765,7 @@ export default function AdminPanelScreen({ navigation }) {
             <View style={styles.subTabRow}>
               <TouchableOpacity style={[styles.subTab, reportSubTab === "open" && styles.subTabActive]} activeOpacity={0.7} onPress={() => setReportSubTab("open")}>
                 <Text style={[styles.subTabText, reportSubTab === "open" && styles.subTabTextActive]}>
-                  🚩 Open {reportGroups.length > 0 ? `(${reportGroups.length})` : ""}
+                  Open {reportGroups.length > 0 ? `(${reportGroups.length})` : ""}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.subTab, reportSubTab === "resolved" && styles.subTabActive]} activeOpacity={0.7} onPress={() => setReportSubTab("resolved")}>
@@ -757,7 +777,7 @@ export default function AdminPanelScreen({ navigation }) {
 
             {reportSubTab === "open" ? (
               reportGroups.length === 0 ? (
-                <EmptyState icon="🚩" text="No open reports" />
+                <EmptyState icon="flag-outline" text="No open reports" />
               ) : (
                 reportGroups.map((group) => {
                   const targetName = group.kind === "listing" ? (group.listingName || "Listing") : (group.reportedUserName || "User");
@@ -829,7 +849,7 @@ export default function AdminPanelScreen({ navigation }) {
               )
             ) : (
               resolvedReports.length === 0 ? (
-                <EmptyState icon="✅" text="No resolved reports yet" />
+                <EmptyState icon="checkmark-done-outline" text="No resolved reports yet" />
               ) : (
                 resolvedReports.map((report) => (
                   <View key={report.id} style={styles.card}>
@@ -865,7 +885,7 @@ export default function AdminPanelScreen({ navigation }) {
         {activeTab === "appeals" && (
           <View style={styles.tabContent}>
             {pendingAppeals.length === 0 && resolvedAppeals.length === 0 ? (
-              <EmptyState icon="📩" text="No appeals" />
+              <EmptyState icon="mail-open-outline" text="No appeals" />
             ) : (
               <>
                 {pendingAppeals.length > 0 && (
@@ -942,7 +962,7 @@ export default function AdminPanelScreen({ navigation }) {
 
         {activeTab === "users" && (
           <View style={styles.tabContent}>
-            {users.length === 0 ? <EmptyState icon="👥" text="No users yet" /> : (
+            {users.length === 0 ? (loadingUsers ? null : <EmptyState icon="people-outline" text="No users yet" />) : (
               users.map((u) => (
                 <View key={u.id} style={styles.card}>
                   <TouchableOpacity style={styles.cardHeader} activeOpacity={0.7} onPress={() => navigation.navigate("SellerProfile", { sellerId: u.id, sellerName: u.name || "User" })}>
@@ -968,7 +988,7 @@ export default function AdminPanelScreen({ navigation }) {
                   {u.id !== auth.currentUser.uid && (
                     <View style={styles.userActionsRow}>
                       <TouchableOpacity style={[styles.banBtn, u.role === "banned" && styles.unbanBtn]} activeOpacity={0.8} onPress={() => u.role === "banned" ? unbanUser(u.id) : openBan(u.id, u.name)}>
-                        <Text style={[styles.banBtnText, u.role === "banned" && { color: GREEN }]}>{u.role === "banned" ? "✓ Unban" : "🚫 Ban"}</Text>
+                        <Text style={[styles.banBtnText, u.role === "banned" && { color: GREEN }]}>{u.role === "banned" ? "Unban" : "Ban"}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.deleteUserBtn} activeOpacity={0.85} onPress={() => deleteUser(u.id, u.name)}>
                         <Ionicons name="trash-outline" size={14} color="#fff" />
@@ -978,6 +998,12 @@ export default function AdminPanelScreen({ navigation }) {
                   )}
                 </View>
               ))
+            )}
+            {loadingUsers && <ActivityIndicator color={GREEN} style={{ marginVertical: 16 }} />}
+            {!loadingUsers && hasMoreUsers && (
+              <TouchableOpacity style={styles.loadMoreBtn} activeOpacity={0.8} onPress={() => loadUsers(true)}>
+                <Text style={styles.loadMoreText}>Load more users</Text>
+              </TouchableOpacity>
             )}
           </View>
         )}
@@ -1108,12 +1134,12 @@ export default function AdminPanelScreen({ navigation }) {
   );
 }
 
-function StatBox({ num, label, color }) {
+function StatBox({ num, label, color, onPress }) {
   return (
-    <View style={styles.statBox}>
+    <TouchableOpacity style={styles.statBox} activeOpacity={0.6} onPress={onPress} disabled={!onPress}>
       <Text style={[styles.statNum, { color }]}>{num}</Text>
       <Text style={styles.statLabel}>{label}</Text>
-    </View>
+    </TouchableOpacity>
   );
 }
 
@@ -1123,7 +1149,7 @@ function StatusBadge({ status }) {
     verified:   { color: GREEN, bg: "#E8F4EC", label: "✓ Verified" },
     rejected:   { color: RED,   bg: "#FDECEA", label: "✕ Rejected" },
     unverified: { color: "#999", bg: "#F2F2F2", label: "○ Unverified" },
-    banned:     { color: RED,   bg: "#FDECEA", label: "🚫 Banned" },
+    banned:     { color: RED,   bg: "#FDECEA", label: "Banned" },
   };
   const c = config[status] || config.unverified;
   return (
@@ -1146,7 +1172,7 @@ function EmptyState({ icon, text }) {
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBox}>
-        <Text style={styles.emptyIcon}>{icon}</Text>
+        <Ionicons name={icon} size={36} color={COLORS.primary} />
       </View>
       <Text style={styles.emptyText}>{text}</Text>
     </View>
@@ -1173,6 +1199,8 @@ const styles = StyleSheet.create({
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   tabContent: { padding: 18 },
+  loadMoreBtn: { alignSelf: "center", marginTop: 6, marginBottom: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, backgroundColor: COLORS.primaryPale },
+  loadMoreText: { fontSize: 13.5, fontWeight: "700", color: GREEN },
   groupHeading: { fontSize: 13, fontFamily: FONTS.heading, color: "#666", marginBottom: 10, marginLeft: 2 },
   subTabs: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   subTabRow: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },

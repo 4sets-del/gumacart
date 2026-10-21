@@ -3,6 +3,7 @@ const functions = require("firebase-functions/v1");
 const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
+const { getAuth } = require("firebase-admin/auth");
 
 initializeApp();
 const db = getFirestore();
@@ -379,44 +380,72 @@ exports.onReviewWrite = functions
     return null;
   });
 
-// When an account is deleted (Settings → Delete Account), remove that
-// person's data. Conversations are kept so the other participant still has
-// their chat history.
+// Removes everything belonging to a user. Conversations are kept so the
+// other participant still has their chat history.
+async function deleteUserData(uid) {
+  const userRef = db.collection("users").doc(uid);
+
+  // Follow links stored on the other side of each relationship.
+  const [following, followers] = await Promise.all([
+    userRef.collection("following").get(),
+    userRef.collection("followers").get(),
+  ]);
+  await Promise.all([
+    ...following.docs.map((d) => db.collection("users").doc(d.id).collection("followers").doc(uid).delete()),
+    ...followers.docs.map((d) => db.collection("users").doc(d.id).collection("following").doc(uid).delete()),
+  ]);
+
+  // Their listings, and reviews they wrote or received. Deleting reviews
+  // triggers onReviewWrite, which updates the affected sellers' ratings.
+  const [listings, written, received] = await Promise.all([
+    db.collection("listings").where("sellerId", "==", uid).get(),
+    db.collection("reviews").where("reviewerId", "==", uid).get(),
+    db.collection("reviews").where("sellerId", "==", uid).get(),
+  ]);
+  await Promise.all([...listings.docs, ...written.docs, ...received.docs].map((d) => d.ref.delete()));
+
+  // Profile document plus its cart, notifications, followers and following.
+  await db.recursiveDelete(userRef);
+
+  // Uploaded files: profile photo, listing photos and student ID.
+  const bucket = getStorage().bucket();
+  await Promise.all(
+    [`profiles/${uid}/`, `listings/${uid}/`, `verifications/${uid}/`].map((prefix) =>
+      bucket.deleteFiles({ prefix }).catch((e) => console.error("Storage cleanup", prefix, e.message)),
+    ),
+  );
+}
+
+// When an account is deleted (Settings → Delete Account, or an admin
+// deleting a user), remove that person's data.
 exports.onAccountDeleted = functions
   .region("asia-southeast1")
   .auth.user()
   .onDelete(async (user) => {
-    const uid = user.uid;
-    const userRef = db.collection("users").doc(uid);
-
-    // Follow links stored on the other side of each relationship.
-    const [following, followers] = await Promise.all([
-      userRef.collection("following").get(),
-      userRef.collection("followers").get(),
-    ]);
-    await Promise.all([
-      ...following.docs.map((d) => db.collection("users").doc(d.id).collection("followers").doc(uid).delete()),
-      ...followers.docs.map((d) => db.collection("users").doc(d.id).collection("following").doc(uid).delete()),
-    ]);
-
-    // Their listings, and reviews they wrote or received. Deleting reviews
-    // triggers onReviewWrite, which updates the affected sellers' ratings.
-    const [listings, written, received] = await Promise.all([
-      db.collection("listings").where("sellerId", "==", uid).get(),
-      db.collection("reviews").where("reviewerId", "==", uid).get(),
-      db.collection("reviews").where("sellerId", "==", uid).get(),
-    ]);
-    await Promise.all([...listings.docs, ...written.docs, ...received.docs].map((d) => d.ref.delete()));
-
-    // Profile document plus its cart, notifications, followers and following.
-    await db.recursiveDelete(userRef);
-
-    // Uploaded files: profile photo, listing photos and student ID.
-    const bucket = getStorage().bucket();
-    await Promise.all(
-      [`profiles/${uid}/`, `listings/${uid}/`, `verifications/${uid}/`].map((prefix) =>
-        bucket.deleteFiles({ prefix }).catch((e) => console.error("Storage cleanup", prefix, e.message)),
-      ),
-    );
+    await deleteUserData(user.uid);
     return null;
+  });
+
+// Admin Panel → Delete user. Deleting the login triggers onAccountDeleted,
+// which cleans up their data; if the login is already gone, clean up here.
+exports.adminDeleteUser = functions
+  .region("asia-southeast1")
+  .https.onCall(async (data, context) => {
+    const callerId = context.auth?.uid;
+    if (!callerId) throw new functions.https.HttpsError("unauthenticated", "Sign in first.");
+    const caller = await db.collection("users").doc(callerId).get();
+    if (caller.data()?.role !== "admin") {
+      throw new functions.https.HttpsError("permission-denied", "Only admins can delete users.");
+    }
+    const uid = data?.uid;
+    if (!uid || typeof uid !== "string") throw new functions.https.HttpsError("invalid-argument", "Missing user id.");
+    if (uid === callerId) throw new functions.https.HttpsError("failed-precondition", "You can't delete your own account here.");
+
+    try {
+      await getAuth().deleteUser(uid);
+    } catch (e) {
+      if (e.code !== "auth/user-not-found") throw new functions.https.HttpsError("internal", e.message);
+      await deleteUserData(uid);
+    }
+    return { ok: true };
   });
