@@ -13,7 +13,7 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
-import { COLORS, colorForName } from "../constants/theme";
+import { COLORS, colorForName, FONTS } from "../constants/theme";
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
 const GREEN = COLORS.primary;
@@ -81,8 +81,21 @@ export default function ChatScreen({ route, navigation }) {
       collection(db, "conversations", conversationId, "messages"),
       orderBy("createdAt", "asc"),
     );
+    // If this user previously deleted the conversation, only show messages
+    // sent after that moment (the other person still has the full history).
+    let clearedAtMs = 0;
+    let latestDocs = [];
+    const show = () => setMessages(
+      latestDocs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((m) => !clearedAtMs || !m.createdAt?.toMillis || m.createdAt.toMillis() > clearedAtMs),
+    );
+    getDoc(doc(db, "conversations", conversationId))
+      .then((c) => { clearedAtMs = c.data()?.clearedAt?.[user.uid]?.toMillis?.() || 0; show(); })
+      .catch(() => {});
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setMessages(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
+      latestDocs = snapshot.docs;
+      show();
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     });
     return unsubscribe;
@@ -538,7 +551,7 @@ const styles = StyleSheet.create({
 
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 },
   emptyChatIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: GREEN_LIGHT, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  emptyChatTitle: { fontSize: 17, fontWeight: "800", color: "#333", marginBottom: 6 },
+  emptyChatTitle: { fontSize: 17, fontFamily: FONTS.heading, color: "#333", marginBottom: 6 },
   emptyChatSub: { fontSize: 13, color: "#999" },
 
   dateDivider: { flexDirection: "row", alignItems: "center", marginVertical: 16, gap: 10 },

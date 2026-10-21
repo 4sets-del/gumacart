@@ -5,12 +5,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import {
-  collection, query, where, onSnapshot, orderBy, doc, getDoc, deleteDoc, getDocs, updateDoc,
+  collection, query, where, onSnapshot, orderBy, doc, getDoc, updateDoc, serverTimestamp,
 } from "firebase/firestore";
 import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
-import { COLORS, colorForName } from "../constants/theme";
+import { COLORS, colorForName, FONTS } from "../constants/theme";
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
 const GREEN = COLORS.primary;
@@ -48,7 +48,13 @@ export default function MessagesScreen({ navigation }) {
       try {
         const convos = await Promise.all(
           snapshot.docs.map(async (docSnap) => {
-            const data = docSnap.data();
+            // "estimate" so a just-written clearedAt doesn't read as null and flash back.
+            const data = docSnap.data({ serverTimestamps: "estimate" });
+            // Hidden if this user deleted it and nothing new arrived since.
+            const clearedAt = data.clearedAt?.[user.uid];
+            if (clearedAt?.toMillis && (!data.lastMessageTime?.toMillis || data.lastMessageTime.toMillis() <= clearedAt.toMillis())) {
+              return null;
+            }
             const otherId = data.participants.find((id) => id !== user.uid);
             const unread = data.unreadCount?.[user.uid] || 0;
             let otherUserName = "Unknown";
@@ -67,7 +73,7 @@ export default function MessagesScreen({ navigation }) {
             };
           }),
         );
-        setConversations(convos);
+        setConversations(convos.filter(Boolean));
       } catch (e) {
         console.log("Conversations error:", e.message);
       } finally {
@@ -102,14 +108,19 @@ export default function MessagesScreen({ navigation }) {
     }
   };
 
+  // Deleting only hides the conversation for this user: everything before
+  // now is hidden for them, while the other person keeps their history. If
+  // a new message arrives later, the chat reappears with just the new part.
   const deleteConversation = async (convoId) => {
-    Alert.alert("Delete Conversation", "Delete this entire conversation? This cannot be undone.", [
+    Alert.alert("Delete Conversation", "Remove this conversation from your inbox? The other person will still see it.", [
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: async () => {
+        setConversations((prev) => prev.filter((c) => c.id !== convoId));
         try {
-          const msgsSnap = await getDocs(collection(db, "conversations", convoId, "messages"));
-          await Promise.all(msgsSnap.docs.map((d) => deleteDoc(d.ref)));
-          await deleteDoc(doc(db, "conversations", convoId));
+          await updateDoc(doc(db, "conversations", convoId), {
+            [`clearedAt.${user.uid}`]: serverTimestamp(),
+            [`unreadCount.${user.uid}`]: 0,
+          });
         } catch (e) { Alert.alert("Error", "Failed to delete conversation."); }
       }},
     ]);
@@ -226,7 +237,7 @@ export default function MessagesScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
   header: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white },
-  headerTitle: { fontSize: 24, fontWeight: "800", color: COLORS.textPrimary, letterSpacing: -0.4 },
+  headerTitle: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.4 },
   unreadCount: { fontSize: 12.5, color: COLORS.primary, fontWeight: "700" },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -240,13 +251,13 @@ const styles = StyleSheet.create({
   avatarWrapper: { position: "relative", marginRight: 12 },
   avatarCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 54, height: 54, borderRadius: 27 },
-  avatarText: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  avatarText: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff" },
   onlineDot: { position: "absolute", bottom: 1, right: 1, width: 14, height: 14, borderRadius: 7, backgroundColor: GREEN, borderWidth: 2, borderColor: "#fff" },
 
   convoContent: { flex: 1 },
   convoTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 },
   convoName: { fontSize: 15, fontWeight: "600", color: "#555", flex: 1, marginRight: 8 },
-  convoNameUnread: { fontWeight: "800", color: "#111" },
+  convoNameUnread: { fontFamily: FONTS.heading, color: "#111" },
   convoTime: { fontSize: 11, color: "#bbb" },
   convoTimeUnread: { color: GREEN, fontWeight: "700" },
   convoListing: { fontSize: 11, color: GREEN, marginBottom: 3, fontWeight: "500" },
@@ -256,12 +267,12 @@ const styles = StyleSheet.create({
   convoPreviewUnread: { color: "#333", fontWeight: "600" },
 
   unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, marginLeft: 8 },
-  unreadBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  unreadBadgeText: { color: "#fff", fontSize: 10, fontFamily: FONTS.heading },
 
   emptyState: { alignItems: "center", paddingVertical: 90, paddingHorizontal: 40 },
   emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: "800", color: "#333", marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: "#333", marginBottom: 8 },
   emptySub: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20, marginBottom: 24 },
   browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: 16, paddingHorizontal: 26, paddingVertical: 14, elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  browseBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  browseBtnText: { color: "#fff", fontFamily: FONTS.heading, fontSize: 15 },
 });
