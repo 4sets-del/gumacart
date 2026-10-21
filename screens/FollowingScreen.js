@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, FlatList, RefreshControl,
 } from 'react-native';
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import ScreenHeader from "../components/ScreenHeader";

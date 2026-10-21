@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Image, Platform,
 } from 'react-native';
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";

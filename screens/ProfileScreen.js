@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { updateProfile } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";

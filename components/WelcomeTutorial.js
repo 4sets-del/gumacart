@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   ScrollView, Dimensions, StatusBar,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import { FONTS } from '../constants/theme';
 
 const { width } = Dimensions.get("window");

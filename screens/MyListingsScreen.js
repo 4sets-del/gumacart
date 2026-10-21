@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, FlatList, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { ProductRow } from '../components/ProductCard';

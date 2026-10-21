@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Image, RefreshControl, Modal,
 } from 'react-native';
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   collection, getDocs, query, orderBy, where,
   doc, updateDoc, deleteDoc, serverTimestamp, getDoc, writeBatch, addDoc,

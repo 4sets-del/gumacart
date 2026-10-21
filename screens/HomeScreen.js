@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, getDocs, doc, getDoc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import WelcomeTutorial from '../components/WelcomeTutorial';

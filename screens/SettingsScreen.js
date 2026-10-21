@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Switch, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { Ionicons } from "@expo/vector-icons";
+import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   updateProfile, updatePassword, EmailAuthProvider,
   reauthenticateWithCredential,

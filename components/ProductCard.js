@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { COLORS, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 import { listingImage, listingTitle, priceLabel, typeMeta } from '../constants/listings';
 
