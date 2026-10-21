@@ -1,24 +1,31 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 
-// Short-lived cache of other users' name and photo, so lists like the
-// Messages inbox don't re-download every profile on each update.
+// Short-lived cache of other users' public profile basics, so lists like the
+// Messages inbox or Following don't re-download every profile each time.
 const TTL_MS = 5 * 60 * 1000;
 const cache = new Map(); // uid -> { at, promise }
+const EMPTY = { name: 'Unknown', photoURL: null, email: '', avgRating: 0, verificationStatus: null };
 
 export function getUserBasics(uid) {
-  if (!uid) return Promise.resolve({ name: 'Unknown', photoURL: null });
+  if (!uid) return Promise.resolve(EMPTY);
   const hit = cache.get(uid);
   if (hit && Date.now() - hit.at < TTL_MS) return hit.promise;
 
   const promise = getDoc(doc(db, 'users', uid))
     .then((snap) => {
       const data = snap.exists() ? snap.data() : {};
-      return { name: data.name || 'Unknown', photoURL: data.photoURL || null };
+      return {
+        name: data.name || 'Unknown',
+        photoURL: data.photoURL || null,
+        email: data.email || '',
+        avgRating: data.avgRating || 0,
+        verificationStatus: data.verificationStatus || null,
+      };
     })
     .catch(() => {
       cache.delete(uid); // retry next time instead of caching the failure
-      return { name: 'Unknown', photoURL: null };
+      return EMPTY;
     });
   cache.set(uid, { at: Date.now(), promise });
   return promise;

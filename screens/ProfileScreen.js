@@ -262,7 +262,7 @@ export default function ProfileScreen({ navigation }) {
               { label: "Listings", value: listingCount, color: COLORS.primary },
               { label: "Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", color: "#F59E0B" },
               { label: "Reviews", value: reviews.length, color: "#2563EB" },
-              { label: "Followers", value: followerCount, color: "#7C3AED", onPress: () => navigation.navigate("Following") },
+              { label: "Followers", value: followerCount, color: "#7C3AED", onPress: () => navigation.navigate("Following", { initialTab: "followers" }) },
             ].map((stat, i) => (
               <TouchableOpacity key={stat.label} style={[styles.statItem, i > 0 && styles.statDivider]} activeOpacity={stat.onPress ? 0.7 : 1} onPress={stat.onPress}>
                 <Text style={[styles.statNumber, { color: stat.color }]}>{stat.value}</Text>
