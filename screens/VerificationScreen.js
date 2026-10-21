@@ -8,7 +8,7 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS } from "../constants/theme";
+import { COLORS, RADIUS, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   // Rejection banner
   rejectBanner: { flexDirection: "row", backgroundColor: COLORS.errorLight, borderRadius: RADIUS.lg, padding: 14, marginBottom: 20, gap: 12 },
   rejectIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  rejectTitle: { fontSize: 14, fontWeight: "800", color: "#c0392b", marginBottom: 3 },
+  rejectTitle: { fontSize: 14, fontFamily: FONTS.heading, color: "#c0392b", marginBottom: 3 },
   rejectReason: { fontSize: 13, color: "#7b3029", lineHeight: 19, marginBottom: 4 },
   rejectHint: { fontSize: 12, color: "#a05a52", fontStyle: "italic" },
 
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
   stepLineActive: { backgroundColor: GREEN },
   stepContent: { alignItems: "center", marginBottom: 24 },
   stepIconCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  stepTitle: { fontSize: 22, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 8, textAlign: "center" },
+  stepTitle: { fontSize: 22, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8, textAlign: "center" },
   stepDesc: { fontSize: 14, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginBottom: 24, paddingHorizontal: 10 },
   inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, alignSelf: "flex-start", marginBottom: 8 },
   inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, width: "100%" },
@@ -343,7 +343,7 @@ const styles = StyleSheet.create({
   tipsTitle: { fontSize: 13, fontWeight: "700", color: "#333", marginBottom: 8 },
   tipItem: { fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 18 },
   summaryBox: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, width: "100%", borderWidth: 1, borderColor: COLORS.border },
-  summaryTitle: { fontSize: 15, fontWeight: "800", color: "#111", marginBottom: 12 },
+  summaryTitle: { fontSize: 15, fontFamily: FONTS.heading, color: "#111", marginBottom: 12 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   summaryLabelRow: { flexDirection: "row", alignItems: "center" },
   summaryLabel: { fontSize: 13, color: "#888" },

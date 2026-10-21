@@ -10,7 +10,7 @@ import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
 import { CATEGORIES, normalizeCategory } from "../constants/listings";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS } from "../constants/theme";
+import { COLORS, RADIUS, FONTS } from "../constants/theme";
 import GradientButton from "../components/GradientButton";
 
 const GREEN = COLORS.primary;
@@ -359,7 +359,7 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={styles.previewHint}>
             <View style={[styles.previewDot, { backgroundColor: activeType?.color }]} />
             <Text style={styles.previewHintText}>
-              This will post as a <Text style={{ fontWeight: "800", color: activeType?.color }}>{activeType?.label}</Text> listing
+              This will post as a <Text style={{ fontFamily: FONTS.heading, color: activeType?.color }}>{activeType?.label}</Text> listing
             </Text>
           </View>
 

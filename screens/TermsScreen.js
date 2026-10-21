@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
+import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   introBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 22, padding: 24, alignItems: "center" },
   introIconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-  introTitle: { fontSize: 22, fontWeight: "800", color: "#fff", marginBottom: 2 },
+  introTitle: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff", marginBottom: 2 },
   introSubtitle: { fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 12 },
   introDatePill: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 4, marginBottom: 14 },
   introDate: { fontSize: 11, color: "#fff", fontWeight: "600" },
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
   termHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   termNumBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
   termNumBadgeActive: { backgroundColor: GREEN },
-  termNumText: { fontSize: 13, fontWeight: "800", color: COLORS.textMuted },
+  termNumText: { fontSize: 13, fontFamily: FONTS.heading, color: COLORS.textMuted },
   termNumTextActive: { color: "#fff" },
   termTitle: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, flex: 1 },
   termContent: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 22, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },

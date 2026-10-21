@@ -8,7 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow } from "../components/ProductCard";
-import { COLORS, SPACING, RADIUS, colorForName } from "../constants/theme";
+import { COLORS, SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
 import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
 import { useActiveListings } from "../utils/useListings";
 import { useSellerRatings } from "../utils/sellerRatings";
@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   sellerCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   sellerAvatar: { width: 50, height: 50, borderRadius: 25 },
   sellerAvatarFallback: { backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  sellerAvatarText: { fontSize: 20, fontWeight: "800", color: "#fff" },
+  sellerAvatarText: { fontSize: 20, fontFamily: FONTS.heading, color: "#fff" },
   sellerNameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary },
   sellerEmail: { fontSize: 12, color: COLORS.textMuted, marginBottom: 3 },
@@ -511,7 +511,7 @@ const styles = StyleSheet.create({
   loadingWrap: { alignItems: "center", justifyContent: "center", paddingVertical: 70 },
   emptyState: { alignItems: "center", paddingVertical: 60 },
   emptyIconBox: { width: 84, height: 84, borderRadius: 42, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 14 },
-  emptyTitle: { fontSize: 16, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 4 },
+  emptyTitle: { fontSize: 16, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
   emptySub: { fontSize: 13, color: COLORS.textMuted },
 
   // History
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
   sheet: { maxHeight: "88%", backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
   sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  sheetTitle: { fontSize: 20, fontWeight: "800", color: COLORS.textPrimary },
+  sheetTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sheetSection: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginTop: 18, marginBottom: 6 },
   checkRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
   checkLabel: { fontSize: 14, color: COLORS.textPrimary },

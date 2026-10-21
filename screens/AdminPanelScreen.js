@@ -9,7 +9,7 @@ import {
 } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
+import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 const LIGHT_BG = COLORS.background;
@@ -1161,7 +1161,7 @@ const styles = StyleSheet.create({
   adminBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 4 },
   statsCard: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: 18, paddingVertical: 16, ...SHADOWS.sm },
   statBox: { flex: 1, alignItems: "center" },
-  statNum: { fontSize: 20, fontWeight: "800" },
+  statNum: { fontSize: 20, fontFamily: FONTS.heading },
   statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 3, fontWeight: "500" },
   statDivider: { width: 1, backgroundColor: COLORS.border },
   tabs: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
@@ -1169,11 +1169,11 @@ const styles = StyleSheet.create({
   tabActive: { backgroundColor: COLORS.primaryPale },
   tabIcon: { fontSize: 18, marginBottom: 3 },
   tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600" },
-  tabLabelActive: { color: GREEN, fontWeight: "800" },
+  tabLabelActive: { color: GREEN, fontFamily: FONTS.heading },
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   tabContent: { padding: 18 },
-  groupHeading: { fontSize: 13, fontWeight: "800", color: "#666", marginBottom: 10, marginLeft: 2 },
+  groupHeading: { fontSize: 13, fontFamily: FONTS.heading, color: "#666", marginBottom: 10, marginLeft: 2 },
   subTabs: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   subTabRow: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   approveRow: { flexDirection: "row", gap: 10 },
@@ -1185,7 +1185,7 @@ const styles = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   cardAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 12 },
   cardAvatarImg: { width: 46, height: 46, borderRadius: 23, marginRight: 12 },
-  cardAvatarText: { fontSize: 18, fontWeight: "800", color: "#fff" },
+  cardAvatarText: { fontSize: 18, fontFamily: FONTS.heading, color: "#fff" },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
   cardSub: { fontSize: 12, color: COLORS.textMuted },
@@ -1193,9 +1193,9 @@ const styles = StyleSheet.create({
   listingThumb: { width: 54, height: 54, resizeMode: "cover" },
   listingThumbPlaceholder: { fontSize: 24 },
   typePill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  typePillText: { color: "#fff", fontSize: 9, fontWeight: "800" },
+  typePillText: { color: "#fff", fontSize: 9, fontFamily: FONTS.heading },
   countPill: { marginTop: 6, backgroundColor: RED, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
-  countPillText: { color: "#fff", fontSize: 10, fontWeight: "800" },
+  countPillText: { color: "#fff", fontSize: 10, fontFamily: FONTS.heading },
   proofThumb: { width: "100%", height: 160, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA", backgroundColor: "#F5F5F5" },
   proofHint: { position: "absolute", bottom: 8, right: 8, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   proofHintText: { color: "#fff", fontSize: 11, fontWeight: "600", marginLeft: 4 },
@@ -1232,14 +1232,14 @@ const styles = StyleSheet.create({
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
   reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontWeight: "800", color: "#111", marginBottom: 4 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
   reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
   reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
   reasonText: { flex: 1, fontSize: 14.5, color: "#222", fontWeight: "500" },
   reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: "#FDECEA", borderRadius: 12, padding: 14, marginBottom: 12 },
   reasonSelectedText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#c0392b" },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center", marginTop: 6 },
-  reportSubmitText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
   reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
 

@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
 import StatusBarScrim from '../components/StatusBarScrim';
 
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, marginTop: -24, backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingBottom: 32 },
   logoSection: { alignItems: 'center', paddingTop: 22, paddingBottom: 4 },
   logo: { width: 60, height: 60, borderRadius: 16, marginBottom: 14 },
-  title: { fontSize: 26, fontWeight: '800', color: COLORS.primaryDark, letterSpacing: -0.5 },
+  title: { fontSize: 26, fontFamily: FONTS.heading, color: COLORS.primaryDark, letterSpacing: -0.5 },
   tagline: { fontSize: 14.5, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 21, marginTop: 8, maxWidth: 290 },
   form: { paddingTop: 12 },
   fieldLabel: { fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8, marginTop: 16 },
@@ -268,12 +268,12 @@ const styles = StyleSheet.create({
   resetSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 30, alignItems: 'center' },
   resetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD', marginBottom: 18 },
   resetIconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#F6F8F6', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  resetTitle: { fontSize: 19, fontWeight: '800', color: '#111', marginBottom: 6 },
+  resetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: '#111', marginBottom: 6 },
   resetSub: { fontSize: 13.5, color: '#777', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   resetInputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, paddingHorizontal: 14, marginBottom: 16 },
   resetInput: { flex: 1, fontSize: 15, color: '#111' },
   resetBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
-  resetBtnText: { fontSize: 15.5, fontWeight: '800', color: '#fff' },
+  resetBtnText: { fontSize: 15.5, fontFamily: FONTS.heading, color: '#fff' },
   resetCancel: { height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
   resetCancelText: { fontSize: 15, fontWeight: '700', color: '#666' },
   resetSpamNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF5E7', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%' },

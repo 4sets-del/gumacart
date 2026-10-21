@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, Animated, StatusBar, ActivityIndicator, Dimensions,
 } from 'react-native';
 import Svg, { Path, Rect, Ellipse, Circle } from 'react-native-svg';
+import { FONTS } from '../constants/theme';
 
 const GREEN = '#2E6B3E';
 const W = Dimensions.get('window').width;
@@ -80,7 +81,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   logoCircle: { width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)' },
   logoIcon: { fontSize: 60 },
-  appName: { fontSize: 32, fontWeight: '800', color: '#fff', letterSpacing: -0.5, marginBottom: 6 },
+  appName: { fontSize: 32, fontFamily: FONTS.heading, color: '#fff', letterSpacing: -0.5, marginBottom: 6 },
   tagline: { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
   bottom: { position: 'absolute', bottom: 140, left: 0, right: 0, alignItems: 'center', gap: 12 },
   loadingText: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },

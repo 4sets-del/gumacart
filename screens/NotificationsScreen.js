@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import ScreenHeader from '../components/ScreenHeader';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 
 const GREEN = COLORS.primary;
 
@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: '500' },
   section: { paddingHorizontal: 16, paddingTop: 16 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sectionLabel: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 8 },
+  sectionLabel: { fontSize: 15, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8 },
   clearText: { fontSize: 13, color: COLORS.error, fontWeight: '600' },
   notifCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 12, marginBottom: 8 },
   notifCardUnread: { backgroundColor: COLORS.primaryPale },
@@ -246,6 +246,6 @@ const styles = StyleSheet.create({
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN, marginLeft: 8 },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
   emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 6 },
+  emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
   emptySub: { fontSize: 14, color: COLORS.textMuted },
 });

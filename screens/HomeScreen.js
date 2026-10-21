@@ -19,7 +19,7 @@ import WelcomeTutorial from '../components/WelcomeTutorial';
 import CoachMark from '../components/CoachMark';
 import { ProductCard } from '../components/ProductCard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS } from '../constants/theme';
+import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS, FONTS } from '../constants/theme';
 import { CATEGORIES } from '../constants/listings';
 import { useActiveListings } from '../utils/useListings';
 import { useSellerRatings } from '../utils/sellerRatings';
@@ -361,11 +361,11 @@ const styles = StyleSheet.create({
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logo: { width: 40, height: 40, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
   headerHello: { fontSize: 12.5, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
-  headerTitle: { fontSize: 19, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
+  headerTitle: { fontSize: 19, fontFamily: FONTS.heading, color: '#fff', letterSpacing: -0.3 },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
   badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff' },
-  badgeText: { fontSize: 9, color: COLORS.white, fontWeight: '800' },
+  badgeText: { fontSize: 9, color: COLORS.white, fontFamily: FONTS.heading },
 
   // Search
   searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.lg, backgroundColor: COLORS.white, borderRadius: RADIUS.full, paddingHorizontal: SPACING.lg, height: 48, ...SHADOWS.md },
@@ -375,7 +375,7 @@ const styles = StyleSheet.create({
   banner: { width: BANNER_W, height: 150, borderRadius: 20, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, overflow: 'hidden' },
   bannerCircle: { position: 'absolute', right: -40, top: -30, width: 170, height: 170, borderRadius: 85, backgroundColor: 'rgba(255,255,255,0.15)' },
   bannerCircleSmall: { position: 'absolute', right: 70, bottom: -40, width: 90, height: 90, borderRadius: 45, backgroundColor: 'rgba(255,255,255,0.10)' },
-  bannerTitle: { fontSize: 22, fontWeight: '800', color: COLORS.white, lineHeight: 27 },
+  bannerTitle: { fontSize: 22, fontFamily: FONTS.heading, color: COLORS.white, lineHeight: 27 },
   bannerText: { fontSize: 12.5, color: 'rgba(255,255,255,0.92)', marginTop: 8, lineHeight: 17, maxWidth: 190 },
   bannerIconBox: { width: 76, height: 76, borderRadius: 38, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   dotsRow: { flexDirection: 'row', justifyContent: 'center', gap: 6, marginTop: 10 },
@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
 
   // Sections
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: SPACING.lg, marginTop: SPACING.lg, marginBottom: SPACING.md },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary },
+  sectionTitle: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sectionIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   seeAll: { fontSize: 13.5, fontWeight: '700', color: COLORS.primary },
@@ -406,8 +406,8 @@ const styles = StyleSheet.create({
   // Empty
   emptyWrap: { alignItems: 'center', paddingVertical: 50, gap: 6 },
   emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  emptyText: { fontSize: 16, fontWeight: '800', color: COLORS.textPrimary },
+  emptyText: { fontSize: 16, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   emptySub: { fontSize: 13, color: COLORS.textMuted },
   emptyPostBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 22, paddingVertical: 12, marginTop: 12 },
-  emptyPostBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+  emptyPostBtnText: { color: '#fff', fontFamily: FONTS.heading, fontSize: 14 },
 });

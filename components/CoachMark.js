@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { FONTS } from '../constants/theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GREEN = '#1B6B3A';
@@ -159,7 +160,7 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
   },
-  tooltipTitle: { fontSize: 16, fontWeight: '800', color: '#1B1F1B', marginBottom: 4 },
+  tooltipTitle: { fontSize: 16, fontFamily: FONTS.heading, color: '#1B1F1B', marginBottom: 4 },
   tooltipText: { fontSize: 13.5, color: '#555', lineHeight: 19 },
   tooltipFooter: {
     flexDirection: 'row',
@@ -172,5 +173,5 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#DDD' },
   dotActive: { backgroundColor: GREEN, width: 16 },
   nextBtn: { backgroundColor: GREEN, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  nextBtnText: { color: '#fff', fontWeight: '800', fontSize: 13.5 },
+  nextBtnText: { color: '#fff', fontFamily: FONTS.heading, fontSize: 13.5 },
 });

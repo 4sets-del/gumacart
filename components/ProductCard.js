@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, RADIUS, SHADOWS, FONTS } from '../constants/theme';
 import { listingImage, listingTitle, priceLabel, typeMeta } from '../constants/listings';
 
 function Rating({ rating, size = 11 }) {
@@ -80,19 +80,19 @@ export const ProductRow = React.memo(function ProductRow({ item, rating, onPress
 const styles = StyleSheet.create({
   thumb: { backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
   badge: { position: 'absolute', top: 6, left: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.3 },
+  badgeText: { color: '#fff', fontSize: 9, fontFamily: FONTS.heading, letterSpacing: 0.3 },
 
   card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.sm },
   cardThumb: { width: '100%', aspectRatio: 1.1 },
   cardBody: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, gap: 3 },
   cardTitle: { fontSize: 12.5, fontWeight: '600', color: COLORS.textPrimary },
-  cardPrice: { fontSize: 14, fontWeight: '800' },
+  cardPrice: { fontSize: 14, fontFamily: FONTS.heading },
 
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 10, borderWidth: 1, borderColor: COLORS.border, gap: 12 },
   rowThumb: { width: 86, height: 86, borderRadius: RADIUS.md },
   rowBody: { flex: 1, gap: 4 },
   rowTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textPrimary, lineHeight: 19 },
-  rowPrice: { fontSize: 15, fontWeight: '800' },
+  rowPrice: { fontSize: 15, fontFamily: FONTS.heading },
 
   ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   ratingText: { fontSize: 11.5, fontWeight: '600', color: COLORS.textSecondary },

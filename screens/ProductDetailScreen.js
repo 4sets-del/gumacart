@@ -12,7 +12,7 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
-import { COLORS, RADIUS } from "../constants/theme";
+import { COLORS, RADIUS, FONTS } from "../constants/theme";
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
@@ -353,7 +353,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 <CachedImage source={{ uri: product.sellerPhoto }} style={styles.sellerAvatar} cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.sellerAvatar, { backgroundColor: GREEN, alignItems: "center", justifyContent: "center" }]}>
-                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
+                  <Text style={{ fontSize: 20, fontFamily: FONTS.heading, color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
                 </View>
               )}
               <View>
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
   dotActive: { backgroundColor: "#fff", width: 18 },
   soldBanner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   soldBannerPill: { backgroundColor: COLORS.error, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 12 },
-  soldBannerText: { fontSize: 26, fontWeight: "900", color: "#fff", letterSpacing: 4 },
+  soldBannerText: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", letterSpacing: 4 },
   thumbRow: { paddingHorizontal: 16, paddingTop: 12, gap: 10 },
   thumb: { width: 62, height: 62, borderRadius: RADIUS.md, borderWidth: 2, borderColor: "transparent" },
   thumbActive: { borderColor: COLORS.primary },
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
 
   content: { paddingHorizontal: 18, paddingTop: 16 },
   productName: { fontSize: 21, fontWeight: "700", color: COLORS.textPrimary, lineHeight: 28 },
-  price: { fontSize: 24, fontWeight: "800", marginTop: 6 },
+  price: { fontSize: 24, fontFamily: FONTS.heading, marginTop: 6 },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 },
   ratingText: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary },
   ratingSub: { fontWeight: "500", color: COLORS.textMuted },
@@ -584,7 +584,7 @@ const styles = StyleSheet.create({
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
   reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontWeight: "800", color: "#111", marginBottom: 4 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
   reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
   reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
   reasonText: { flex: 1, fontSize: 15, color: "#222", fontWeight: "500" },
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA" },
   proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: "#fff", borderRadius: 13 },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
-  reportSubmitText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
   reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
 });

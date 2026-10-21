@@ -4,6 +4,7 @@ import {
   ScrollView, Dimensions, StatusBar,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { FONTS } from '../constants/theme';
 
 const { width } = Dimensions.get("window");
 const GREEN = "#1B6B3A";
@@ -137,7 +138,7 @@ const styles = StyleSheet.create({
   iconCircle: { width: 140, height: 140, borderRadius: 70, alignItems: "center", justifyContent: "center", marginBottom: 40, position: "relative" },
   emoji: { fontSize: 64 },
   iconBadge: { position: "absolute", bottom: 8, right: 8, width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#fff" },
-  title: { fontSize: 25, fontWeight: "800", color: "#111", textAlign: "center", marginBottom: 16, letterSpacing: -0.4 },
+  title: { fontSize: 25, fontFamily: FONTS.heading, color: "#111", textAlign: "center", marginBottom: 16, letterSpacing: -0.4 },
   text: { fontSize: 15.5, color: "#777", textAlign: "center", lineHeight: 24 },
   dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 20 },
   dot: { height: 8, borderRadius: 4 },
@@ -145,5 +146,5 @@ const styles = StyleSheet.create({
   dotInactive: { width: 8, backgroundColor: "#DDD" },
   bottomBar: { paddingHorizontal: 24, paddingBottom: 36 },
   primaryBtn: { flexDirection: "row", height: 56, borderRadius: 18, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 10, shadowOffset: { width: 0, height: 4 } },
-  primaryBtnText: { fontSize: 16.5, fontWeight: "800", color: "#fff" },
+  primaryBtnText: { fontSize: 16.5, fontFamily: FONTS.heading, color: "#fff" },
 });

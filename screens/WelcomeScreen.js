@@ -1,42 +1,44 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { COLORS, RADIUS } from '../constants/theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { COLORS, FONTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
+
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+// Campus photo is 1086x1448; fill the screen and anchor the bottom so the
+// building and SLSU sign stay in view on any phone size.
+const PHOTO_H = Math.max(SCREEN_H, Math.round(SCREEN_W * (1448 / 1086)));
 
 export default function WelcomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 28 }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      <View style={styles.brand}>
+      <Image source={require('../assets/slsu-campus.jpg')} style={styles.photo} resizeMode="cover" />
+
+      {/* White fade at the top so the logo and text read clearly */}
+      <LinearGradient
+        colors={['#FFFFFF', 'rgba(255,255,255,0.94)', 'rgba(255,255,255,0)']}
+        locations={[0, 0.45, 1]}
+        style={[styles.topFade, { height: SCREEN_H * 0.58 }]}
+      />
+      {/* Dark fade at the bottom behind the buttons */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.6)']}
+        style={[styles.bottomFade, { height: SCREEN_H * 0.32 }]}
+      />
+
+      <View style={[styles.brand, { paddingTop: insets.top + 44 }]}>
         <Image source={require('../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>SLSU-GumaCart</Text>
         <Text style={styles.subtitle}>Buy  •  Sell  •  Exchange</Text>
         <Text style={styles.tagline}>Your Campus Marketplace{'\n'}for Students, by Students.</Text>
       </View>
 
-      {/* Decorative scene standing in for a campus photo */}
-      <View style={styles.scene}>
-        <View style={[styles.bubble, styles.bubbleLarge]} />
-        <View style={[styles.bubble, styles.bubbleSmall]} />
-        <View style={styles.iconRow}>
-          {['book', 'shirt', 'laptop', 'fast-food'].map((name) => (
-            <View key={name} style={styles.iconTile}>
-              <Ionicons name={name} size={26} color={COLORS.primary} />
-            </View>
-          ))}
-        </View>
-        <View style={styles.schoolBadge}>
-          <Ionicons name="school" size={18} color={COLORS.white} />
-          <Text style={styles.schoolText}>Southern Luzon State University</Text>
-        </View>
-      </View>
-
-      <View style={styles.actions}>
+      <View style={[styles.actions, { paddingBottom: insets.bottom + 24 }]}>
         <GradientButton title="Get Started" icon="arrow-forward" onPress={() => navigation.navigate('Signup')} height={54} />
         <TouchableOpacity style={styles.linkBtn} activeOpacity={0.7} onPress={() => navigation.navigate('Login')}>
           <Text style={styles.linkBtnText}>Login</Text>
@@ -47,26 +49,18 @@ export default function WelcomeScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white, paddingHorizontal: 28, justifyContent: 'space-between' },
+  container: { flex: 1, backgroundColor: COLORS.white },
+  photo: { position: 'absolute', left: 0, right: 0, bottom: 0, width: SCREEN_W, height: PHOTO_H },
+  topFade: { position: 'absolute', top: 0, left: 0, right: 0 },
+  bottomFade: { position: 'absolute', bottom: 0, left: 0, right: 0 },
 
-  brand: { alignItems: 'center' },
+  brand: { alignItems: 'center', paddingHorizontal: 28 },
   logo: { width: 84, height: 84, borderRadius: 22, marginBottom: 18 },
-  title: { fontSize: 30, fontWeight: '800', color: COLORS.primary, letterSpacing: -0.5 },
-  subtitle: { fontSize: 15, fontWeight: '600', color: COLORS.primary, marginTop: 6 },
-  tagline: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, marginTop: 22 },
+  title: { fontSize: 32, fontFamily: FONTS.heading, color: COLORS.primaryDark, letterSpacing: -0.5 },
+  subtitle: { fontSize: 15, fontWeight: '700', color: COLORS.primary, marginTop: 6 },
+  tagline: { fontSize: 15, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 22, marginTop: 18 },
 
-  scene: { height: 220, borderRadius: 28, backgroundColor: COLORS.primaryPale, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  bubble: { position: 'absolute', borderRadius: 999, backgroundColor: COLORS.primaryLighter, opacity: 0.45 },
-  bubbleLarge: { width: 220, height: 220, top: -90, right: -60 },
-  bubbleSmall: { width: 140, height: 140, bottom: -60, left: -40 },
-  iconRow: { flexDirection: 'row', gap: 14 },
-  iconTile: { width: 56, height: 56, borderRadius: 18, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  schoolBadge: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 26, backgroundColor: COLORS.primary, borderRadius: RADIUS.full, paddingHorizontal: 16, paddingVertical: 8 },
-  schoolText: { color: COLORS.white, fontWeight: '700', fontSize: 12.5 },
-
-  actions: { gap: 6 },
-  primaryBtn: { height: 54, borderRadius: RADIUS.full, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  primaryBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
+  actions: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 28, gap: 6 },
   linkBtn: { height: 48, alignItems: 'center', justifyContent: 'center' },
-  linkBtnText: { color: COLORS.primary, fontSize: 15, fontWeight: '700' },
+  linkBtnText: { color: COLORS.white, fontSize: 16, fontWeight: '700' },
 });

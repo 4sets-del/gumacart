@@ -80,6 +80,10 @@ export const FONTS = {
   regular: 'System',
   medium: 'System',
   bold: 'System',
+  // Poppins (loaded in App.js) for headings, titles and prices.
+  heading: 'Poppins_700Bold',
+  headingHeavy: 'Poppins_800ExtraBold',
+  headingSemi: 'Poppins_600SemiBold',
   sizes: {
     xs: 11,
     sm: 13,

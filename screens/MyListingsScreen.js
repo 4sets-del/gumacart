@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { ProductRow } from '../components/ProductCard';
-import { COLORS, SPACING, RADIUS } from '../constants/theme';
+import { COLORS, SPACING, RADIUS, FONTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
 
 const STATUS_PILLS = {
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm },
   headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, marginLeft: 4 },
+  headerTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginLeft: 4 },
 
   segment: { flexDirection: 'row', marginHorizontal: SPACING.lg, marginBottom: SPACING.sm, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3 },
   segmentItem: { flex: 1, paddingVertical: 9, alignItems: 'center', borderRadius: RADIUS.full },

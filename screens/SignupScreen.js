@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-import { COLORS, RADIUS } from '../constants/theme';
+import { COLORS, RADIUS, FONTS } from '../constants/theme';
 import GradientButton from '../components/GradientButton';
 
 export default function SignupScreen({ navigation }) {
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   backBtn: { width: 44, height: 44, justifyContent: 'center', marginTop: 4, marginLeft: -6 },
   container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
   logoSection: { paddingTop: 12, paddingBottom: 4 },
-  title: { fontSize: 26, fontWeight: '800', color: COLORS.textPrimary, letterSpacing: -0.5 },
+  title: { fontSize: 26, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.5 },
   tagline: { fontSize: 14.5, color: COLORS.textSecondary, marginTop: 6 },
   form: { flex: 1 },
   fieldLabel: { fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8, marginTop: 16 },

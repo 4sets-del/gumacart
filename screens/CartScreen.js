@@ -7,7 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
-import { COLORS, SPACING, RADIUS } from "../constants/theme";
+import { COLORS, SPACING, RADIUS, FONTS } from "../constants/theme";
 import GradientButton from "../components/GradientButton";
 import { listingImage, priceLabel } from "../constants/listings";
 import { startConversation } from "../utils/chat";
@@ -263,11 +263,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.white },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm },
   headerBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
-  headerTitle: { flex: 1, fontSize: 22, fontWeight: "800", color: COLORS.textPrimary, marginLeft: 4 },
+  headerTitle: { flex: 1, fontSize: 22, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginLeft: 4 },
 
   centerWrap: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
   emptyIconBox: { width: 104, height: 104, borderRadius: 52, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle: { fontSize: 19, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 6 },
+  emptyTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
   emptySubtitle: { fontSize: 14, color: COLORS.textMuted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   browseBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 28, paddingVertical: 14 },
   browseBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
   itemInfo: { flex: 1 },
   nameRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
   itemName: { flex: 1, fontSize: 14.5, fontWeight: "600", color: COLORS.textPrimary, lineHeight: 20 },
-  itemPrice: { fontSize: 15, fontWeight: "800", marginTop: 4 },
+  itemPrice: { fontSize: 15, fontFamily: FONTS.heading, marginTop: 4 },
   unavailable: { fontSize: 12.5, color: COLORS.error, fontWeight: "600", marginTop: 8 },
   stepper: { flexDirection: "row", alignItems: "center", gap: 14, marginTop: 8 },
   stepBtn: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: "center", justifyContent: "center" },
@@ -287,18 +287,18 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: SPACING.lg, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.white },
   subtotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   subtotalLabel: { fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
-  subtotalValue: { fontSize: 18, color: COLORS.textPrimary, fontWeight: "800" },
+  subtotalValue: { fontSize: 18, color: COLORS.textPrimary, fontFamily: FONTS.heading },
   checkoutBtn: { height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   checkoutText: { color: "#fff", fontSize: 15.5, fontWeight: "700" },
   footerHint: { fontSize: 11.5, color: COLORS.textMuted, textAlign: "center", marginTop: 8 },
 
   sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
   sheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
-  sheetTitle: { fontSize: 19, fontWeight: "800", color: COLORS.textPrimary },
+  sheetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sheetSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 4, marginBottom: 10 },
   sellerRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   sellerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  sellerAvatarText: { color: "#fff", fontWeight: "800", fontSize: 16 },
+  sellerAvatarText: { color: "#fff", fontFamily: FONTS.heading, fontSize: 16 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary },
   sellerMeta: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 2 },
 });

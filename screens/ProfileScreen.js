@@ -11,7 +11,7 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName } from "../constants/theme";
+import { COLORS, SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS } from "../constants/theme";
 
 function StarRating({ rating, size = 14 }) {
   return (
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
   heroCircle: { position: "absolute", right: -60, top: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.10)" },
   heroCircleSmall: { position: "absolute", left: -30, bottom: -50, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(245,158,11,0.18)" },
   heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  heroTitle: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff" },
   heroIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
 
   profileCard: { marginHorizontal: SPACING.lg, marginTop: -48, backgroundColor: COLORS.white, borderRadius: 20, padding: SPACING.lg, ...SHADOWS.md },
@@ -331,9 +331,9 @@ const styles = StyleSheet.create({
   avatarWrapper: { position: "relative" },
   avatarImage: { width: 72, height: 72, borderRadius: 36 },
   avatarFallback: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
-  avatarText: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
+  avatarText: { fontSize: 30, fontFamily: FONTS.heading, color: COLORS.primary },
   cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
-  userName: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  userName: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   userEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
   badgesRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: "row", marginTop: SPACING.lg, paddingTop: SPACING.lg, borderTopWidth: 1, borderTopColor: COLORS.border },
   statItem: { flex: 1, alignItems: "center" },
   statDivider: { borderLeftWidth: 1, borderLeftColor: COLORS.border },
-  statNumber: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  statNumber: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
 
   menu: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, backgroundColor: COLORS.white, borderRadius: 18, paddingHorizontal: SPACING.lg, ...SHADOWS.sm },
@@ -353,10 +353,10 @@ const styles = StyleSheet.create({
   menuItemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   menuLabel: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
   menuBadge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
-  menuBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+  menuBadgeText: { color: "#fff", fontSize: 11, fontFamily: FONTS.heading },
 
   section: { marginHorizontal: SPACING.lg, marginTop: SPACING.xl },
-  sectionTitle: { fontSize: 17, fontWeight: "800", color: COLORS.textPrimary, marginBottom: SPACING.md },
+  sectionTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: SPACING.md },
   emptyReviews: { alignItems: "center", paddingVertical: 24, gap: 6, backgroundColor: COLORS.white, borderRadius: 16 },
   emptyReviewsText: { fontSize: 13, color: COLORS.textMuted },
   reviewCard: { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },

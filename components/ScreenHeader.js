@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { COLORS, SPACING } from '../constants/theme';
+import { COLORS, SPACING, FONTS } from '../constants/theme';
 
 // White top bar used across screens: back arrow, bold title, optional
 // subtitle and right-side element. Handles the status bar inset itself.
@@ -43,8 +43,8 @@ const styles = StyleSheet.create({
   border: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   iconBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   titleBox: { flex: 1, marginLeft: 4 },
-  title: { fontSize: 20, fontWeight: '800', color: COLORS.textPrimary, letterSpacing: -0.3 },
+  title: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.3 },
   subtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
   badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  badgeText: { color: '#fff', fontSize: 9, fontFamily: FONTS.heading },
 });

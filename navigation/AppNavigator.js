@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -39,19 +39,6 @@ import MyListingsScreen from '../screens/MyListingsScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-
-// ── Placeholder for screens not built yet ──
-function ComingSoon({ route }) {
-  return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: COLORS.background }}>
-      <Text style={{ fontSize: 40 }}>🚧</Text>
-      <Text style={{ fontSize: 18, fontWeight: '700', color: COLORS.textPrimary, marginTop: 12 }}>
-        {route.name}
-      </Text>
-      <Text style={{ fontSize: 14, color: COLORS.textMuted, marginTop: 6 }}>Coming soon!</Text>
-    </View>
-  );
-}
 
 const Stack = createStackNavigator();
 
@@ -164,7 +151,6 @@ function AppStack() {
       <Stack.Screen name="Cart"          component={CartScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings"      component={SettingsScreen} />
-      <Stack.Screen name="EditProfile"   component={ComingSoon} />
       <Stack.Screen name="MyListings"    component={MyListingsScreen} />
       <Stack.Screen name="About"         component={AboutScreen} />
       <Stack.Screen name="Terms"         component={TermsScreen} />

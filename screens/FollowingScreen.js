@@ -6,7 +6,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, colorForName } from "../constants/theme";
+import { COLORS, RADIUS, colorForName, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
 
@@ -146,7 +146,7 @@ const styles = StyleSheet.create({
   card: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.white, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
   avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  avatarText: { fontSize: 20, fontWeight: "800", color: "#fff" },
+  avatarText: { fontSize: 20, fontFamily: FONTS.heading, color: "#fff" },
   info: { flex: 1 },
   nameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
   name: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary },
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
 
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
   emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 8 },
+  emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8 },
   emptySub: { fontSize: 14, color: COLORS.textMuted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
   browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: RADIUS.md, paddingHorizontal: 26, paddingVertical: 14 },
   browseBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },

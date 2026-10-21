@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Modal, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
+import { FONTS } from '../constants/theme';
 
 const GREEN = '#1B6B3A';
 const { width } = Dimensions.get('window');
@@ -45,7 +46,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', padding: 30 },
   card: { width: width - 60, backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 16, shadowOffset: { width: 0, height: 8 } },
   iconCircle: { width: 84, height: 84, borderRadius: 42, backgroundColor: '#E8F4EC', alignItems: 'center', justifyContent: 'center', marginBottom: 18 },
-  title: { fontSize: 20, fontWeight: '800', color: '#111', marginBottom: 10, textAlign: 'center' },
+  title: { fontSize: 20, fontFamily: FONTS.heading, color: '#111', marginBottom: 10, textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 20 },
   waitingRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F4F7F1', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8 },
   waitingText: { fontSize: 13, color: '#999', fontWeight: '500' },
