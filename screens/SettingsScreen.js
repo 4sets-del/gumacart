@@ -10,9 +10,7 @@ import {
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { signOutUser } from "../utils/auth";
-import { useAuth } from "../context/AuthContext";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Image } from "expo-image";
 import Constants from "expo-constants";
 import { unregisterPushToken } from "../utils/notifications";
 import WelcomeTutorial from "../components/WelcomeTutorial";
@@ -46,7 +44,6 @@ export default function SettingsScreen({ navigation }) {
   const [notifReviews, setNotifReviews] = useState(true);
 
   const [verificationStatus, setVerificationStatus] = useState(null);
-  const { userProfile } = useAuth();
   const insets = useSafeAreaInsets();
   const appVersion = Constants.expoConfig?.version || "1.0.0";
 
@@ -169,28 +166,6 @@ export default function SettingsScreen({ navigation }) {
       />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Who is signed in */}
-        <TouchableOpacity style={styles.profileCard} activeOpacity={0.85} onPress={openEditModal}>
-          {userProfile?.photoURL ? (
-            <Image source={{ uri: userProfile.photoURL }} style={styles.profileAvatar} cachePolicy="memory-disk" />
-          ) : (
-            <View style={[styles.profileAvatar, styles.profileAvatarFallback]}>
-              <Text style={styles.profileAvatarText}>{(user?.displayName || "?")[0].toUpperCase()}</Text>
-            </View>
-          )}
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName} numberOfLines={1}>{user?.displayName || "Student"}</Text>
-            <Text style={styles.profileEmail} numberOfLines={1}>{user?.email}</Text>
-            {verificationStatus === "verified" && (
-              <View style={styles.profileBadge}>
-                <Ionicons name="checkmark-circle" size={12} color={GREEN} />
-                <Text style={styles.profileBadgeText}>Verified SLSU Student</Text>
-              </View>
-            )}
-          </View>
-          <Ionicons name="create-outline" size={20} color={COLORS.textMuted} />
-        </TouchableOpacity>
-
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
           <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, address, age" onPress={openEditModal} />
@@ -363,14 +338,6 @@ function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor = GREE
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  profileCard: { flexDirection: "row", alignItems: "center", gap: 14, marginHorizontal: 16, marginTop: 12, backgroundColor: COLORS.white, borderRadius: 18, padding: 16, ...SHADOWS.sm },
-  profileAvatar: { width: 58, height: 58, borderRadius: 29 },
-  profileAvatarFallback: { backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
-  profileAvatarText: { fontSize: 24, fontFamily: FONTS.heading, color: GREEN },
-  profileName: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary },
-  profileEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 1 },
-  profileBadge: { flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
-  profileBadgeText: { fontSize: 11, fontWeight: "700", color: GREEN },
   logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 28, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.error, backgroundColor: COLORS.white },
   logoutText: { fontSize: 15.5, fontWeight: "700", color: COLORS.error },
   deleteLink: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 12 },
