@@ -127,6 +127,15 @@ export default function HomeScreen({ navigation }) {
     return unsub;
   }, []);
 
+  // Build the other tabs in the background shortly after Home appears, so
+  // the first tap on Categories / Messages / Profile opens instantly.
+  useEffect(() => {
+    const id = setTimeout(() => {
+      ['Categories', 'Messages', 'Profile'].forEach((name) => navigation.preload?.(name));
+    }, 1200);
+    return () => clearTimeout(id);
+  }, [navigation]);
+
   // ── Banner auto-advance ──
   useEffect(() => {
     const id = setInterval(() => {

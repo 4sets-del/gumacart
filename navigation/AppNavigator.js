@@ -6,6 +6,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '../context/AuthContext';
@@ -89,8 +90,12 @@ function MainTabs() {
   const bottomPad = Math.max(insets.bottom, 8);
   return (
     <Tab.Navigator
+      // A light tap vibration so every tab press feels instant.
+      screenListeners={{ tabPress: () => { Haptics.selectionAsync().catch(() => {}); } }}
       screenOptions={({ route }) => ({
         headerShown: false,
+        // Tabs that aren't visible stop re-rendering until you come back.
+        freezeOnBlur: true,
         tabBarActiveTintColor: COLORS.primary,
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
