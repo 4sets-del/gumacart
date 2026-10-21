@@ -164,7 +164,7 @@ export default function LoginScreen({ navigation }) {
       </KeyboardAvoidingView>
 
       {/* Forgot password sheet */}
-      <Modal
+      <Modal statusBarTranslucent
         visible={resetVisible}
         transparent
         animationType="fade"

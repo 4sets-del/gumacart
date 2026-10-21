@@ -11,6 +11,7 @@ import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { signOutUser } from "../utils/auth";
 import { useAuth } from "../context/AuthContext";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import Constants from "expo-constants";
 import { unregisterPushToken } from "../utils/notifications";
@@ -46,13 +47,19 @@ export default function SettingsScreen({ navigation }) {
 
   const [verificationStatus, setVerificationStatus] = useState(null);
   const { userProfile } = useAuth();
+  const insets = useSafeAreaInsets();
   const appVersion = Constants.expoConfig?.version || "1.0.0";
 
   useEffect(() => {
     const loadVerificationStatus = async () => {
       try {
         const userDoc = await getDoc(doc(db, "users", user.uid));
-        setVerificationStatus(userDoc.data()?.verificationStatus || null);
+        const data = userDoc.data();
+        setVerificationStatus(data?.verificationStatus || null);
+        // Show the saved notification switches as soon as Settings opens.
+        setNotifMessages(data?.notifPrefs?.messages !== false);
+        setNotifFollowers(data?.notifPrefs?.followers !== false);
+        setNotifReviews(data?.notifPrefs?.reviews !== false);
       } catch (e) {}
     };
     loadVerificationStatus();
@@ -222,10 +229,10 @@ export default function SettingsScreen({ navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.versionText}>SLSU-GumaCart · Version {appVersion}</Text>
-        <View style={{ height: 40 }} />
+        <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
 
-      <Modal visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
+      <Modal statusBarTranslucent visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowEditModal(false)} />
           <View style={styles.modalSheet}>
@@ -259,7 +266,7 @@ export default function SettingsScreen({ navigation }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={showDeleteModal} transparent animationType="slide" onRequestClose={() => !deleting && setShowDeleteModal(false)}>
+      <Modal statusBarTranslucent visible={showDeleteModal} transparent animationType="slide" onRequestClose={() => !deleting && setShowDeleteModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => !deleting && setShowDeleteModal(false)} />
           <View style={styles.modalSheet}>
@@ -286,7 +293,7 @@ export default function SettingsScreen({ navigation }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={showPasswordModal} transparent animationType="slide" onRequestClose={() => setShowPasswordModal(false)}>
+      <Modal statusBarTranslucent visible={showPasswordModal} transparent animationType="slide" onRequestClose={() => setShowPasswordModal(false)}>
         <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowPasswordModal(false)} />
           <View style={styles.modalSheet}>

@@ -22,7 +22,7 @@ export default function OfflineNotice() {
   if (!isOffline) return null;
 
   return (
-    <Modal transparent visible={isOffline} animationType="fade" onRequestClose={() => {}}>
+    <Modal statusBarTranslucent transparent visible={isOffline} animationType="fade" onRequestClose={() => {}}>
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.iconCircle}>

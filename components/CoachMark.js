@@ -61,7 +61,7 @@ export default function CoachMark({ visible, steps, onFinish }) {
     : 0;
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={finish}>
+    <Modal statusBarTranslucent visible={visible} transparent animationType="fade" onRequestClose={finish}>
       <View style={StyleSheet.absoluteFill}>
         {!box ? (
           <View style={styles.dimFull} />

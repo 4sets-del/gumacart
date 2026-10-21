@@ -233,7 +233,7 @@ export default function CartScreen({ navigation }) {
       )}
 
       {/* Cart has items from more than one seller: pick who to contact */}
-      <Modal visible={sellerPickerVisible} transparent animationType="slide" onRequestClose={() => setSellerPickerVisible(false)}>
+      <Modal statusBarTranslucent visible={sellerPickerVisible} transparent animationType="slide" onRequestClose={() => setSellerPickerVisible(false)}>
         <View style={styles.sheetOverlay}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setSellerPickerVisible(false)} />
           <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>

@@ -1012,7 +1012,7 @@ export default function AdminPanelScreen({ navigation }) {
       </ScrollView>
       </View>
 
-      <Modal visible={rejectVisible} transparent animationType="fade" onRequestClose={() => { setRejectVisible(false); setPendingReason(null); }}>
+      <Modal statusBarTranslucent visible={rejectVisible} transparent animationType="fade" onRequestClose={() => { setRejectVisible(false); setPendingReason(null); }}>
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => { setRejectVisible(false); setPendingReason(null); }}>
           <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
             <View style={styles.reportHandle} />
@@ -1051,7 +1051,7 @@ export default function AdminPanelScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      <Modal visible={banVisible} transparent animationType="fade" onRequestClose={() => setBanVisible(false)}>
+      <Modal statusBarTranslucent visible={banVisible} transparent animationType="fade" onRequestClose={() => setBanVisible(false)}>
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => setBanVisible(false)}>
           <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
             <View style={styles.reportHandle} />
@@ -1117,7 +1117,7 @@ export default function AdminPanelScreen({ navigation }) {
         </TouchableOpacity>
       </Modal>
 
-      <Modal visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
+      <Modal statusBarTranslucent visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
         <View style={styles.viewerOverlay}>
           <TouchableOpacity style={styles.viewerClose} activeOpacity={0.8} onPress={() => setViewerImage(null)}>
             <Ionicons name="close" size={28} color="#fff" />

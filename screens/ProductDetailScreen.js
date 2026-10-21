@@ -370,7 +370,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       </ScrollView>
 
-      <Modal visible={fullscreenVisible} transparent animationType="fade" onRequestClose={() => setFullscreenVisible(false)}>
+      <Modal statusBarTranslucent visible={fullscreenVisible} transparent animationType="fade" onRequestClose={() => setFullscreenVisible(false)}>
         <View style={{ flex: 1, backgroundColor: "#000" }}>
           <TouchableOpacity style={styles.fullscreenClose} activeOpacity={0.7} onPress={() => setFullscreenVisible(false)}>
             <Ionicons name="close" size={24} color="#fff" />
@@ -437,7 +437,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       )}
 
-      <Modal visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
+      <Modal statusBarTranslucent visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={closeReport}>
           <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
             <View style={styles.reportHandle} />

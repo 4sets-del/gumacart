@@ -391,7 +391,7 @@ export default function SearchScreen({ navigation, route }) {
       )}
 
       {/* ── SORT & FILTER SHEET ── */}
-      <Modal visible={sheetVisible} transparent animationType="slide" onRequestClose={() => setSheetVisible(false)}>
+      <Modal statusBarTranslucent visible={sheetVisible} transparent animationType="slide" onRequestClose={() => setSheetVisible(false)}>
         <View style={styles.sheetOverlay}>
           <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setSheetVisible(false)} />
           <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>

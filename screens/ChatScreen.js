@@ -514,7 +514,7 @@ export default function ChatScreen({ route, navigation }) {
       </Modal>
 
       {/* Long-press action sheet: react / reply / delete */}
-      <Modal visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
+      <Modal statusBarTranslucent visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
         <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActionMsg(null)}>
           <View style={styles.sheet}>
             {/* Emoji reaction row */}

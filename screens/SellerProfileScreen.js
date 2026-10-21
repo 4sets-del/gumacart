@@ -453,7 +453,7 @@ export default function SellerProfileScreen({ route, navigation }) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <Modal visible={showRatingModal} transparent animationType="slide" onRequestClose={() => { setShowRatingModal(false); setEditingReviewId(null); }}>
+      <Modal statusBarTranslucent visible={showRatingModal} transparent animationType="slide" onRequestClose={() => { setShowRatingModal(false); setEditingReviewId(null); }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -507,7 +507,7 @@ export default function SellerProfileScreen({ route, navigation }) {
         </KeyboardAvoidingView>
       </Modal>
 
-      <Modal visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
+      <Modal statusBarTranslucent visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={closeReport}>
           <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
             <View style={styles.reportHandle} />
