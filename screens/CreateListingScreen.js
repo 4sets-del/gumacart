@@ -11,6 +11,7 @@ import { CATEGORIES, normalizeCategory } from "../constants/listings";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, FONTS } from "../constants/theme";
 import GradientButton from "../components/GradientButton";
+import { ProductCard } from "../components/ProductCard";
 
 const GREEN = COLORS.primary;
 
@@ -21,6 +22,19 @@ const LISTING_TYPES = [
   { id: 'donate', label: 'Donate',      icon: 'gift-outline',            color: COLORS.donate, bg: COLORS.donateBg },
 ];
 
+
+const MAX_PHOTOS = 6;
+
+// Small red message shown under a field after a failed "Post" attempt.
+function FieldError({ msg }) {
+  if (!msg) return null;
+  return (
+    <View style={styles.fieldError}>
+      <Ionicons name="alert-circle" size={14} color={COLORS.error} />
+      <Text style={styles.fieldErrorText}>{msg}</Text>
+    </View>
+  );
+}
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
@@ -75,11 +89,12 @@ export default function CreateListingScreen({ navigation, route }) {
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your photo library."); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"], allowsMultipleSelection: true,
+      selectionLimit: MAX_PHOTOS - images.length,
       quality: 0.7,
     });
     if (!result.canceled) {
       const newUris = result.assets.map((a) => a.uri);
-      setImages((prev) => [...prev, ...newUris]);
+      setImages((prev) => [...prev, ...newUris].slice(0, MAX_PHOTOS));
     }
   };
 
@@ -87,13 +102,17 @@ export default function CreateListingScreen({ navigation, route }) {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your camera."); return; }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.7 });
-    if (!result.canceled) setImages((prev) => [...prev, result.assets[0].uri]);
+    if (!result.canceled) setImages((prev) => [...prev, result.assets[0].uri].slice(0, MAX_PHOTOS));
   };
 
   const showImageOptions = () => {
+    if (images.length >= MAX_PHOTOS) {
+      Alert.alert("Photo limit reached", `You can add up to ${MAX_PHOTOS} photos. Remove one to add another.`);
+      return;
+    }
     Alert.alert("Add Photo", "Choose an option", [
-      { text: "📷 Take Photo", onPress: takePhoto },
-      { text: "🖼️ Choose from Gallery", onPress: pickImages },
+      { text: "Take Photo", onPress: takePhoto },
+      { text: "Choose from Gallery", onPress: pickImages },
       { text: "Cancel", style: "cancel" },
     ]);
   };
@@ -105,6 +124,19 @@ export default function CreateListingScreen({ navigation, route }) {
     return uploadFile(uri, filename);
   };
 
+  // Field problems, shown inline under each field once "Post" was tapped.
+  const [triedSubmit, setTriedSubmit] = useState(false);
+  const errors = {};
+  if (images.length === 0) errors.photos = "Add at least one photo of your item.";
+  if (!title.trim()) errors.title = "Enter a title.";
+  if (!description.trim()) errors.description = "Describe your item.";
+  if (listingType === "sell" && !(Number(price) > 0)) errors.price = "Enter a price greater than 0.";
+  if (!category) errors.category = "Pick a category.";
+  if (!condition) errors.condition = "Pick a condition.";
+  if (!location) errors.location = "Pick a meet-up location.";
+  if (!/^(09\d{9}|\+639\d{9})$/.test(contactNumber.replace(/\s/g, ""))) errors.contact = "Enter a mobile number like 09XXXXXXXXX.";
+  const shownErrors = triedSubmit ? errors : {};
+
   const handleSubmit = async () => {
     const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
     const userData = userDoc.data();
@@ -115,14 +147,11 @@ export default function CreateListingScreen({ navigation, route }) {
       ]);
       return;
     }
-    if (images.length === 0)        { Alert.alert("Photo required", "Please add at least one photo of your item."); return; }
-    if (!title.trim())              { Alert.alert("Missing info", "Please enter a title."); return; }
-    if (!description.trim())        { Alert.alert("Missing info", "Please enter a description."); return; }
-    if (listingType === "sell" && !price) { Alert.alert("Missing info", "Please enter a price."); return; }
-    if (!category)                  { Alert.alert("Missing info", "Please select a category."); return; }
-    if (!condition)                 { Alert.alert("Missing info", "Please select a condition."); return; }
-    if (!location)                  { Alert.alert("Missing info", "Please select a meet-up location."); return; }
-    if (!contactNumber.trim())      { Alert.alert("Missing info", "Please enter your contact number."); return; }
+    setTriedSubmit(true);
+    if (Object.keys(errors).length > 0) {
+      Alert.alert("Almost there", "Please fix the highlighted fields.");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -207,7 +236,7 @@ export default function CreateListingScreen({ navigation, route }) {
           {/* Photos */}
           <View style={styles.sectionLabelRow}>
             <Text style={styles.sectionLabel}>Photos</Text>
-            <Text style={styles.required}>required</Text>
+            <Text style={[styles.required, images.length >= MAX_PHOTOS && { color: COLORS.primary }]}>{images.length}/{MAX_PHOTOS}</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
             {images.map((uri, index) => (
@@ -228,6 +257,8 @@ export default function CreateListingScreen({ navigation, route }) {
             </TouchableOpacity>
           </ScrollView>
 
+          <FieldError msg={shownErrors.photos} />
+
           {/* Title */}
           <Text style={styles.sectionLabel}>Title</Text>
           <View style={styles.inputWrapper}>
@@ -240,6 +271,8 @@ export default function CreateListingScreen({ navigation, route }) {
               maxLength={80}
             />
           </View>
+
+          <FieldError msg={shownErrors.title} />
 
           {/* Description */}
           <Text style={styles.sectionLabel}>Description</Text>
@@ -255,6 +288,8 @@ export default function CreateListingScreen({ navigation, route }) {
             />
           </View>
           <Text style={styles.charCount}>{description.length}/500</Text>
+
+          <FieldError msg={shownErrors.description} />
 
           {/* Specifications (optional, flexible per item) */}
           <View style={styles.sectionLabelRow}>
@@ -292,6 +327,8 @@ export default function CreateListingScreen({ navigation, route }) {
             </>
           )}
 
+          <FieldError msg={shownErrors.price} />
+
           {/* Category */}
           <Text style={styles.sectionLabel}>Category</Text>
           <View style={styles.chipGrid}>
@@ -308,6 +345,8 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
           </View>
 
+          <FieldError msg={shownErrors.category} />
+
           {/* Condition */}
           <Text style={styles.sectionLabel}>Condition</Text>
           <View style={styles.conditionRow}>
@@ -322,6 +361,8 @@ export default function CreateListingScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
           </View>
+
+          <FieldError msg={shownErrors.condition} />
 
           {/* Meet-up Location */}
           <Text style={styles.sectionLabel}>Meet-up Location on Campus</Text>
@@ -339,6 +380,8 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
           </View>
 
+          <FieldError msg={shownErrors.location} />
+
           {/* Contact Number */}
           <Text style={styles.sectionLabel}>Contact Number</Text>
           <View style={styles.inputWrapper}>
@@ -350,16 +393,32 @@ export default function CreateListingScreen({ navigation, route }) {
               value={contactNumber}
               onChangeText={setContactNumber}
               keyboardType="phone-pad"
-              maxLength={11}
+              maxLength={13}
             />
           </View>
 
-          {/* Live Preview Hint */}
-          <View style={styles.previewHint}>
-            <View style={[styles.previewDot, { backgroundColor: activeType?.color }]} />
-            <Text style={styles.previewHintText}>
-              This will post as a <Text style={{ fontFamily: FONTS.heading, color: activeType?.color }}>{activeType?.label}</Text> listing
-            </Text>
+          <FieldError msg={shownErrors.contact} />
+
+          {/* Live preview of how the listing card will look */}
+          <Text style={styles.sectionLabel}>Preview</Text>
+          <View style={styles.previewRow}>
+            <ProductCard
+              width={150}
+              item={{
+                id: "preview",
+                name: title.trim() || "Your item title",
+                price: Number(price) || 0,
+                type: listingType,
+                images,
+              }}
+            />
+            <View style={styles.previewInfo}>
+              <View style={[styles.previewDot, { backgroundColor: activeType?.color }]} />
+              <Text style={styles.previewHintText}>
+                Posts as <Text style={{ fontFamily: FONTS.heading, color: activeType?.color }}>{activeType?.label}</Text>
+                {category ? ` in ${category}` : ""}. An admin reviews it before it goes live.
+              </Text>
+            </View>
           </View>
 
           {/* Submit */}
@@ -411,6 +470,10 @@ const styles = StyleSheet.create({
   conditionBtnActive: { backgroundColor: GREEN },
   conditionLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   conditionLabelActive: { color: "#fff", fontWeight: "700" },
+  previewRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
+  previewInfo: { flex: 1, flexDirection: "row", gap: 8, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 12 },
+  fieldError: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
+  fieldErrorText: { fontSize: 12.5, color: COLORS.error, fontWeight: "600" },
   previewHint: { flexDirection: "row", alignItems: "center", marginTop: 24, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14 },
   previewDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
   previewHintText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
