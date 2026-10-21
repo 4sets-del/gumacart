@@ -4,6 +4,8 @@ import {
 } from 'react-native';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ScreenHeader from "../components/ScreenHeader";
+import { LinearGradient } from "expo-linear-gradient";
+import Constants from "expo-constants";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 
 const GREEN = COLORS.primary;
@@ -34,10 +36,10 @@ const MAKERS = [
 ];
 
 const PILLARS = [
-  { icon: "🔒", title: "Safe",         desc: "Only SLSU members. No strangers, no scammers.", color: "#2980b9" },
-  { icon: "🤝", title: "Trusted",      desc: "Verified student badges build community trust.", color: GREEN },
-  { icon: "💸", title: "Affordable",   desc: "No fees. Free for all SLSU members.",            color: "#e67e22" },
-  { icon: "🏫", title: "Campus-Based", desc: "Meet up safely within SLSU grounds.",            color: "#9b59b6" },
+  { icon: "lock-closed",     title: "Safe",         desc: "Only SLSU members. No strangers, no scammers.", color: "#2563EB" },
+  { icon: "shield-checkmark", title: "Trusted",     desc: "Verified student badges build community trust.", color: GREEN },
+  { icon: "cash",            title: "Affordable",   desc: "No fees. Free for all SLSU members.",            color: "#EA580C" },
+  { icon: "school",          title: "Campus-Based", desc: "Meet up safely within SLSU grounds.",            color: "#7C3AED" },
 ];
 
 export default function AboutScreen({ navigation }) {
@@ -52,12 +54,14 @@ export default function AboutScreen({ navigation }) {
 
         {/* App Hero */}
         <View style={styles.heroBanner}>
-          <View style={styles.heroCircle} />
+          {/* Campus photo under a green tint */}
+          <Image source={require("../assets/slsu-campus.jpg")} style={styles.heroPhoto} resizeMode="cover" />
+          <LinearGradient colors={["rgba(20,83,43,0.55)", "rgba(20,83,43,0.92)"]} style={StyleSheet.absoluteFill} />
           <Image source={require("../assets/icon.png")} style={styles.heroLogo} />
           <Text style={styles.heroAppName}>SLSU-GumaCart</Text>
           <Text style={styles.heroTagline}>The Official SLSU Student Marketplace</Text>
           <View style={styles.versionPill}>
-            <Text style={styles.heroVersion}>Version 1.0.0</Text>
+            <Text style={styles.heroVersion}>Version {Constants.expoConfig?.version || "1.0.0"}</Text>
           </View>
         </View>
 
@@ -86,7 +90,7 @@ export default function AboutScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Our Mission</Text>
           <View style={styles.missionCard}>
             <View style={styles.missionIconCircle}>
-              <Text style={styles.missionIcon}>🎯</Text>
+              <Ionicons name="flag" size={22} color={GREEN} />
             </View>
             <Text style={styles.missionText}>
               To provide a safe, accessible, and trusted marketplace exclusively for the SLSU community — making it easier for students and faculty to buy, sell, barter, and donate within a circle they know and trust.
@@ -101,7 +105,7 @@ export default function AboutScreen({ navigation }) {
             {PILLARS.map((p) => (
               <View key={p.title} style={[styles.pillarCard, { borderTopColor: p.color }]}>
                 <View style={[styles.pillarIconBox, { backgroundColor: p.color + "15" }]}>
-                  <Text style={styles.pillarIcon}>{p.icon}</Text>
+                  <Ionicons name={p.icon} size={21} color={p.color} />
                 </View>
                 <Text style={[styles.pillarTitle, { color: p.color }]}>{p.title}</Text>
                 <Text style={styles.pillarDesc}>{p.desc}</Text>
@@ -135,7 +139,7 @@ export default function AboutScreen({ navigation }) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={styles.footerText}>Made with ❤️ for the SLSU Community</Text>
+          <Text style={styles.footerText}>Made with <Ionicons name="heart" size={14} color={COLORS.error} /> for the SLSU Community</Text>
           <Text style={styles.footerSub}>© 2026 SLSU-GumaCart · Southern Luzon State University</Text>
         </View>
       </ScrollView>
@@ -148,6 +152,7 @@ const styles = StyleSheet.create({
 
   // Hero
   heroBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
+  heroPhoto: { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 420 },
   heroCircle: { position: "absolute", right: -50, top: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: COLORS.primaryLight, opacity: 0.5 },
   heroLogo: { width: 72, height: 72, borderRadius: 18, marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
   heroAppName: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", marginBottom: 6, letterSpacing: -0.3 },

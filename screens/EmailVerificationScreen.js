@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator,
-  AppState, Platform,} from 'react-native';
+  AppState, Platform, Linking,} from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { sendEmailVerification, reload } from 'firebase/auth';
@@ -81,6 +82,25 @@ export default function EmailVerificationScreen({ navigation }) {
     }
   };
 
+  // Opens the phone's email app (inbox), so the user can tap the link without
+  // hunting for the app. Falls back to Gmail on the web.
+  const openEmailApp = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        await IntentLauncher.startActivityAsync('android.intent.action.MAIN', {
+          category: 'android.intent.category.APP_EMAIL',
+          flags: 268435456, // FLAG_ACTIVITY_NEW_TASK
+        });
+      } else {
+        await Linking.openURL('message://');
+      }
+    } catch (e) {
+      Linking.openURL('https://mail.google.com').catch(() => {
+        Alert.alert('No email app found', 'Open your email app and look for the message from SLSU-GumaCart.');
+      });
+    }
+  };
+
   const handleUseDifferentEmail = () => {
     Alert.alert('Use a different email?', 'This will sign you out so you can sign up again.', [
       { text: 'Cancel', style: 'cancel' },
@@ -118,6 +138,11 @@ export default function EmailVerificationScreen({ navigation }) {
           <ActivityIndicator size="small" color={GREEN} />
           <Text style={styles.statusText}>Waiting for verification...</Text>
         </View>
+
+        <TouchableOpacity style={styles.openMailBtn} activeOpacity={0.85} onPress={openEmailApp}>
+          <Ionicons name="mail-open-outline" size={19} color="#fff" />
+          <Text style={styles.checkBtnText}>Open Email App</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.checkBtn, checking && { opacity: 0.7 }]}
@@ -161,6 +186,7 @@ const styles = StyleSheet.create({
   spamNoteText: { flex: 1, fontSize: 12.5, color: '#7A5A2E', lineHeight: 18 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
   statusText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  openMailBtn: { flexDirection: 'row', gap: 8, backgroundColor: '#2563EB', borderRadius: RADIUS.md, height: 52, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   checkBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, height: 52, width: '100%', alignItems: 'center', justifyContent: 'center' },
   checkBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   resendBtn: { marginTop: 18, paddingVertical: 6 },
