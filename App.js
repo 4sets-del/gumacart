@@ -10,6 +10,7 @@ import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins/800ExtraBold';
 import { AuthProvider } from './context/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
 import OfflineNotice from './components/OfflineNotice';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Keep the native splash up until the fonts are ready, so text never
 // flashes in the wrong font.
@@ -31,7 +32,9 @@ export default function App() {
         {/* Transparent status bar on every screen: each screen paints its own
             color behind it and picks light or dark icons to match. */}
         <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" hidden={false} />
-        <AppNavigator />
+        <ErrorBoundary>
+          <AppNavigator />
+        </ErrorBoundary>
         <OfflineNotice />
       </AuthProvider>
     </SafeAreaProvider>

@@ -5,11 +5,12 @@ import {
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   updateProfile, updatePassword, EmailAuthProvider,
-  reauthenticateWithCredential,
+  reauthenticateWithCredential, deleteUser,
 } from "firebase/auth";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { signOutUser } from "../utils/auth";
+import { unregisterPushToken } from "../utils/notifications";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
@@ -31,6 +32,10 @@ export default function SettingsScreen({ navigation }) {
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   const [notifMessages, setNotifMessages] = useState(true);
   const [notifFollowers, setNotifFollowers] = useState(true);
@@ -115,10 +120,31 @@ export default function SettingsScreen({ navigation }) {
       { text: "Delete Forever", style: "destructive", onPress: () => {
         Alert.alert("Confirm Deletion", "Enter your password in the next screen to confirm.", [
           { text: "Cancel", style: "cancel" },
-          { text: "Continue", onPress: () => setShowPasswordModal(true) },
+          { text: "Continue", onPress: () => { setDeletePassword(""); setShowDeleteModal(true); } },
         ]);
       }},
     ]);
+  };
+
+  // Deletes the login itself. Firebase requires a recent sign-in for this,
+  // hence the password. The onAccountDeleted Cloud Function then removes the
+  // user's data (profile, listings, photos, reviews, follows...).
+  const handleConfirmDelete = async () => {
+    if (!deletePassword) { Alert.alert("Password required", "Enter your password to confirm."); return; }
+    setDeleting(true);
+    try {
+      const credential = EmailAuthProvider.credential(user.email, deletePassword);
+      await reauthenticateWithCredential(user, credential);
+      await unregisterPushToken(user.uid);
+      await deleteUser(user);
+      // Signed out automatically; the app returns to the Welcome screen.
+    } catch (e) {
+      let msg = "Could not delete your account. Please try again.";
+      if (e.code === "auth/wrong-password" || e.code === "auth/invalid-credential") msg = "Password is incorrect.";
+      else if (e.code === "auth/too-many-requests") msg = "Too many attempts. Try again later.";
+      Alert.alert("Error", msg);
+      setDeleting(false);
+    }
   };
 
   return (
@@ -198,6 +224,33 @@ export default function SettingsScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity style={[styles.saveBtn, savingProfile && { opacity: 0.7 }]} onPress={handleSaveProfile} disabled={savingProfile}>
                 {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      <Modal visible={showDeleteModal} transparent animationType="slide" onRequestClose={() => !deleting && setShowDeleteModal(false)}>
+        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => !deleting && setShowDeleteModal(false)} />
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={[styles.modalTitle, { color: COLORS.error }]}>Delete Account</Text>
+            <Text style={styles.modalSubtitle}>
+              This permanently deletes your account, listings, photos, reviews and follows. Conversations stay visible to the people you chatted with. This cannot be undone.
+            </Text>
+
+            <Text style={styles.inputLabel}>Password</Text>
+            <View style={styles.inputWrapper}>
+              <TextInput style={styles.input} value={deletePassword} onChangeText={setDeletePassword} placeholder="Enter your password" placeholderTextColor={COLORS.textMuted} secureTextEntry editable={!deleting} />
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowDeleteModal(false)} disabled={deleting}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: COLORS.error }, deleting && { opacity: 0.7 }]} onPress={handleConfirmDelete} disabled={deleting}>
+                {deleting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Delete Forever</Text>}
               </TouchableOpacity>
             </View>
           </View>

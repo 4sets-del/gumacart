@@ -18,6 +18,7 @@ import { auth, db } from '../firebaseConfig';
 import WelcomeTutorial from '../components/WelcomeTutorial';
 import CoachMark from '../components/CoachMark';
 import { ProductCard } from '../components/ProductCard';
+import SkeletonCard from '../components/SkeletonCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS, FONTS } from '../constants/theme';
 import { CATEGORIES } from '../constants/listings';
@@ -49,7 +50,7 @@ const BANNERS = [
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
-  const { listings } = useActiveListings();
+  const { listings, loading: listingsLoading } = useActiveListings();
   const ratings = useSellerRatings(listings);
   const [cartCount, setCartCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -278,7 +279,22 @@ export default function HomeScreen({ navigation }) {
           ))}
         </ScrollView>
 
-        {listings.length === 0 ? (
+        {listingsLoading && listings.length === 0 ? (
+          <>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.skeletonTitle, { width: 170 }]} />
+            </View>
+            <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+              {[0, 1, 2].map((i) => <SkeletonCard key={i} width={128} />)}
+            </ScrollView>
+            <View style={styles.sectionHeader}>
+              <View style={[styles.skeletonTitle, { width: 140 }]} />
+            </View>
+            <View style={styles.grid}>
+              {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} width={GRID_CARD_W} />)}
+            </View>
+          </>
+        ) : listings.length === 0 ? (
           <View style={styles.emptyWrap}>
             <View style={styles.emptyIconBox}>
               <Ionicons name="storefront-outline" size={40} color={COLORS.primary} />
@@ -398,6 +414,7 @@ const styles = StyleSheet.create({
   sectionCount: { fontSize: 12.5, color: COLORS.textMuted },
   featuredRow: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg, gap: GRID_GAP },
+  skeletonTitle: { height: 18, borderRadius: 9, backgroundColor: COLORS.surfaceAlt },
   typeRow: { paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: SPACING.md },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, backgroundColor: COLORS.white },
   typeChipText: { fontSize: 12.5, fontWeight: '700' },
