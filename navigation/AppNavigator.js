@@ -36,6 +36,7 @@ import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
+import PrivacyScreen from '../screens/PrivacyScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
 import { auth, db } from '../firebaseConfig';
 
@@ -153,6 +154,7 @@ function AppStack() {
       <Stack.Screen name="MyListings"    component={MyListingsScreen} />
       <Stack.Screen name="About"         component={AboutScreen} />
       <Stack.Screen name="Terms"         component={TermsScreen} />
+      <Stack.Screen name="Privacy"       component={PrivacyScreen} />
       <Stack.Screen name="AdminPanel"    component={AdminPanelScreen} />
       <Stack.Screen name="CreateListing" component={CreateListingScreen} />
       <Stack.Screen name="Following"     component={FollowingScreen} />
@@ -170,6 +172,7 @@ function AuthStack() {
       <Stack.Screen name="Signup"       component={SignupScreen} />
       <Stack.Screen name="Verification" component={VerificationScreen} />
       <Stack.Screen name="Terms"        component={TermsScreen} />
+      <Stack.Screen name="Privacy"      component={PrivacyScreen} />
     </Stack.Navigator>
   );
 }

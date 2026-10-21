@@ -223,6 +223,10 @@ export default function SignupScreen({ navigation }) {
               <TouchableOpacity onPress={() => navigation.navigate('Terms')}>
                 <Text style={styles.termsLink}>Terms and Conditions</Text>
               </TouchableOpacity>
+              <Text style={styles.terms}> and </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Privacy')}>
+                <Text style={styles.termsLink}>Privacy Policy</Text>
+              </TouchableOpacity>
               <Text style={styles.terms}>.</Text>
             </View>
 
