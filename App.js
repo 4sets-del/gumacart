@@ -1,5 +1,5 @@
 import React from 'react';
-import { StatusBar } from 'expo-status-bar';
+import { StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from './context/AuthContext';
 import AppNavigator from './navigation/AppNavigator';
@@ -9,7 +9,9 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <StatusBar style="dark" backgroundColor="#FFFFFF" />
+        {/* Transparent status bar on every screen: each screen paints its own
+            color behind it and picks light or dark icons to match. */}
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" hidden={false} />
         <AppNavigator />
         <OfflineNotice />
       </AuthProvider>
