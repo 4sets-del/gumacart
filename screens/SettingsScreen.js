@@ -12,6 +12,9 @@ import { auth, db } from "../firebaseConfig";
 import { signOutUser } from "../utils/auth";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
+import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
+import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
@@ -69,6 +72,7 @@ export default function SettingsScreen({ navigation }) {
       setName(data?.name || user?.displayName || "");
       setAddress(data?.address || "");
       setAge(data?.age ? String(data.age) : "");
+      setPhotoURL(data?.photoURL || user?.photoURL || null);
       setNotifMessages(data?.notifPrefs?.messages !== false);
       setNotifFollowers(data?.notifPrefs?.followers !== false);
       setNotifReviews(data?.notifPrefs?.reviews !== false);
@@ -76,6 +80,46 @@ export default function SettingsScreen({ navigation }) {
   };
 
   const openEditModal = async () => { await loadProfileIntoForm(); setShowEditModal(true); };
+
+  // Profile photo, changed right away from the Edit Profile sheet.
+  const [photoURL, setPhotoURL] = useState(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const savePhoto = async (url) => {
+    await updateProfile(user, { photoURL: url });
+    await updateDoc(doc(db, "users", user.uid), { photoURL: url });
+    setPhotoURL(url);
+  };
+
+  const pickPhoto = async (source) => {
+    try {
+      const permission = source === "camera"
+        ? await ImagePicker.requestCameraPermissionsAsync()
+        : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) { Alert.alert("Permission required", "Please allow access to continue."); return; }
+      const options = { mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 };
+      const result = source === "camera"
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
+      if (result.canceled || !result.assets?.[0]) return;
+      setUploadingPhoto(true);
+      const url = await uploadFile(result.assets[0].uri, `profiles/${user.uid}/avatar.jpg`, { maxSize: 600 });
+      await savePhoto(url);
+    } catch (e) {
+      Alert.alert("Error", "Could not update your photo. Please try again.");
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
+  const changePhoto = () => {
+    Alert.alert("Profile Photo", "Choose an option", [
+      { text: "Take Photo", onPress: () => pickPhoto("camera") },
+      { text: "Choose from Gallery", onPress: () => pickPhoto("gallery") },
+      photoURL ? { text: "Remove Photo", style: "destructive", onPress: () => savePhoto(null).catch(() => {}) } : null,
+      { text: "Cancel", style: "cancel" },
+    ].filter(Boolean));
+  };
 
   const handleSaveProfile = async () => {
     if (!name.trim()) { Alert.alert("Required", "Please enter your name."); return; }
@@ -214,6 +258,22 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.modalHandle} />
             <Text style={styles.modalTitle}>Edit Profile</Text>
 
+            <TouchableOpacity style={styles.photoWrap} activeOpacity={0.85} onPress={changePhoto} disabled={uploadingPhoto} accessibilityRole="button" accessibilityLabel="Change profile photo">
+              {uploadingPhoto ? (
+                <View style={[styles.photo, styles.photoFallback]}><ActivityIndicator color={GREEN} /></View>
+              ) : photoURL ? (
+                <Image source={{ uri: photoURL }} style={styles.photo} cachePolicy="memory-disk" />
+              ) : (
+                <View style={[styles.photo, styles.photoFallback]}>
+                  <Text style={styles.photoInitial}>{(name || user?.displayName || "?")[0].toUpperCase()}</Text>
+                </View>
+              )}
+              <View style={styles.photoBadge}>
+                <Ionicons name="camera" size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <Text style={styles.photoHint}>{uploadingPhoto ? "Uploading..." : "Tap to change photo"}</Text>
+
             <Text style={styles.inputLabel}>Name</Text>
             <View style={styles.inputWrapper}>
               <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your full name" placeholderTextColor={COLORS.textMuted} />
@@ -343,6 +403,12 @@ const styles = StyleSheet.create({
   deleteLink: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 12 },
   deleteLinkText: { fontSize: 13.5, color: COLORS.textMuted, textDecorationLine: "underline" },
   versionText: { textAlign: "center", fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
+  photoWrap: { alignSelf: "center", marginTop: 12 },
+  photo: { width: 88, height: 88, borderRadius: 44 },
+  photoFallback: { backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
+  photoInitial: { fontSize: 34, fontFamily: FONTS.heading, color: GREEN },
+  photoBadge: { position: "absolute", right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: COLORS.white },
+  photoHint: { textAlign: "center", fontSize: 12.5, color: COLORS.textMuted, marginTop: 6 },
   sectionLabel: { fontSize: 12, fontWeight: "700", color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginHorizontal: 20, marginTop: 22, marginBottom: 8 },
   card: { backgroundColor: COLORS.white, marginHorizontal: 16, borderRadius: 18, overflow: "hidden", ...SHADOWS.sm },
   settingRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14 },

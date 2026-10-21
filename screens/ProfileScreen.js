@@ -101,7 +101,7 @@ export default function ProfileScreen({ navigation }) {
 
   useEffect(() => {
     loadAll();
-    return navigation.addListener("focus", () => { loadListingCount(); loadCartCount(); loadFollowers(); });
+    return navigation.addListener("focus", () => { loadUserData(); loadListingCount(); loadCartCount(); loadFollowers(); });
   }, [navigation]);
 
   const onRefresh = async () => {
