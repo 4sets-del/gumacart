@@ -193,7 +193,7 @@ export default function ProfileScreen({ navigation }) {
           <View style={styles.heroCircleSmall} />
           <View style={styles.heroTop}>
             <Text style={styles.heroTitle}>Profile</Text>
-            <TouchableOpacity style={styles.heroIconBtn} onPress={() => navigation.navigate("Settings")}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Settings" style={styles.heroIconBtn} onPress={() => navigation.navigate("Settings")}>
               <Ionicons name="settings-outline" size={21} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -202,7 +202,7 @@ export default function ProfileScreen({ navigation }) {
         {/* ── PROFILE CARD ── */}
         <View style={styles.profileCard}>
           <View style={styles.identityRow}>
-            <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleChangePhoto}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Change profile photo" style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleChangePhoto}>
               {uploadingPhoto ? (
                 <View style={styles.avatarFallback}><ActivityIndicator color={COLORS.primary} /></View>
               ) : profilePhoto ? (

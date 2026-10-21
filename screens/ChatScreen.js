@@ -352,7 +352,7 @@ export default function ChatScreen({ route, navigation }) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Messages" }); }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Messages" }); }}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity
@@ -370,7 +370,7 @@ export default function ChatScreen({ route, navigation }) {
             )}
           </View>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="View profile"
           style={styles.backBtn}
           activeOpacity={0.7}
           onPress={() => navigation.navigate("SellerProfile", { sellerId: otherUserId, sellerName: otherUserName })}
@@ -440,14 +440,14 @@ export default function ChatScreen({ route, navigation }) {
                 {replyTo.text || (replyTo.type === "image" ? "📷 Photo" : "🎥 Video")}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setReplyTo(null)} activeOpacity={0.7} style={styles.replyBarClose}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReplyTo(null)} activeOpacity={0.7} style={styles.replyBarClose}>
               <Ionicons name="close" size={18} color="#888" />
             </TouchableOpacity>
           </View>
         )}
 
         <View style={[styles.inputBar, { paddingBottom: 10 + insets.bottom }]}>
-          <TouchableOpacity style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Attach photo or video" style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
             <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
           <TextInput
@@ -459,7 +459,7 @@ export default function ChatScreen({ route, navigation }) {
             multiline
             maxLength={1000}
           />
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send message"
             style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
             activeOpacity={0.8}
             onPress={handleSendText}
@@ -486,13 +486,13 @@ export default function ChatScreen({ route, navigation }) {
 
           {/* Top bar with a back arrow — also works with the hardware back button */}
           <View style={styles.viewerTopBar}>
-            <TouchableOpacity style={styles.viewerBackBtn} activeOpacity={0.7} onPress={closeViewer}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close viewer" style={styles.viewerBackBtn} activeOpacity={0.7} onPress={closeViewer}>
               <Ionicons name="arrow-back" size={24} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.viewerTitle}>
               {viewerType === "video" ? "Video" : "Photo"}
             </Text>
-            <TouchableOpacity style={styles.viewerBackBtn} activeOpacity={0.7} onPress={closeViewer}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close" style={styles.viewerBackBtn} activeOpacity={0.7} onPress={closeViewer}>
               <Ionicons name="close" size={24} color="#fff" />
             </TouchableOpacity>
           </View>

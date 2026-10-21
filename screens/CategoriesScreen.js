@@ -31,7 +31,7 @@ export default function CategoriesScreen({ navigation }) {
           <Text style={styles.headerTitle}>Categories</Text>
           <Text style={styles.headerSub}>What are you looking for today?</Text>
         </View>
-        <TouchableOpacity style={styles.iconBtn} onPress={() => navigation.navigate('Search')}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Search" style={styles.iconBtn} onPress={() => navigation.navigate('Search')}>
           <Ionicons name="search" size={22} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>

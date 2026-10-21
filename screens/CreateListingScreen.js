@@ -245,7 +245,7 @@ export default function CreateListingScreen({ navigation, route }) {
                 {index === 0 && (
                   <View style={styles.primaryBadge}><Text style={styles.primaryBadgeText}>Cover</Text></View>
                 )}
-                <TouchableOpacity style={styles.removePhotoBtn} activeOpacity={0.7} onPress={() => removeImage(index)}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove photo" style={styles.removePhotoBtn} activeOpacity={0.7} onPress={() => removeImage(index)}>
                   <Ionicons name="close" size={13} color="#fff" />
                 </TouchableOpacity>
               </View>

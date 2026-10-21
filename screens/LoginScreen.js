@@ -90,7 +90,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.hero}>
             <Image source={require('../assets/slsu-campus.jpg')} style={styles.heroImage} resizeMode="cover" />
             {navigation.canGoBack() && (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back"
                 style={[styles.backBtn, { top: insets.top + 8 }]}
                 onPress={() => navigation.goBack()}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -140,7 +140,7 @@ export default function LoginScreen({ navigation }) {
                 returnKeyType="done"
                 onSubmitEditing={handleLogin}
               />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={showPassword ? "Hide password" : "Show password"} onPress={() => setShowPassword(!showPassword)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={COLORS.textMuted} />
               </TouchableOpacity>
             </View>

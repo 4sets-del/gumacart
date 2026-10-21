@@ -147,12 +147,12 @@ export default function CartScreen({ navigation }) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Cart</Text>
         {cartItems.length > 0 ? (
-          <TouchableOpacity onPress={clearCart} activeOpacity={0.7} style={styles.headerBtn}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear cart" onPress={clearCart} activeOpacity={0.7} style={styles.headerBtn}>
             <Ionicons name="trash-outline" size={22} color={COLORS.textPrimary} />
           </TouchableOpacity>
         ) : (
@@ -197,7 +197,7 @@ export default function CartScreen({ navigation }) {
                   <View style={styles.itemInfo}>
                     <View style={styles.nameRow}>
                       <Text style={styles.itemName} numberOfLines={2}>{item.name}</Text>
-                      <TouchableOpacity onPress={() => removeFromCart(item.cartDocId)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove ${item.name} from cart`} onPress={() => removeFromCart(item.cartDocId)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                         <Ionicons name="close" size={20} color={COLORS.textSecondary} />
                       </TouchableOpacity>
                     </View>
@@ -206,11 +206,11 @@ export default function CartScreen({ navigation }) {
                       <Text style={styles.unavailable}>No longer available</Text>
                     ) : (
                       <View style={styles.stepper}>
-                        <TouchableOpacity style={styles.stepBtn} onPress={() => changeQuantity(item, -1)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Decrease quantity" style={styles.stepBtn} onPress={() => changeQuantity(item, -1)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                           <Ionicons name="remove" size={16} color={COLORS.textPrimary} />
                         </TouchableOpacity>
                         <Text style={styles.qty}>{item.quantity || 1}</Text>
-                        <TouchableOpacity style={styles.stepBtn} onPress={() => changeQuantity(item, 1)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Increase quantity" style={styles.stepBtn} onPress={() => changeQuantity(item, 1)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
                           <Ionicons name="add" size={16} color={COLORS.textPrimary} />
                         </TouchableOpacity>
                       </View>

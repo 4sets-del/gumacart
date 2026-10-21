@@ -12,7 +12,7 @@ export default function ScreenHeader({ title, subtitle, onBack, right, border = 
     <View style={[styles.wrap, { paddingTop: insets.top + 4 }, border && styles.border]}>
       <StatusBar barStyle="dark-content" />
       {onBack ? (
-        <TouchableOpacity style={styles.iconBtn} onPress={onBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.iconBtn} onPress={onBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
       ) : (

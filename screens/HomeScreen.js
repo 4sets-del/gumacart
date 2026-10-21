@@ -189,13 +189,13 @@ export default function HomeScreen({ navigation }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity ref={cartRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Cart')}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} items` : "Cart"} ref={cartRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Cart')}>
               <Ionicons name="cart-outline" size={22} color="#fff" />
               {cartCount > 0 && (
                 <View style={styles.badge}><Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text></View>
               )}
             </TouchableOpacity>
-            <TouchableOpacity ref={notifRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Notifications')}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={notifCount ? `Notifications, ${notifCount} unread` : "Notifications"} ref={notifRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Notifications')}>
               <Ionicons name="notifications-outline" size={22} color="#fff" />
               {notifCount > 0 && (
                 <View style={styles.badge}><Text style={styles.badgeText}>{notifCount}</Text></View>

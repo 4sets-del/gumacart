@@ -218,17 +218,17 @@ export default function ProductDetailScreen({ route, navigation }) {
       <StatusBarScrim />
 
       <View style={[styles.header, { paddingTop: STATUSBAR_TOP + 8 }]}>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
           <Ionicons name="arrow-back" size={21} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: 8 }}>
           {!isOwner && (
-            <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={openReport}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report listing" style={styles.headerBtn} activeOpacity={0.7} onPress={openReport}>
               <Ionicons name="flag-outline" size={18} color="#fff" />
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={handleShare}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Share listing" style={styles.headerBtn} activeOpacity={0.7} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={19} color="#fff" />
           </TouchableOpacity>
         </View>
@@ -372,7 +372,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
       <Modal statusBarTranslucent visible={fullscreenVisible} transparent animationType="fade" onRequestClose={() => setFullscreenVisible(false)}>
         <View style={{ flex: 1, backgroundColor: "#000" }}>
-          <TouchableOpacity style={styles.fullscreenClose} activeOpacity={0.7} onPress={() => setFullscreenVisible(false)}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close photo viewer" style={styles.fullscreenClose} activeOpacity={0.7} onPress={() => setFullscreenVisible(false)}>
             <Ionicons name="close" size={24} color="#fff" />
           </TouchableOpacity>
           <View style={styles.fullscreenCounter}>
@@ -411,13 +411,13 @@ export default function ProductDetailScreen({ route, navigation }) {
           <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
             <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : "Mark as Sold"}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.deleteIconBtn, deleting && { opacity: 0.6 }]} activeOpacity={0.8} onPress={handleDelete} disabled={deleting || marking}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Delete listing" style={[styles.deleteIconBtn, deleting && { opacity: 0.6 }]} activeOpacity={0.8} onPress={handleDelete} disabled={deleting || marking}>
             <Ionicons name="trash-outline" size={21} color={COLORS.error} />
           </TouchableOpacity>
         </View>
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
-          <TouchableOpacity style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Message seller" style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
             <Ionicons name="chatbubble-ellipses-outline" size={22} color={GREEN} />
           </TouchableOpacity>
           {isSold ? (
@@ -486,7 +486,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 {proofImage ? (
                   <View style={styles.proofPreviewWrap}>
                     <Image source={{ uri: proofImage }} style={styles.proofPreview} resizeMode="cover" />
-                    <TouchableOpacity style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove proof photo" style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
                       <Ionicons name="close-circle" size={26} color="#e74c3c" />
                     </TouchableOpacity>
                   </View>

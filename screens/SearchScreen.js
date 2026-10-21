@@ -257,7 +257,7 @@ export default function SearchScreen({ navigation, route }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.searchBar}>
@@ -274,7 +274,7 @@ export default function SearchScreen({ navigation, route }) {
             autoCapitalize="none"
           />
           {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchText("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearchText("")} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
               <Ionicons name="close" size={18} color={COLORS.textSecondary} />
             </TouchableOpacity>
           )}
@@ -327,7 +327,7 @@ export default function SearchScreen({ navigation, route }) {
                   <Ionicons name="time-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                   <Text style={styles.historyChipText}>{t}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.historyChipX} activeOpacity={0.7} onPress={() => saveHistory(searchHistory.filter((x) => x !== t))}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Remove ${t} from recent searches`} style={styles.historyChipX} activeOpacity={0.7} onPress={() => saveHistory(searchHistory.filter((x) => x !== t))}>
                   <Ionicons name="close" size={13} color={COLORS.textMuted} />
                 </TouchableOpacity>
               </View>
@@ -362,7 +362,7 @@ export default function SearchScreen({ navigation, route }) {
                   rating={ratings[item.sellerId]}
                   onPress={() => navigation.navigate("ProductDetail", { product: item })}
                   right={
-                    <TouchableOpacity style={styles.cartBtn} onPress={() => toggleCart(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={inCart ? "Remove from cart" : "Add to cart"} style={styles.cartBtn} onPress={() => toggleCart(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                       <Ionicons name={inCart ? "cart" : "cart-outline"} size={21} color={inCart ? COLORS.primary : COLORS.textMuted} />
                     </TouchableOpacity>
                   }
@@ -397,7 +397,7 @@ export default function SearchScreen({ navigation, route }) {
           <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
             <View style={styles.sheetHeader}>
               <Text style={styles.sheetTitle}>Sort & Filter</Text>
-              <TouchableOpacity onPress={() => setSheetVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setSheetVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                 <Ionicons name="close" size={24} color={COLORS.textPrimary} />
               </TouchableOpacity>
             </View>

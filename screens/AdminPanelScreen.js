@@ -1119,7 +1119,7 @@ export default function AdminPanelScreen({ navigation }) {
 
       <Modal statusBarTranslucent visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
         <View style={styles.viewerOverlay}>
-          <TouchableOpacity style={styles.viewerClose} activeOpacity={0.8} onPress={() => setViewerImage(null)}>
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close photo" style={styles.viewerClose} activeOpacity={0.8} onPress={() => setViewerImage(null)}>
             <Ionicons name="close" size={28} color="#fff" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.viewerBackdrop} activeOpacity={1} onPress={() => setViewerImage(null)}>

@@ -21,7 +21,7 @@ function StarRating({ rating, size = 20, onPress }) {
   return (
     <View style={{ flexDirection: "row", gap: 4 }}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <TouchableOpacity key={star} onPress={() => onPress?.(star)} disabled={!onPress} activeOpacity={0.6}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${star} star${star > 1 ? "s" : ""}`} key={star} onPress={() => onPress?.(star)} disabled={!onPress} activeOpacity={0.6}>
           <Ionicons name={star <= rating ? "star" : "star-outline"} size={size} color={star <= rating ? GOLD : "#D5D5D5"} />
         </TouchableOpacity>
       ))}
@@ -262,12 +262,12 @@ export default function SellerProfileScreen({ route, navigation }) {
           <View style={styles.heroCircle} />
           <View style={styles.heroCircleSmall} />
           <View style={styles.heroTop}>
-            <TouchableOpacity style={styles.heroBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.heroBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.heroTitle}>Seller Profile</Text>
             {!isOwnProfile ? (
-              <TouchableOpacity style={styles.heroBtn} activeOpacity={0.7} onPress={openReport}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report user" style={styles.heroBtn} activeOpacity={0.7} onPress={openReport}>
                 <Ionicons name="flag-outline" size={19} color="#fff" />
               </TouchableOpacity>
             ) : (
@@ -342,7 +342,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 <Ionicons name="chatbubble-ellipses-outline" size={17} color={GREEN} style={{ marginRight: 6 }} />
                 <Text style={styles.messageBtnText}>Message</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.rateBtn} activeOpacity={0.85} onPress={() => setShowRatingModal(true)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={styles.rateBtn} activeOpacity={0.85} onPress={() => setShowRatingModal(true)}>
                 <Ionicons name="star" size={19} color={COLORS.star} />
               </TouchableOpacity>
             </View>
@@ -556,7 +556,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 {proofImage ? (
                   <View style={styles.proofPreviewWrap}>
                     <Image source={{ uri: proofImage }} style={styles.proofPreview} resizeMode="cover" />
-                    <TouchableOpacity style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
+                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove proof photo" style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
                       <Ionicons name="close-circle" size={26} color="#e74c3c" />
                     </TouchableOpacity>
                   </View>
