@@ -4,9 +4,10 @@ import {
 } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  collection, query, orderBy, onSnapshot,
+  collection, query, orderBy, onSnapshot, limit,
   doc, updateDoc, deleteDoc, getDocs, getDoc, writeBatch,
 } from 'firebase/firestore';
+import { Swipeable } from 'react-native-gesture-handler';
 import { auth, db } from '../firebaseConfig';
 import ScreenHeader from '../components/ScreenHeader';
 import { COLORS, RADIUS, FONTS } from '../constants/theme';
@@ -14,16 +15,46 @@ import { COLORS, RADIUS, FONTS } from '../constants/theme';
 const GREEN = COLORS.primary;
 
 const NOTIF_ICONS = {
-  message:     { icon: 'chatbubble',       color: '#2980b9' },
-  follow:      { icon: 'person-add',       color: '#1B6B3A' },
-  review:      { icon: 'star',             color: '#F4C542' },
-  offer:       { icon: 'pricetag',         color: GREEN },
-  sold:        { icon: 'checkmark-circle', color: GREEN },
-  new_listing: { icon: 'bag-handle',       color: '#e67e22' },
-  barter:      { icon: 'swap-horizontal',  color: '#e67e22' },
-  donate:      { icon: 'gift',             color: '#e74c3c' },
-  system:      { icon: 'megaphone',        color: '#9b59b6' },
+  message:     { icon: 'chatbubble-ellipses', color: '#2563EB' },
+  follow:      { icon: 'person-add',          color: '#7C3AED' },
+  review:      { icon: 'star',                color: '#F59E0B' },
+  offer:       { icon: 'pricetag',            color: GREEN },
+  sold:        { icon: 'checkmark-circle',    color: GREEN },
+  new_listing: { icon: 'bag-handle',          color: '#EA580C' },
+  barter:      { icon: 'swap-horizontal',     color: '#EA580C' },
+  donate:      { icon: 'gift',                color: '#E11D48' },
+  system:      { icon: 'megaphone',           color: '#0D9488' },
 };
+
+// Filter chips. Notifications are grouped by where tapping them leads.
+const FILTERS = [
+  { id: 'all',      label: 'All',      icon: 'apps' },
+  { id: 'messages', label: 'Messages', icon: 'chatbubble-ellipses' },
+  { id: 'listings', label: 'Listings', icon: 'pricetags' },
+  { id: 'social',   label: 'Social',   icon: 'people' },
+  { id: 'account',  label: 'Account',  icon: 'shield-checkmark' },
+];
+
+function categoryOf(n) {
+  if (n.type === 'message' || n.nav === 'chat') return 'messages';
+  if (n.nav === 'listing') return 'listings';
+  if (n.type === 'follow' || n.type === 'review') return 'social';
+  return 'account';
+}
+
+// "Today", "Yesterday", "This week" or "Earlier" for a notification time.
+function dayGroup(ts) {
+  const d = ts?.toDate ? ts.toDate() : new Date();
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const diffDays = Math.floor((startOfToday - new Date(d).setHours(0, 0, 0, 0)) / 86400000);
+  if (diffDays <= 0) return 'Today';
+  if (diffDays === 1) return 'Yesterday';
+  if (diffDays < 7) return 'This week';
+  return 'Earlier';
+}
+
+const PAGE = 50;
 
 function timeAgo(date) {
   if (!date) return '';
@@ -41,21 +72,27 @@ export default function NotificationsScreen({ navigation }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [filter, setFilter] = useState('all');
+  // Only the newest notifications are loaded; "Load older" grows the window.
+  const [notifLimit, setNotifLimit] = useState(PAGE);
+  const [hasOlder, setHasOlder] = useState(false);
   const user = auth.currentUser;
 
   useEffect(() => {
     if (!user?.uid) { setLoading(false); return; }
     const q = query(
       collection(db, 'users', user.uid, 'notifications'),
-      orderBy('createdAt', 'desc')
+      orderBy('createdAt', 'desc'),
+      limit(notifLimit),
     );
     const unsub = onSnapshot(q, (snap) => {
+      setHasOlder(snap.size >= notifLimit);
       setNotifications(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
       setLoading(false);
       setRefreshing(false);
     }, (e) => { console.log('Notifications error:', e.message); setLoading(false); setRefreshing(false); });
     return unsub;
-  }, []);
+  }, [notifLimit]);
 
   const markAsRead = async (id) => {
     try { await updateDoc(doc(db, 'users', user.uid, 'notifications', id), { read: true }); } catch (e) {}
@@ -137,6 +174,15 @@ export default function NotificationsScreen({ navigation }) {
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const shown = filter === 'all' ? notifications : notifications.filter((n) => categoryOf(n) === filter);
+
+  // Group into Today / Yesterday / This week / Earlier, keeping order.
+  const groups = [];
+  shown.forEach((n) => {
+    const label = dayGroup(n.createdAt);
+    if (!groups.length || groups[groups.length - 1].label !== label) groups.push({ label, items: [] });
+    groups[groups.length - 1].items.push(n);
+  });
 
   return (
     <View style={styles.safe}>
@@ -149,45 +195,55 @@ export default function NotificationsScreen({ navigation }) {
             <Text style={styles.markAllText}>Mark all read</Text>
           </TouchableOpacity>
         ) : null}
-        border
       />
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow} style={styles.filterScroll}>
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          return (
+            <TouchableOpacity key={f.id} style={[styles.filterChip, active && styles.filterChipActive]} activeOpacity={0.8} onPress={() => setFilter(f.id)}>
+              <Ionicons name={f.icon} size={14} color={active ? '#fff' : COLORS.textSecondary} />
+              <Text style={[styles.filterText, active && styles.filterTextActive]}>{f.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}>
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator size="large" color={GREEN} />
-            <Text style={styles.loadingText}>Loading notifications...</Text>
           </View>
-        ) : notifications.length === 0 ? (
+        ) : shown.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBox}>
-              <Ionicons name="notifications-outline" size={44} color={GREEN} />
+              <Ionicons name="notifications-off-outline" size={42} color={GREEN} />
             </View>
-            <Text style={styles.emptyTitle}>No Notifications</Text>
+            <Text style={styles.emptyTitle}>{filter === 'all' ? 'No notifications' : 'Nothing here'}</Text>
             <Text style={styles.emptySub}>You're all caught up!</Text>
           </View>
         ) : (
           <>
-            {notifications.filter(n => !n.read).length > 0 && (
-              <View style={styles.section}>
-                <Text style={styles.sectionLabel}>New</Text>
-                {notifications.filter(n => !n.read).map(notif => (
-                  <NotifCard key={notif.id} notif={notif} onPress={() => openNotif(notif)} onDelete={() => deleteNotification(notif.id)} />
-                ))}
-              </View>
-            )}
-            {notifications.filter(n => n.read).length > 0 && (
-              <View style={styles.section}>
+            {groups.map((g, gi) => (
+              <View key={g.label} style={styles.section}>
                 <View style={styles.sectionRow}>
-                  <Text style={styles.sectionLabel}>Earlier</Text>
-                  <TouchableOpacity onPress={clearAll}>
-                    <Text style={styles.clearText}>Clear all</Text>
-                  </TouchableOpacity>
+                  <Text style={styles.sectionLabel}>{g.label}</Text>
+                  {gi === 0 && (
+                    <TouchableOpacity onPress={clearAll} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                      <Text style={styles.clearText}>Clear all</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-                {notifications.filter(n => n.read).map(notif => (
+                {g.items.map((notif) => (
                   <NotifCard key={notif.id} notif={notif} onPress={() => openNotif(notif)} onDelete={() => deleteNotification(notif.id)} />
                 ))}
               </View>
+            ))}
+            <Text style={styles.swipeHint}>Swipe left on a notification to delete it</Text>
+            {hasOlder && (
+              <TouchableOpacity style={styles.loadOlderBtn} activeOpacity={0.8} onPress={() => setNotifLimit((n) => n + PAGE)}>
+                <Text style={styles.loadOlderText}>Load older notifications</Text>
+              </TouchableOpacity>
             )}
           </>
         )}
@@ -199,28 +255,29 @@ export default function NotificationsScreen({ navigation }) {
 
 function NotifCard({ notif, onPress, onDelete }) {
   const conf = NOTIF_ICONS[notif.type] || NOTIF_ICONS.system;
-  return (
-    <TouchableOpacity
-      style={[styles.notifCard, !notif.read && styles.notifCardUnread]}
-      onPress={onPress}
-      activeOpacity={0.8}
-      onLongPress={() => Alert.alert('Delete', 'Remove this notification?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: onDelete },
-      ])}
-    >
-      <View style={[styles.notifIconBox, { backgroundColor: conf.color + '18' }]}>
-        <Ionicons name={conf.icon} size={20} color={conf.color} />
-      </View>
-      <View style={styles.notifContent}>
-        <View style={styles.notifTopRow}>
-          <Text style={[styles.notifTitle, !notif.read && styles.notifTitleUnread]}>{notif.title}</Text>
-          <Text style={styles.notifTime}>{timeAgo(notif.createdAt)}</Text>
-        </View>
-        <Text style={styles.notifBody} numberOfLines={2}>{notif.body}</Text>
-      </View>
-      {!notif.read && <View style={styles.unreadDot} />}
+  // Swipe left to reveal a red Delete action; a full swipe deletes.
+  const renderDelete = () => (
+    <TouchableOpacity style={styles.deleteAction} activeOpacity={0.8} onPress={onDelete}>
+      <Ionicons name="trash" size={20} color="#fff" />
+      <Text style={styles.deleteActionText}>Delete</Text>
     </TouchableOpacity>
+  );
+  return (
+    <Swipeable renderRightActions={renderDelete} onSwipeableOpen={(dir) => { if (dir === 'right') onDelete(); }} rightThreshold={90} overshootRight={false}>
+      <TouchableOpacity style={[styles.notifCard, !notif.read && styles.notifCardUnread]} onPress={onPress} activeOpacity={0.8}>
+        <View style={[styles.notifIconBox, { backgroundColor: conf.color + '1A' }]}>
+          <Ionicons name={conf.icon} size={20} color={conf.color} />
+        </View>
+        <View style={styles.notifContent}>
+          <View style={styles.notifTopRow}>
+            <Text style={[styles.notifTitle, !notif.read && styles.notifTitleUnread]} numberOfLines={1}>{notif.title}</Text>
+            <Text style={styles.notifTime}>{timeAgo(notif.createdAt)}</Text>
+          </View>
+          <Text style={styles.notifBody} numberOfLines={2}>{notif.body}</Text>
+        </View>
+        {!notif.read && <View style={styles.unreadDot} />}
+      </TouchableOpacity>
+    </Swipeable>
   );
 }
 
@@ -230,7 +287,18 @@ const styles = StyleSheet.create({
   markAllText: { fontSize: 13, color: COLORS.primary, fontWeight: '700' },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 90 },
   loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: '500' },
-  section: { paddingHorizontal: 16, paddingTop: 16 },
+  filterScroll: { flexGrow: 0, flexShrink: 0 },
+  filterRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  filterChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 7, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt },
+  filterChipActive: { backgroundColor: GREEN },
+  filterText: { fontSize: 12.5, fontWeight: '700', color: COLORS.textSecondary },
+  filterTextActive: { color: '#fff' },
+  deleteAction: { width: 88, marginBottom: 8, borderRadius: RADIUS.lg, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center', gap: 2, marginLeft: 8 },
+  deleteActionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  swipeHint: { textAlign: 'center', fontSize: 11.5, color: COLORS.textMuted, marginTop: 8 },
+  loadOlderBtn: { alignSelf: 'center', marginTop: 12, paddingHorizontal: 18, paddingVertical: 9, borderRadius: RADIUS.full, backgroundColor: COLORS.primaryPale },
+  loadOlderText: { fontSize: 13, fontWeight: '700', color: GREEN },
+  section: { paddingHorizontal: 16, paddingTop: 8 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
   sectionLabel: { fontSize: 15, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8 },
   clearText: { fontSize: 13, color: COLORS.error, fontWeight: '600' },
