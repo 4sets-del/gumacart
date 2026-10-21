@@ -1,35 +1,27 @@
 import { doc, getDoc } from "firebase/firestore";
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, ActivityIndicator, KeyboardAvoidingView, StatusBar, Image, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, KeyboardAvoidingView, Image, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import { collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
+import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import { CATEGORIES, normalizeCategory } from "../constants/listings";
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS } from "../constants/theme";
+import GradientButton from "../components/GradientButton";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 const LISTING_TYPES = [
-  { id: 'sell',   label: 'For Sale',    icon: '🏷️', color: GREEN      },
-  { id: 'buy',    label: 'Looking For', icon: '🔍', color: '#2980b9'  },
-  { id: 'barter', label: 'Barter',      icon: '🔄', color: '#e67e22'  },
-  { id: 'donate', label: 'Donate',      icon: '🎁', color: '#e74c3c'  },
+  { id: 'sell',   label: 'For Sale',    icon: 'pricetag-outline',        color: COLORS.sell,   bg: COLORS.sellBg },
+  { id: 'buy',    label: 'Looking For', icon: 'search-outline',          color: COLORS.buy,    bg: COLORS.buyBg },
+  { id: 'barter', label: 'Barter',      icon: 'swap-horizontal-outline', color: COLORS.barter, bg: COLORS.barterBg },
+  { id: 'donate', label: 'Donate',      icon: 'gift-outline',            color: COLORS.donate, bg: COLORS.donateBg },
 ];
 
-const CATEGORIES = [
-  { id: "1", name: "Clothing",    icon: "👕" },
-  { id: "2", name: "Electronics", icon: "💻" },
-  { id: "3", name: "Books",       icon: "📚" },
-  { id: "4", name: "Furniture",   icon: "🛋️" },
-  { id: "5", name: "Sports",      icon: "⚽" },
-  { id: "6", name: "Others",      icon: "📦" },
-];
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
@@ -47,7 +39,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const [description, setDescription]       = useState(editListing?.description || "");
   const [specifications, setSpecifications] = useState(editListing?.specifications || "");
   const [price, setPrice]                   = useState(editListing?.price ? String(editListing.price) : "");
-  const [category, setCategory]             = useState(editListing?.category || "");
+  const [category, setCategory]             = useState(normalizeCategory(editListing?.category));
   const [condition, setCondition]           = useState(editListing?.condition || "");
   const [location, setLocation]             = useState(editListing?.location || "");
   const [contactNumber, setContactNumber]   = useState(editListing?.contactNumber || "");
@@ -111,17 +103,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
   const uploadImage = async (uri) => {
     const filename = `listings/${auth.currentUser.uid}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-    const storageRef = ref(storage, filename);
-    const blob = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = () => resolve(xhr.response);
-      xhr.onerror = () => reject(new Error("Network request failed"));
-      xhr.responseType = "blob";
-      xhr.open("GET", uri, true);
-      xhr.send(null);
-    });
-    await uploadBytes(storageRef, blob);
-    return await getDownloadURL(storageRef);
+    return uploadFile(uri, filename);
   };
 
   const handleSubmit = async () => {
@@ -170,7 +152,7 @@ export default function CreateListingScreen({ navigation, route }) {
         Alert.alert(
           "✅ Changes Submitted",
           "Your listing has been updated and is pending admin approval again. It will reappear once approved.",
-          [{ text: "OK", onPress: () => navigation.navigate("Home") }]
+          [{ text: "OK", onPress: () => navigation.navigate("Main", { screen: "Home" }) }]
         );
       } else {
         await addDoc(collection(db, "listings"), {
@@ -194,16 +176,12 @@ export default function CreateListingScreen({ navigation, route }) {
   const showPrice = listingType === 'sell' || listingType === 'buy';
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Home"); }}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEditing ? "Edit Listing" : "Create Listing"}</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title={isEditing ? "Edit Listing" : "Create Listing"}
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}
+        border
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -217,11 +195,11 @@ export default function CreateListingScreen({ navigation, route }) {
                 <TouchableOpacity
                   key={type.id}
                   activeOpacity={0.8}
-                  style={[styles.typeBtn, isActive && { backgroundColor: type.color, borderColor: type.color }]}
+                  style={[styles.typeBtn, isActive && { backgroundColor: type.bg, borderColor: type.color }]}
                   onPress={() => setListingType(type.id)}
                 >
-                  <Text style={styles.typeBtnIcon}>{type.icon}</Text>
-                  <Text style={[styles.typeBtnLabel, isActive && { color: "#fff" }]}>{type.label}</Text>
+                  <Ionicons name={type.icon} size={20} color={isActive ? type.color : COLORS.textMuted} style={{ marginBottom: 4 }} />
+                  <Text style={[styles.typeBtnLabel, isActive && { color: type.color }]}>{type.label}</Text>
                 </TouchableOpacity>
               );
             })}
@@ -257,7 +235,7 @@ export default function CreateListingScreen({ navigation, route }) {
             <TextInput
               style={styles.input}
               placeholder="e.g. Canon EOS Camera, Calculus Book"
-              placeholderTextColor="#A8B0A2"
+              placeholderTextColor={COLORS.textMuted}
               value={title}
               onChangeText={setTitle}
               maxLength={80}
@@ -270,7 +248,7 @@ export default function CreateListingScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, { paddingTop: 14, height: 110 }]}
               placeholder="Describe your item — condition, specs, reason for selling..."
-              placeholderTextColor="#A8B0A2"
+              placeholderTextColor={COLORS.textMuted}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -288,7 +266,7 @@ export default function CreateListingScreen({ navigation, route }) {
             <TextInput
               style={[styles.input, { paddingTop: 14, height: 90 }]}
               placeholder="Any extra details — e.g. cable length: 2 meters, RAM: 8GB, size: Medium, color: Blue..."
-              placeholderTextColor="#A8B0A2"
+              placeholderTextColor={COLORS.textMuted}
               value={specifications}
               onChangeText={setSpecifications}
               multiline
@@ -306,7 +284,7 @@ export default function CreateListingScreen({ navigation, route }) {
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
                   placeholder="0.00"
-                  placeholderTextColor="#A8B0A2"
+                  placeholderTextColor={COLORS.textMuted}
                   value={price}
                   onChangeText={setPrice}
                   keyboardType="numeric"
@@ -320,12 +298,12 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={styles.chipGrid}>
             {CATEGORIES.map((cat) => (
               <TouchableOpacity
-                key={cat.id}
+                key={cat.name}
                 activeOpacity={0.8}
                 style={[styles.chip, category === cat.name && styles.chipActive]}
                 onPress={() => setCategory(cat.name)}
               >
-                <Text style={styles.chipIcon}>{cat.icon}</Text>
+                <Text style={styles.chipIcon}>{cat.emoji}</Text>
                 <Text style={[styles.chipLabel, category === cat.name && styles.chipLabelActive]}>{cat.name}</Text>
               </TouchableOpacity>
             ))}
@@ -356,7 +334,7 @@ export default function CreateListingScreen({ navigation, route }) {
                 style={[styles.chip, location === loc && styles.chipActive]}
                 onPress={() => setLocation(loc)}
               >
-                <Ionicons name="location-sharp" size={13} color={location === loc ? "#fff" : "#888"} style={{ marginRight: 4 }} />
+                <Ionicons name="location-sharp" size={13} color={location === loc ? "#fff" : COLORS.textMuted} style={{ marginRight: 4 }} />
                 <Text style={[styles.chipLabel, location === loc && styles.chipLabelActive]}>{loc}</Text>
               </TouchableOpacity>
             ))}
@@ -365,11 +343,11 @@ export default function CreateListingScreen({ navigation, route }) {
           {/* Contact Number */}
           <Text style={styles.sectionLabel}>Contact Number</Text>
           <View style={styles.inputWrapper}>
-            <Ionicons name="call" size={17} color="#888" style={{ marginRight: 10 }} />
+            <Ionicons name="call-outline" size={17} color={COLORS.textMuted} style={{ marginRight: 10 }} />
             <TextInput
               style={[styles.input, { flex: 1 }]}
               placeholder="09XXXXXXXXX"
-              placeholderTextColor="#A8B0A2"
+              placeholderTextColor={COLORS.textMuted}
               value={contactNumber}
               onChangeText={setContactNumber}
               keyboardType="phone-pad"
@@ -386,70 +364,58 @@ export default function CreateListingScreen({ navigation, route }) {
           </View>
 
           {/* Submit */}
-          <TouchableOpacity
-            style={[styles.submitBtn, { backgroundColor: activeType?.color }, loading && { opacity: 0.7 }]}
-            activeOpacity={0.85}
+          <GradientButton
+            title={isEditing ? "Save Changes" : "Post Listing"}
+            icon={isEditing ? "save-outline" : "rocket-outline"}
             onPress={handleSubmit}
-            disabled={loading}
-          >
-            {loading ? (
-              <View style={styles.submitLoading}>
-                <ActivityIndicator color="#fff" />
-                <Text style={styles.submitBtnText}>  Uploading...</Text>
-              </View>
-            ) : (
-              <Text style={styles.submitBtnText}>{isEditing ? "💾 Save Changes" : "🚀 Post Listing"}</Text>
-            )}
-          </TouchableOpacity>
+            loading={loading}
+            style={{ marginTop: 14 }}
+          />
 
           <View style={{ height: 50 }} />
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: "#E0E8DB" },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E8DB", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#111" },
-  container: { paddingHorizontal: 20, paddingTop: 22 },
+  safe: { flex: 1, backgroundColor: COLORS.white },
+  container: { paddingHorizontal: 16, paddingTop: 6 },
   sectionLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 10 },
-  sectionLabel: { fontSize: 14, fontWeight: "700", color: "#222", marginBottom: 10, marginTop: 18 },
-  required: { fontSize: 11, color: "#e74c3c", fontWeight: "600" },
+  sectionLabel: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 10, marginTop: 18 },
+  required: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
   typeRow: { flexDirection: "row", gap: 8 },
-  typeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: 14, borderWidth: 2, borderColor: "#E5EBE0", backgroundColor: "#fff" },
-  typeBtnIcon: { fontSize: 20, marginBottom: 5 },
-  typeBtnLabel: { fontSize: 11, fontWeight: "700", color: "#666" },
+  typeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.white },
+  typeBtnLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textSecondary },
   photosRow: { flexDirection: "row", marginBottom: 4 },
-  photoThumb: { width: 100, height: 100, borderRadius: 14, marginRight: 10, overflow: "hidden", position: "relative", elevation: 1 },
+  photoThumb: { width: 96, height: 96, borderRadius: RADIUS.md, marginRight: 10, overflow: "hidden", position: "relative" },
   photoThumbImg: { width: "100%", height: "100%" },
-  primaryBadge: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(46,107,62,0.88)", paddingVertical: 4, alignItems: "center" },
+  primaryBadge: { position: "absolute", bottom: 0, left: 0, right: 0, backgroundColor: "rgba(27,107,58,0.88)", paddingVertical: 4, alignItems: "center" },
   primaryBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   removePhotoBtn: { position: "absolute", top: 5, right: 5, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
-  addPhotoBtn: { width: 100, height: 100, borderRadius: 14, borderWidth: 2, borderColor: "#D5DECF", borderStyle: "dashed", backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  addPhotoText: { fontSize: 11, fontWeight: "700", color: "#666" },
-  addPhotoSub: { fontSize: 10, color: "#bbb", marginTop: 2 },
-  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 14, borderWidth: 1.5, borderColor: "#E5EBE0", paddingHorizontal: 16, minHeight: 54 },
-  input: { flex: 1, fontSize: 15, color: "#222" },
-  pesoSign: { fontSize: 18, marginRight: 10, color: "#888" },
-  charCount: { fontSize: 11, color: "#bbb", textAlign: "right", marginTop: 4 },
+  addPhotoBtn: { width: 96, height: 96, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primaryLighter, borderStyle: "dashed", backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
+  addPhotoText: { fontSize: 11.5, fontWeight: "700", color: GREEN },
+  addPhotoSub: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
+  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, minHeight: 52 },
+  input: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
+  pesoSign: { fontSize: 17, marginRight: 8, color: COLORS.textSecondary },
+  charCount: { fontSize: 11, color: COLORS.textMuted, textAlign: "right", marginTop: 4 },
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E5EBE0" },
-  chipActive: { backgroundColor: GREEN, borderColor: GREEN },
+  chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt },
+  chipActive: { backgroundColor: GREEN },
   chipIcon: { fontSize: 14, marginRight: 5 },
-  chipLabel: { fontSize: 13, color: "#666", fontWeight: "600" },
+  chipLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   chipLabelActive: { color: "#fff", fontWeight: "700" },
   conditionRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
-  conditionBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1.5, borderColor: "#E5EBE0" },
-  conditionBtnActive: { backgroundColor: GREEN, borderColor: GREEN },
-  conditionLabel: { fontSize: 13, color: "#666", fontWeight: "600" },
+  conditionBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt },
+  conditionBtnActive: { backgroundColor: GREEN },
+  conditionLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   conditionLabelActive: { color: "#fff", fontWeight: "700" },
-  previewHint: { flexDirection: "row", alignItems: "center", marginTop: 26, backgroundColor: "#fff", borderRadius: 14, padding: 14, borderWidth: 1, borderColor: "#EAEFE6" },
+  previewHint: { flexDirection: "row", alignItems: "center", marginTop: 24, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14 },
   previewDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
-  previewHintText: { fontSize: 13, color: "#666", flex: 1 },
-  submitBtn: { borderRadius: 16, height: 58, alignItems: "center", justifyContent: "center", marginTop: 16, elevation: 3, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  previewHintText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
+  submitBtn: { borderRadius: RADIUS.md, height: 52, alignItems: "center", justifyContent: "center", marginTop: 14, backgroundColor: GREEN },
   submitLoading: { flexDirection: "row", alignItems: "center" },
-  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

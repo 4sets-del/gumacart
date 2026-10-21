@@ -1,13 +1,12 @@
 import React from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar, Platform, Image,} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View, Text, StyleSheet, ScrollView, Image,
+} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 const MAKERS = [
   {
@@ -43,29 +42,18 @@ const PILLARS = [
 
 export default function AboutScreen({ navigation }) {
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.7}
-          onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Settings"); }}
-        >
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>About</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="About"
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Settings"); }}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
 
         {/* App Hero */}
         <View style={styles.heroBanner}>
-          <View style={styles.heroIconCircle}>
-            <Text style={styles.heroIcon}>🛒</Text>
-          </View>
+          <View style={styles.heroCircle} />
+          <Image source={require("../assets/icon.png")} style={styles.heroLogo} />
           <Text style={styles.heroAppName}>SLSU-GumaCart</Text>
           <Text style={styles.heroTagline}>The Official SLSU Student Marketplace</Text>
           <View style={styles.versionPill}>
@@ -151,61 +139,58 @@ export default function AboutScreen({ navigation }) {
           <Text style={styles.footerSub}>© 2026 SLSU-GumaCart · Southern Luzon State University</Text>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: "#E0E8DB" },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E8DB", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: GREEN },
+  safe: { flex: 1, backgroundColor: COLORS.background },
 
   // Hero
-  heroBanner: { margin: 20, backgroundColor: GREEN, borderRadius: 24, padding: 32, alignItems: "center", elevation: 4, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  heroIconCircle: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 14 },
-  heroIcon: { fontSize: 42 },
+  heroBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
+  heroCircle: { position: "absolute", right: -50, top: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: COLORS.primaryLight, opacity: 0.5 },
+  heroLogo: { width: 72, height: 72, borderRadius: 18, marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
   heroAppName: { fontSize: 26, fontWeight: "800", color: "#fff", marginBottom: 6, letterSpacing: -0.3 },
-  heroTagline: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginBottom: 14, textAlign: "center" },
-  versionPill: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5 },
-  heroVersion: { fontSize: 11, color: "rgba(255,255,255,0.9)", fontWeight: "600" },
+  heroTagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 14, textAlign: "center" },
+  versionPill: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: RADIUS.full, paddingHorizontal: 14, paddingVertical: 5 },
+  heroVersion: { fontSize: 11, color: "#fff", fontWeight: "600" },
 
-  section: { paddingHorizontal: 20, marginBottom: 24 },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#111", marginBottom: 14 },
+  section: { paddingHorizontal: 16, marginBottom: 24 },
+  sectionTitle: { fontSize: 17, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 12 },
 
   // Story
-  storyCard: { backgroundColor: "#fff", borderRadius: 20, borderWidth: 1, borderColor: "#E8EDE5", padding: 22, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  storyCard: { backgroundColor: COLORS.white, borderRadius: 18, padding: 20, ...SHADOWS.sm },
   storyQuote: { fontSize: 56, color: GREEN, lineHeight: 48, fontWeight: "800", marginBottom: 4, opacity: 0.3 },
-  storyText: { fontSize: 14, color: "#444", lineHeight: 23, marginBottom: 14 },
+  storyText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 23, marginBottom: 14 },
   storyAppName: { fontWeight: "700", color: GREEN },
 
   // Mission
-  missionCard: { backgroundColor: "#E8F5EC", borderRadius: 20, padding: 20, flexDirection: "row", alignItems: "flex-start", gap: 14, borderWidth: 1, borderColor: "#C8E6D0" },
-  missionIconCircle: { width: 46, height: 46, borderRadius: 23, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  missionIcon: { fontSize: 24 },
-  missionText: { flex: 1, fontSize: 14, color: GREEN, lineHeight: 22, fontWeight: "500" },
+  missionCard: { backgroundColor: COLORS.primaryPale, borderRadius: 18, padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 14 },
+  missionIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center" },
+  missionIcon: { fontSize: 22 },
+  missionText: { flex: 1, fontSize: 14, color: COLORS.primaryDark, lineHeight: 22, fontWeight: "500" },
 
   // Pillars
   pillarsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  pillarCard: { width: "47%", backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#E8EDE5", borderTopWidth: 4, padding: 16, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  pillarIconBox: { width: 44, height: 44, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  pillarIcon: { fontSize: 22 },
+  pillarCard: { width: "47.5%", backgroundColor: COLORS.white, borderRadius: RADIUS.lg, borderTopWidth: 3, padding: 14, ...SHADOWS.sm },
+  pillarIconBox: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 },
+  pillarIcon: { fontSize: 21 },
   pillarTitle: { fontSize: 15, fontWeight: "800", marginBottom: 4 },
-  pillarDesc: { fontSize: 12, color: "#888", lineHeight: 18 },
+  pillarDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
 
   // Makers
-  makerCard: { backgroundColor: "#fff", borderRadius: 20, borderWidth: 1, borderColor: "#E8EDE5", padding: 18, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", gap: 14, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  makerAvatar: { width: 70, height: 70, borderRadius: 35, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "#D0E8D8" },
-  makerAvatarText: { fontSize: 28, fontWeight: "800", color: "#fff" },
-  makerPhoto: { width: 70, height: 70, borderRadius: 35, borderWidth: 3, borderColor: "#D0E8D8" },
+  makerCard: { backgroundColor: COLORS.white, borderRadius: 18, padding: 16, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", gap: 14, ...SHADOWS.sm },
+  makerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  makerAvatarText: { fontSize: 26, fontWeight: "800", color: "#fff" },
+  makerPhoto: { width: 64, height: 64, borderRadius: 32 },
   makerInfo: { flex: 1 },
-  makerName: { fontSize: 16, fontWeight: "800", color: "#111", marginBottom: 6 },
-  makerRolePill: { alignSelf: "flex-start", backgroundColor: "#E8F5EC", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
+  makerName: { fontSize: 16, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 6 },
+  makerRolePill: { alignSelf: "flex-start", backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
   makerRoleText: { fontSize: 11, color: GREEN, fontWeight: "700" },
-  makerDesc: { fontSize: 13, color: "#555", lineHeight: 20 },
+  makerDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
 
   // Footer
-  footer: { marginHorizontal: 20, marginTop: 4, marginBottom: 20, backgroundColor: "#fff", borderRadius: 18, borderWidth: 1, borderColor: "#E8EDE5", padding: 22, alignItems: "center" },
+  footer: { marginHorizontal: 16, marginTop: 4, marginBottom: 20, alignItems: "center", paddingVertical: 12 },
   footerText: { fontSize: 14, color: GREEN, fontWeight: "700", marginBottom: 6 },
-  footerSub: { fontSize: 11, color: "#aaa", textAlign: "center", lineHeight: 16 },
+  footerSub: { fontSize: 11, color: COLORS.textMuted, textAlign: "center", lineHeight: 16 },
 });

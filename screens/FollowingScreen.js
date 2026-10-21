@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Image, FlatList, RefreshControl, Platform,} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image, FlatList, RefreshControl,
+} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS, colorForName } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 export default function FollowingScreen({ navigation }) {
   const [following, setFollowing] = useState([]);
@@ -71,7 +71,7 @@ export default function FollowingScreen({ navigation }) {
         {item.photoURL ? (
           <Image source={{ uri: item.photoURL }} style={styles.avatar} />
         ) : (
-          <View style={styles.avatarCircle}>
+          <View style={[styles.avatarCircle, { backgroundColor: colorForName(item.name) }]}>
             <Text style={styles.avatarText}>{initial}</Text>
           </View>
         )}
@@ -96,19 +96,12 @@ export default function FollowingScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Profile"); }}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
-        <View style={{ alignItems: "center" }}>
-          <Text style={styles.headerTitle}>Following</Text>
-          {following.length > 0 && <Text style={styles.headerSub}>{following.length} seller{following.length !== 1 ? "s" : ""}</Text>}
-        </View>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="Following"
+        subtitle={following.length > 0 ? `${following.length} seller${following.length !== 1 ? "s" : ""}` : null}
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Profile" }); }}
+      />
 
       {loading ? (
         <View style={styles.loadingWrap}>
@@ -131,7 +124,6 @@ export default function FollowingScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          style={{ backgroundColor: LIGHT_BG }}
           data={following}
           keyExtractor={(item) => item.id}
           renderItem={renderSeller}
@@ -140,36 +132,32 @@ export default function FollowingScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, backgroundColor: GREEN },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
-  headerSub: { fontSize: 11, color: "rgba(255,255,255,0.8)", fontWeight: "600", marginTop: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.white },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingText: { marginTop: 14, fontSize: 13, color: "#999", fontWeight: "500" },
+  loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: "500" },
 
-  list: { padding: 16 },
-  card: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#E8EDE5", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  avatar: { width: 52, height: 52, borderRadius: 26, marginRight: 12 },
-  avatarCircle: { width: 52, height: 52, borderRadius: 26, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 12 },
-  avatarText: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  list: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 24 },
+  card: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.white, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  avatar: { width: 50, height: 50, borderRadius: 25, marginRight: 12 },
+  avatarCircle: { width: 50, height: 50, borderRadius: 25, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  avatarText: { fontSize: 20, fontWeight: "800", color: "#fff" },
   info: { flex: 1 },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 3 },
-  name: { fontSize: 15, fontWeight: "700", color: "#111" },
-  email: { fontSize: 12, color: "#aaa", marginBottom: 4 },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 2 },
+  name: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary },
+  email: { fontSize: 12, color: COLORS.textMuted, marginBottom: 3 },
   ratingRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  ratingText: { fontSize: 13, fontWeight: "700", color: "#333" },
+  ratingText: { fontSize: 12.5, fontWeight: "700", color: COLORS.textSecondary },
 
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
-  emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#E8F5EC", alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: "800", color: "#333", marginBottom: 8 },
-  emptySub: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20, marginBottom: 24 },
-  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: 16, paddingHorizontal: 26, paddingVertical: 14, elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  browseBtnText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: COLORS.textMuted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: RADIUS.md, paddingHorizontal: 26, paddingVertical: 14 },
+  browseBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });

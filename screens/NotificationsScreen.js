@@ -1,23 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet,
-  ScrollView, StatusBar,
-  RefreshControl, Alert, ActivityIndicator, Platform,} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, RefreshControl, Alert, ActivityIndicator,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   collection, query, orderBy, onSnapshot,
   doc, updateDoc, deleteDoc, getDocs, getDoc, writeBatch,
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from '../components/ScreenHeader';
+import { COLORS, RADIUS } from '../constants/theme';
 
-const GREEN = '#2E6B3E';
-const LIGHT_BG = '#F0F4ED';
+const GREEN = COLORS.primary;
 
 const NOTIF_ICONS = {
   message:     { icon: 'chatbubble',       color: '#2980b9' },
-  follow:      { icon: 'person-add',       color: '#2E6B3E' },
+  follow:      { icon: 'person-add',       color: '#1B6B3A' },
   review:      { icon: 'star',             color: '#F4C542' },
   offer:       { icon: 'pricetag',         color: GREEN },
   sold:        { icon: 'checkmark-circle', color: GREEN },
@@ -92,12 +90,12 @@ export default function NotificationsScreen({ navigation }) {
     const nav = notif.nav || notif.type;
 
     if (nav === 'chat' || notif.type === 'message') {
-      navigation.navigate('Messages');
+      navigation.navigate("Main", { screen: "Messages" });
       return;
     }
 
     if (nav === 'self') {
-      navigation.navigate('Profile');
+      navigation.navigate("Main", { screen: "Profile" });
       return;
     }
 
@@ -108,7 +106,7 @@ export default function NotificationsScreen({ navigation }) {
           sellerName: notif.profileName || 'User',
         });
       } else {
-        navigation.navigate('Profile');
+        navigation.navigate("Main", { screen: "Profile" });
       }
       return;
     }
@@ -141,21 +139,18 @@ export default function NotificationsScreen({ navigation }) {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <View>
-          <Text style={styles.headerTitle}>Notifications</Text>
-          {unreadCount > 0 && <Text style={styles.unreadCount}>{unreadCount} unread</Text>}
-        </View>
-        <TouchableOpacity onPress={markAllAsRead}>
-          <Text style={styles.markAllText}>Mark all read</Text>
-        </TouchableOpacity>
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="Notifications"
+        subtitle={unreadCount > 0 ? `${unreadCount} unread` : null}
+        onBack={() => navigation.goBack()}
+        right={unreadCount > 0 ? (
+          <TouchableOpacity onPress={markAllAsRead} style={styles.markAllBtn}>
+            <Text style={styles.markAllText}>Mark all read</Text>
+          </TouchableOpacity>
+        ) : null}
+        border
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}>
         {loading ? (
@@ -198,7 +193,7 @@ export default function NotificationsScreen({ navigation }) {
         )}
         <View style={{ height: 40 }} />
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -230,30 +225,27 @@ function NotifCard({ notif, onPress, onDelete }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 14, backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: '#E0E8DB' },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E0E8DB', alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: GREEN },
-  unreadCount: { fontSize: 11, color: '#e74c3c', fontWeight: '600' },
-  markAllText: { fontSize: 13, color: GREEN, fontWeight: '600' },
+  safe: { flex: 1, backgroundColor: COLORS.white },
+  markAllBtn: { paddingHorizontal: 10, height: 44, justifyContent: 'center' },
+  markAllText: { fontSize: 13, color: COLORS.primary, fontWeight: '700' },
   loadingWrap: { alignItems: 'center', justifyContent: 'center', paddingVertical: 90 },
-  loadingText: { marginTop: 14, fontSize: 13, color: '#999', fontWeight: '500' },
+  loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: '500' },
   section: { paddingHorizontal: 16, paddingTop: 16 },
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  sectionLabel: { fontSize: 13, fontWeight: '700', color: '#888', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
-  clearText: { fontSize: 13, color: '#e74c3c', fontWeight: '600' },
-  notifCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: '#E8EDE5', elevation: 1, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  notifCardUnread: { backgroundColor: '#F0F8F2', borderColor: '#C8E6C9' },
-  notifIconBox: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  sectionLabel: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 8 },
+  clearText: { fontSize: 13, color: COLORS.error, fontWeight: '600' },
+  notifCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 12, marginBottom: 8 },
+  notifCardUnread: { backgroundColor: COLORS.primaryPale },
+  notifIconBox: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   notifContent: { flex: 1 },
-  notifTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  notifTitle: { fontSize: 14, fontWeight: '600', color: '#555', flex: 1 },
-  notifTitleUnread: { color: '#111', fontWeight: '700' },
-  notifTime: { fontSize: 11, color: '#aaa', marginLeft: 8 },
-  notifBody: { fontSize: 13, color: '#777', lineHeight: 18 },
+  notifTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 },
+  notifTitle: { fontSize: 14, fontWeight: '600', color: COLORS.textSecondary, flex: 1 },
+  notifTitleUnread: { color: COLORS.textPrimary, fontWeight: '700' },
+  notifTime: { fontSize: 11, color: COLORS.textMuted, marginLeft: 8 },
+  notifBody: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 18 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: GREEN, marginLeft: 8 },
   emptyState: { alignItems: 'center', paddingVertical: 80 },
-  emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#E8F5EC', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: '#333', marginBottom: 6 },
-  emptySub: { fontSize: 14, color: '#888' },
+  emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 6 },
+  emptySub: { fontSize: 14, color: COLORS.textMuted },
 });

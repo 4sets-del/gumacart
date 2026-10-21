@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator, Switch,
-  Modal, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Switch, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import {
   updateProfile, updatePassword, EmailAuthProvider,
@@ -12,10 +10,10 @@ import {
 import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import WelcomeTutorial from "../components/WelcomeTutorial";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 export default function SettingsScreen({ navigation }) {
   const user = auth.currentUser;
@@ -123,53 +121,49 @@ export default function SettingsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-
+    <View style={styles.safe}>
       <WelcomeTutorial visible={showTutorial} onClose={() => setShowTutorial(false)} />
 
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Profile"); }}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <View style={{ width: 38 }} />
-      </View>
+      <ScreenHeader
+        title="Settings"
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Profile" }); }}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
-          <SettingRow icon="person-outline" label="Edit Profile" sub="Name, address, age" onPress={openEditModal} />
+          <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, address, age" onPress={openEditModal} />
           {verificationStatus !== "verified" && (
             <SettingRow
-              icon="school-outline"
+              icon="school"
+              iconColor="#16A34A"
               label="Verify Student ID"
               sub={verificationStatus === "pending" ? "Pending review" : "Get verified to start posting"}
               onPress={() => navigation.navigate("Verification")}
             />
           )}
-          <SettingRow icon="lock-closed-outline" label="Change Password" sub="Update your account password" onPress={() => setShowPasswordModal(true)} isLast />
+          <SettingRow icon="lock-closed" iconColor="#7C3AED" label="Change Password" sub="Update your account password" onPress={() => setShowPasswordModal(true)} isLast />
         </View>
 
         <Text style={styles.sectionLabel}>Notifications</Text>
         <View style={styles.card}>
-          <ToggleRow icon="chatbubble-outline" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} />
-          <ToggleRow icon="person-add-outline" label="New Followers" sub="When someone follows you" value={notifFollowers} onChange={(v) => handleNotifToggle("followers", v, setNotifFollowers)} />
-          <ToggleRow icon="star-outline" label="Reviews" sub="When you get a new rating or review" value={notifReviews} onChange={(v) => handleNotifToggle("reviews", v, setNotifReviews)} isLast />
+          <ToggleRow icon="chatbubble-ellipses" iconColor="#2563EB" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} />
+          <ToggleRow icon="person-add" iconColor="#7C3AED" label="New Followers" sub="When someone follows you" value={notifFollowers} onChange={(v) => handleNotifToggle("followers", v, setNotifFollowers)} />
+          <ToggleRow icon="star" iconColor="#F59E0B" label="Reviews" sub="When you get a new rating or review" value={notifReviews} onChange={(v) => handleNotifToggle("reviews", v, setNotifReviews)} isLast />
         </View>
 
         <Text style={styles.sectionLabel}>About</Text>
         <View style={styles.card}>
-          <SettingRow icon="document-text-outline" label="Terms and Conditions" onPress={() => navigation.navigate('Terms')} />
-          <SettingRow icon="help-circle-outline" label="How GumaCart Works" sub="Replay the welcome tutorial" onPress={() => setShowTutorial(true)} />
-          <SettingRow icon="information-circle-outline" label="About GumaCart" sub="Our story and the team behind the app" onPress={() => navigation.navigate('About')} />
-          <SettingRow icon="pricetags-outline" label="App Version" sub="1.0.0" onPress={() => {}} isLast disabled />
+          <SettingRow icon="document-text" iconColor="#0D9488" label="Terms and Conditions" onPress={() => navigation.navigate('Terms')} />
+          <SettingRow icon="help-circle" iconColor="#EA580C" label="How GumaCart Works" sub="Replay the welcome tutorial" onPress={() => setShowTutorial(true)} />
+          <SettingRow icon="information-circle" iconColor="#16A34A" label="About GumaCart" sub="Our story and the team behind the app" onPress={() => navigation.navigate('About')} />
+          <SettingRow icon="pricetags" iconColor="#64748B" label="App Version" sub="1.0.0" onPress={() => {}} isLast disabled />
         </View>
 
         <Text style={styles.sectionLabel}>Account Actions</Text>
         <View style={styles.card}>
-          <SettingRow icon="log-out-outline" label="Logout" labelColor="#e67e22" iconColor="#e67e22" onPress={handleLogout} />
-          <SettingRow icon="trash-outline" label="Delete Account" labelColor="#e74c3c" iconColor="#e74c3c" onPress={handleDeleteAccount} isLast />
+          <SettingRow icon="log-out-outline" label="Logout" labelColor={COLORS.warning} iconColor={COLORS.warning} onPress={handleLogout} />
+          <SettingRow icon="trash-outline" label="Delete Account" labelColor={COLORS.error} iconColor={COLORS.error} onPress={handleDeleteAccount} isLast />
         </View>
 
         <View style={{ height: 50 }} />
@@ -184,17 +178,17 @@ export default function SettingsScreen({ navigation }) {
 
             <Text style={styles.inputLabel}>Name</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your full name" placeholderTextColor="#bbb" />
+              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your full name" placeholderTextColor={COLORS.textMuted} />
             </View>
 
             <Text style={styles.inputLabel}>Address</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Your address" placeholderTextColor="#bbb" />
+              <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Your address" placeholderTextColor={COLORS.textMuted} />
             </View>
 
             <Text style={styles.inputLabel}>Age</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor="#bbb" keyboardType="numeric" maxLength={3} />
+              <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" maxLength={3} />
             </View>
 
             <View style={styles.modalActions}>
@@ -219,17 +213,17 @@ export default function SettingsScreen({ navigation }) {
 
             <Text style={styles.inputLabel}>Current Password</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" placeholderTextColor="#bbb" secureTextEntry />
+              <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" placeholderTextColor={COLORS.textMuted} secureTextEntry />
             </View>
 
             <Text style={styles.inputLabel}>New Password</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="At least 6 characters" placeholderTextColor="#bbb" secureTextEntry />
+              <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="At least 6 characters" placeholderTextColor={COLORS.textMuted} secureTextEntry />
             </View>
 
             <Text style={styles.inputLabel}>Confirm New Password</Text>
             <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" placeholderTextColor="#bbb" secureTextEntry />
+              <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" placeholderTextColor={COLORS.textMuted} secureTextEntry />
             </View>
 
             <View style={styles.modalActions}>
@@ -243,71 +237,60 @@ export default function SettingsScreen({ navigation }) {
           </View>
         </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 function SettingRow({ icon, label, sub, onPress, isLast, labelColor, iconColor, disabled }) {
   return (
     <TouchableOpacity style={[styles.settingRow, !isLast && styles.settingRowBorder]} onPress={onPress} disabled={disabled} activeOpacity={0.7}>
-      <View style={[styles.settingIconBox, iconColor && { backgroundColor: iconColor + "15" }]}>
+      <View style={[styles.settingIconBox, iconColor && { backgroundColor: iconColor + "1A" }]}>
         <Ionicons name={icon} size={18} color={iconColor || GREEN} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.settingLabel, labelColor && { color: labelColor }]}>{label}</Text>
         {sub ? <Text style={styles.settingSub}>{sub}</Text> : null}
       </View>
-      {!disabled && <Ionicons name="chevron-forward" size={18} color="#ccc" />}
+      {!disabled && <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />}
     </TouchableOpacity>
   );
 }
 
-function ToggleRow({ icon, label, sub, value, onChange, isLast }) {
+function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor = GREEN }) {
   return (
     <View style={[styles.settingRow, !isLast && styles.settingRowBorder]}>
-      <View style={styles.settingIconBox}>
-        <Ionicons name={icon} size={18} color={GREEN} />
+      <View style={[styles.settingIconBox, { backgroundColor: iconColor + "1A" }]}>
+        <Ionicons name={icon} size={18} color={iconColor} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.settingLabel}>{label}</Text>
         {sub ? <Text style={styles.settingSub}>{sub}</Text> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ false: "#E0E0E0", true: "#A8D5B5" }} thumbColor={value ? GREEN : "#f4f3f4"} />
+      <Switch value={value} onValueChange={onChange} trackColor={{ false: COLORS.border, true: COLORS.primaryLighter }} thumbColor={value ? GREEN : "#f4f3f4"} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
-    paddingHorizontal: 20, paddingVertical: 14,
-    backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: "#E0E8DB",
-  },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E8DB", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#111" },
-  sectionLabel: {
-    fontSize: 12, fontWeight: "800", color: "#999",
-    textTransform: "uppercase", letterSpacing: 0.6,
-    marginHorizontal: 20, marginTop: 22, marginBottom: 9,
-  },
-  card: { backgroundColor: "#fff", marginHorizontal: 20, borderRadius: 18, borderWidth: 1, borderColor: "#EAEAEA", overflow: "hidden", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  sectionLabel: { fontSize: 12, fontWeight: "700", color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginHorizontal: 20, marginTop: 22, marginBottom: 8 },
+  card: { backgroundColor: COLORS.white, marginHorizontal: 16, borderRadius: 18, overflow: "hidden", ...SHADOWS.sm },
   settingRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14 },
-  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: "#F5F5F5" },
-  settingIconBox: { width: 38, height: 38, borderRadius: 11, backgroundColor: "#F4F7F1", alignItems: "center", justifyContent: "center", marginRight: 13 },
-  settingLabel: { fontSize: 15, fontWeight: "700", color: "#222" },
-  settingSub: { fontSize: 12, color: "#aaa", marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: "#fff", borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 24, paddingBottom: 40 },
-  modalHandle: { width: 42, height: 4, backgroundColor: "#E0E0E0", borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: "800", color: "#111", marginBottom: 4 },
-  modalSubtitle: { fontSize: 13, color: "#999", marginBottom: 16 },
-  inputLabel: { fontSize: 13, fontWeight: "700", color: "#444", marginTop: 14, marginBottom: 7 },
-  inputWrapper: { backgroundColor: "#F7F9F5", borderRadius: 14, borderWidth: 1, borderColor: "#E5EBE0", paddingHorizontal: 16, height: 52, justifyContent: "center" },
-  input: { fontSize: 15, color: "#222" },
+  settingRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  settingIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 13 },
+  settingLabel: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
+  settingSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
+  modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
+  modalSheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 4 },
+  modalSubtitle: { fontSize: 13, color: COLORS.textMuted, marginBottom: 16 },
+  inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, marginTop: 14, marginBottom: 7 },
+  inputWrapper: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, justifyContent: "center" },
+  input: { fontSize: 15, color: COLORS.textPrimary },
   modalActions: { flexDirection: "row", gap: 12, marginTop: 26 },
-  cancelBtn: { flex: 1, height: 52, borderRadius: 14, borderWidth: 1.5, borderColor: "#E0E0E0", alignItems: "center", justifyContent: "center" },
-  cancelBtnText: { fontSize: 15, color: "#666", fontWeight: "600" },
-  saveBtn: { flex: 2, height: 52, borderRadius: 14, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 2 },
-  saveBtnText: { fontSize: 15, color: "#fff", fontWeight: "800" },
+  cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  cancelBtnText: { fontSize: 15, color: COLORS.primary, fontWeight: "700" },
+  saveBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  saveBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
 });

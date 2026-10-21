@@ -1,18 +1,16 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, TextInput, Alert, ActivityIndicator,
-  Image, KeyboardAvoidingView, Platform,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
-import { auth, db, storage } from "../firebaseConfig";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import { auth, db } from "../firebaseConfig";
+import { uploadFile } from "../utils/upload";
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 const STEPS = [
   { id: 1, title: "School Email", icon: "📧" },
@@ -91,17 +89,8 @@ export default function VerificationScreen({ navigation }) {
     setLoading(true);
     try {
       const filename = `verifications/${user.uid}/student-id.jpg`;
-      const storageRef = ref(storage, filename);
-      const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = () => reject(new Error("Network request failed"));
-        xhr.responseType = "blob";
-        xhr.open("GET", idPhoto, true);
-        xhr.send(null);
-      });
-      await uploadBytes(storageRef, blob);
-      const idPhotoUrl = await getDownloadURL(storageRef);
+      // Larger limit so the text on the ID stays readable for admins.
+      const idPhotoUrl = await uploadFile(idPhoto, filename, { maxSize: 1800, quality: 0.8 });
       await updateDoc(doc(db, "users", user.uid), {
         verification: {
           schoolEmail: schoolEmail.trim().toLowerCase(),
@@ -124,16 +113,8 @@ export default function VerificationScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Student Verification</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader title="Student Verification" onBack={() => navigation.goBack()} border />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
@@ -307,64 +288,61 @@ export default function VerificationScreen({ navigation }) {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={[styles.nextBtn, loading && { opacity: 0.7 }]} activeOpacity={0.85} onPress={handleSubmit} disabled={loading}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>Submit Verification 🚀</Text>}
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.nextBtnText}>Submit Verification</Text>}
               </TouchableOpacity>
             )}
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: "#E0E8DB" },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E8DB", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: GREEN },
+  safe: { flex: 1, backgroundColor: COLORS.white },
   container: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
 
   // Rejection banner
-  rejectBanner: { flexDirection: "row", backgroundColor: "#FDECEA", borderRadius: 16, padding: 14, marginBottom: 20, borderWidth: 1.5, borderColor: "#F5C6C0", gap: 12 },
+  rejectBanner: { flexDirection: "row", backgroundColor: COLORS.errorLight, borderRadius: RADIUS.lg, padding: 14, marginBottom: 20, gap: 12 },
   rejectIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
   rejectTitle: { fontSize: 14, fontWeight: "800", color: "#c0392b", marginBottom: 3 },
   rejectReason: { fontSize: 13, color: "#7b3029", lineHeight: 19, marginBottom: 4 },
   rejectHint: { fontSize: 12, color: "#a05a52", fontStyle: "italic" },
 
   // Pending banner
-  pendingBanner: { flexDirection: "row", alignItems: "center", backgroundColor: "#FEF5E7", borderRadius: 14, padding: 13, marginBottom: 20, borderWidth: 1.5, borderColor: "#F8DDB0" },
+  pendingBanner: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 13, marginBottom: 20 },
   pendingText: { flex: 1, fontSize: 12.5, color: "#8a5a20", lineHeight: 18 },
   stepsRow: { flexDirection: "row", alignItems: "center", marginBottom: 32 },
   stepItem: { alignItems: "center", flex: 1 },
-  stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#E8EDE5", alignItems: "center", justifyContent: "center", marginBottom: 6, borderWidth: 2, borderColor: "#D0D8CB" },
-  stepCircleActive: { backgroundColor: "#E8F5EC", borderColor: GREEN },
+  stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginBottom: 6, borderWidth: 2, borderColor: COLORS.border },
+  stepCircleActive: { backgroundColor: COLORS.primaryPale, borderColor: GREEN },
   stepCircleDone: { backgroundColor: GREEN, borderColor: GREEN },
-  stepNum: { fontSize: 14, fontWeight: "700", color: "#aaa" },
+  stepNum: { fontSize: 14, fontWeight: "700", color: COLORS.textMuted },
   stepNumActive: { color: GREEN },
-  stepLabel: { fontSize: 10, color: "#aaa", textAlign: "center", fontWeight: "500" },
+  stepLabel: { fontSize: 10.5, color: COLORS.textMuted, textAlign: "center", fontWeight: "500" },
   stepLabelActive: { color: GREEN, fontWeight: "700" },
-  stepLine: { flex: 1, height: 2, backgroundColor: "#E0E0E0", marginBottom: 20 },
+  stepLine: { flex: 1, height: 2, backgroundColor: COLORS.border, marginBottom: 20 },
   stepLineActive: { backgroundColor: GREEN },
   stepContent: { alignItems: "center", marginBottom: 24 },
-  stepIconCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: "#E8F5EC", alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  stepTitle: { fontSize: 22, fontWeight: "800", color: "#111", marginBottom: 8, textAlign: "center" },
-  stepDesc: { fontSize: 14, color: "#666", textAlign: "center", lineHeight: 20, marginBottom: 24, paddingHorizontal: 10 },
-  inputLabel: { fontSize: 14, fontWeight: "700", color: "#333", alignSelf: "flex-start", marginBottom: 8 },
-  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 14, borderWidth: 1.5, borderColor: "#D0D8CB", paddingHorizontal: 16, height: 54, width: "100%" },
-  input: { flex: 1, fontSize: 15, color: "#333" },
-  infoBox: { flexDirection: "row", alignItems: "flex-start", backgroundColor: "#E8F0E4", borderRadius: 12, padding: 14, marginTop: 16, borderWidth: 1, borderColor: "#C8DFC8", width: "100%" },
-  infoText: { fontSize: 12, color: "#555", flex: 1, lineHeight: 18 },
-  photoBox: { width: "100%", height: 200, borderRadius: 16, backgroundColor: "#F4F7F1", borderWidth: 2, borderColor: "#D0D8CB", borderStyle: "dashed", overflow: "hidden", marginBottom: 16 },
+  stepIconCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  stepTitle: { fontSize: 22, fontWeight: "800", color: COLORS.textPrimary, marginBottom: 8, textAlign: "center" },
+  stepDesc: { fontSize: 14, color: COLORS.textSecondary, textAlign: "center", lineHeight: 20, marginBottom: 24, paddingHorizontal: 10 },
+  inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, alignSelf: "flex-start", marginBottom: 8 },
+  inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, width: "100%" },
+  input: { flex: 1, fontSize: 15, color: COLORS.textPrimary, paddingVertical: 0 },
+  infoBox: { flexDirection: "row", alignItems: "flex-start", backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.md, padding: 14, marginTop: 16, width: "100%" },
+  infoText: { fontSize: 12.5, color: COLORS.textSecondary, flex: 1, lineHeight: 18 },
+  photoBox: { width: "100%", height: 200, borderRadius: RADIUS.lg, backgroundColor: COLORS.surfaceAlt, borderWidth: 2, borderColor: COLORS.borderStrong, borderStyle: "dashed", overflow: "hidden", marginBottom: 16 },
   idPhotoPreview: { width: "100%", height: "100%", resizeMode: "cover" },
   photoPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
   photoPlaceholderText: { fontSize: 14, fontWeight: "700", color: "#555" },
   photoPlaceholderSub: { fontSize: 12, color: "#999", marginTop: 4 },
   changePhotoBtn: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.55)", paddingVertical: 9, alignItems: "center", justifyContent: "center" },
   changePhotoText: { color: "#fff", fontSize: 13, fontWeight: "600" },
-  tipsBox: { backgroundColor: "#FFF8E1", borderRadius: 12, padding: 14, marginBottom: 16, width: "100%", borderWidth: 1, borderColor: "#FFE082" },
+  tipsBox: { backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 14, marginBottom: 16, width: "100%" },
   tipsTitle: { fontSize: 13, fontWeight: "700", color: "#333", marginBottom: 8 },
   tipItem: { fontSize: 12, color: "#555", marginBottom: 4, lineHeight: 18 },
-  summaryBox: { backgroundColor: "#fff", borderRadius: 16, padding: 16, width: "100%", borderWidth: 1, borderColor: "#E8EDE5", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  summaryBox: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, width: "100%", borderWidth: 1, borderColor: COLORS.border },
   summaryTitle: { fontSize: 15, fontWeight: "800", color: "#111", marginBottom: 12 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   summaryLabelRow: { flexDirection: "row", alignItems: "center" },
@@ -372,8 +350,8 @@ const styles = StyleSheet.create({
   summaryValue: { fontSize: 13, fontWeight: "600", color: "#111", flex: 1, textAlign: "right" },
   summaryStatusRow: { flexDirection: "row", alignItems: "center" },
   btnRow: { flexDirection: "row", gap: 12, marginTop: 8 },
-  backStepBtn: { flex: 1, flexDirection: "row", height: 54, borderRadius: 14, borderWidth: 2, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
+  backStepBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
   backStepBtnText: { fontSize: 15, fontWeight: "700", color: GREEN },
-  nextBtn: { flex: 2, flexDirection: "row", height: 54, borderRadius: 14, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 2 },
-  nextBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
+  nextBtn: { flex: 2, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  nextBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
 });

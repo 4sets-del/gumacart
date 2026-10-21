@@ -1,25 +1,32 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Alert, Linking, Share,
-  Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,} from 'react-native';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Alert, Linking, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
+} from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import {
-  doc, deleteDoc, getDoc, setDoc, collection, addDoc,
-  serverTimestamp, updateDoc, increment, query, where, getDocs,
+  doc, deleteDoc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs,
 } from "firebase/firestore";
-import { ref as sRef, deleteObject, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
+import { Image as CachedImage } from "expo-image";
+import { uploadFile } from "../utils/upload";
+import { COLORS, RADIUS } from "../constants/theme";
+import GradientButton from "../components/GradientButton";
+import StatusBarScrim from "../components/StatusBarScrim";
+import { recordView } from "../utils/views";
+import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
+import { useSellerRatings } from "../utils/sellerRatings";
+import { addToCart, removeFromCart } from "../utils/cart";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
+const IMAGE_HEIGHT = Math.round(SCREEN_HEIGHT * 0.42);
 
-const TYPE_COLORS = { sell: GREEN, buy: "#2980b9", barter: "#e67e22", donate: "#e74c3c" };
-const TYPE_LABELS = { sell: "🏷️ For Sale", buy: "🔍 Looking For", barter: "🔄 For Barter", donate: "🎁 Free" };
+const TYPE_LABELS = { sell: "For Sale", buy: "Looking For", barter: "For Barter", donate: "Free" };
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { product } = route.params;
@@ -41,7 +48,17 @@ export default function ProductDetailScreen({ route, navigation }) {
   const isOwner = currentUser?.uid === product.sellerId;
 
   const images = product.images?.length > 0 ? product.images : product.image ? [product.image] : [];
-  const typeColor = TYPE_COLORS[product.type] || GREEN;
+  const galleryRef = useRef(null);
+  const sellerRating = useSellerRatings([product])[product.sellerId];
+  const price = priceLabel(product);
+  const type = typeMeta(product.type);
+
+  const showImage = (index) => {
+    setActiveImageIndex(index);
+    galleryRef.current?.scrollToIndex({ index, animated: true });
+  };
+
+  useEffect(() => { recordView(product); }, [product.id]);
 
   useEffect(() => {
     const checkCart = async () => {
@@ -53,12 +70,11 @@ export default function ProductDetailScreen({ route, navigation }) {
     checkCart();
   }, []);
 
-  const toggleCart = async (item) => {
+  const toggleCart = async () => {
     try {
-      const cartRef = doc(db, "users", currentUser.uid, "cart", product.id);
-      if (inCart) { await deleteDoc(cartRef); setInCart(false); }
+      if (inCart) { await removeFromCart(currentUser.uid, product.id); setInCart(false); }
       else {
-        await setDoc(cartRef, { listingId: product.id, name: product.name, price: product.price || 0, type: product.type, location: product.location || "", addedAt: serverTimestamp() });
+        await addToCart(currentUser.uid, product);
         setInCart(true);
         Alert.alert("🛒 Added to Cart", `"${product.name}" has been saved to your cart.`);
       }
@@ -101,17 +117,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const uploadProof = async (uri) => {
     const path = `reports/${currentUser.uid}_${Date.now()}.jpg`;
-    const storageRef = sRef(storage, path);
-    const blob = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.onload = () => resolve(xhr.response);
-      xhr.onerror = () => reject(new Error("Network request failed"));
-      xhr.responseType = "blob";
-      xhr.open("GET", uri, true);
-      xhr.send(null);
-    });
-    await uploadBytes(storageRef, blob);
-    return await getDownloadURL(storageRef);
+    return uploadFile(uri, path);
   };
 
   const submitReport = async () => {
@@ -210,115 +216,129 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBarScrim />
 
       <View style={[styles.header, { paddingTop: STATUSBAR_TOP + 8 }]}>
-        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Home"); }}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
+          <Ionicons name="arrow-back" size={21} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
         <View style={{ flexDirection: "row", gap: 8 }}>
           {!isOwner && (
             <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={openReport}>
-              <Ionicons name="flag-outline" size={19} color="#fff" />
+              <Ionicons name="flag-outline" size={18} color="#fff" />
             </TouchableOpacity>
           )}
           <TouchableOpacity style={styles.headerBtn} activeOpacity={0.7} onPress={handleShare}>
-            <Ionicons name="share-social" size={20} color="#fff" />
+            <Ionicons name="share-social-outline" size={19} color="#fff" />
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          {images.length > 1 ? (
-            <>
-              <FlatList
-                data={images}
-                keyExtractor={(_, i) => String(i)}
-                horizontal pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                bounces={false}
-                getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
-                onMomentumScrollEnd={(e) => setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
-                renderItem={({ item, index }) => (
-                  <TouchableOpacity activeOpacity={0.95} onPress={() => openFullscreen(index)}>
-                    <Image source={{ uri: item }} style={styles.galleryImage} resizeMode="cover" />
-                  </TouchableOpacity>
-                )}
-              />
-              <View style={styles.dotsRow}>
-                {images.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
-              </View>
-              <View style={styles.imageCountBadge}>
-                <Ionicons name="images" size={11} color="#fff" style={{ marginRight: 4 }} />
-                <Text style={styles.imageCountText}>{activeImageIndex + 1}/{images.length}</Text>
-              </View>
-            </>
-          ) : images.length === 1 ? (
-            <TouchableOpacity activeOpacity={0.95} onPress={() => openFullscreen(0)}>
-              <Image source={{ uri: images[0] }} style={styles.galleryImage} resizeMode="cover" />
-            </TouchableOpacity>
+          {images.length > 0 ? (
+            <FlatList
+              ref={galleryRef}
+              data={images}
+              keyExtractor={(_, i) => String(i)}
+              horizontal pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              bounces={false}
+              getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
+              onMomentumScrollEnd={(e) => setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
+              renderItem={({ item, index }) => (
+                <TouchableOpacity activeOpacity={0.95} onPress={() => openFullscreen(index)}>
+                  <CachedImage source={{ uri: item }} style={styles.galleryImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+                </TouchableOpacity>
+              )}
+            />
           ) : (
             <View style={styles.imagePlaceholder}>
               <Text style={{ fontSize: 72 }}>🛍️</Text>
-              <Text style={{ color: "#aaa", marginTop: 8, fontSize: 13 }}>No photo available</Text>
+              <Text style={{ color: COLORS.textMuted, marginTop: 8, fontSize: 13 }}>No photo available</Text>
             </View>
           )}
 
-          <View style={[styles.typeBadge, { backgroundColor: typeColor }]}>
-            <Text style={styles.typeBadgeText}>{TYPE_LABELS[product.type] || "🏷️ For Sale"}</Text>
-          </View>
+          {images.length > 1 && (
+            <View style={styles.dotsRow}>
+              {images.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
+            </View>
+          )}
           {isSold && (
-            <View style={styles.soldBanner}>
+            <View style={styles.soldBanner} pointerEvents="none">
               <View style={styles.soldBannerPill}>
                 <Text style={styles.soldBannerText}>SOLD</Text>
               </View>
             </View>
           )}
-          {images.length > 0 && (
-            <View style={styles.expandHint}>
-              <Ionicons name="expand" size={11} color="rgba(255,255,255,0.85)" style={{ marginRight: 4 }} />
-              <Text style={styles.expandHintText}>Tap to expand</Text>
-            </View>
-          )}
         </View>
 
+        {images.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
+            {images.map((uri, i) => (
+              <TouchableOpacity key={uri + i} activeOpacity={0.8} onPress={() => showImage(i)}>
+                <CachedImage source={{ uri }} style={[styles.thumb, activeImageIndex === i && styles.thumbActive]} contentFit="cover" cachePolicy="memory-disk" />
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        )}
+
         <View style={styles.content}>
-          <View style={styles.titleBlock}>
-            <Text style={styles.productName}>{product.name}</Text>
-            <View style={styles.priceBlock}>
-              {isSold && <View style={styles.soldPill}><Text style={styles.soldPillText}>SOLD</Text></View>}
-              {product.type === "donate" ? <Text style={[styles.price, { color: "#e74c3c" }]}>FREE</Text>
-                : product.type === "barter" ? <Text style={[styles.price, { color: "#e67e22" }]}>Barter</Text>
-                : product.type === "buy" ? <Text style={[styles.price, { color: "#2980b9" }]}>Wanted</Text>
-                : <Text style={styles.price}>₱{product.price?.toLocaleString()}</Text>}
+          <Text style={styles.productName}>{product.name}</Text>
+          <Text style={[styles.price, { color: price.color }]}>{price.text}</Text>
+
+          {sellerRating?.avg > 0 && (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={14} color={COLORS.star} />
+              <Text style={styles.ratingText}>
+                {sellerRating.avg.toFixed(1)}
+                <Text style={styles.ratingSub}>  ({sellerRating.count} seller review{sellerRating.count !== 1 ? "s" : ""})</Text>
+              </Text>
             </View>
+          )}
+
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <Ionicons name={isSold ? "close-circle-outline" : "checkmark-circle-outline"} size={16} color={isSold ? COLORS.error : COLORS.primary} />
+              <Text style={styles.metaText}>{isSold ? "Sold" : "Available"}</Text>
+            </View>
+            {product.location ? (
+              <View style={styles.metaItem}>
+                <Ionicons name="location-outline" size={16} color={COLORS.textSecondary} />
+                <Text style={styles.metaText} numberOfLines={1}>{product.location}</Text>
+              </View>
+            ) : null}
+            {product.viewCount > 0 && (
+              <View style={styles.metaItem}>
+                <Ionicons name="eye-outline" size={16} color={COLORS.textSecondary} />
+                <Text style={styles.metaText}>{product.viewCount} view{product.viewCount !== 1 ? "s" : ""}</Text>
+              </View>
+            )}
           </View>
 
           <View style={styles.pillsRow}>
-            {product.condition && <View style={styles.pill}><Text style={styles.pillText}>📦 {product.condition}</Text></View>}
-            {product.category && <View style={styles.pill}><Text style={styles.pillText}>🏷 {product.category}</Text></View>}
-            {product.location && <View style={styles.pill}><Text style={styles.pillText}>📍 {product.location}</Text></View>}
+            <View style={[styles.pill, { backgroundColor: type.bg }]}><Text style={[styles.pillText, { color: type.color }]}>{TYPE_LABELS[product.type] || "For Sale"}</Text></View>
+            {product.category ? <View style={styles.pill}><Text style={styles.pillText}>{normalizeCategory(product.category)}</Text></View> : null}
+            {product.condition ? <View style={styles.pill}><Text style={styles.pillText}>{product.condition}</Text></View> : null}
           </View>
 
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Description</Text>
-            <Text style={styles.description}>{product.description || "No description provided."}</Text>
-          </View>
+          <View style={styles.divider} />
+
+          <Text style={styles.sectionTitle}>Description</Text>
+          <Text style={styles.description}>{product.description || "No description provided."}</Text>
 
           {product.specifications ? (
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Specifications</Text>
+            <>
+              <Text style={styles.sectionTitle}>Specifications</Text>
               <Text style={styles.description}>{product.specifications}</Text>
-            </View>
+            </>
           ) : null}
 
-          <View style={[styles.card, { padding: 0 }]}>
-            <Text style={[styles.cardTitle, { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 }]}>Details</Text>
+          <Text style={styles.sectionTitle}>Details</Text>
+          <View style={styles.card}>
             <DetailRow icon="cube-outline" label="Condition" value={product.condition || "Not specified"} />
-            <DetailRow icon="pricetag-outline" label="Category" value={product.category || "Not specified"} />
-            <DetailRow icon="bookmark-outline" label="Type" value={TYPE_LABELS[product.type] || "For Sale"} />
+            <DetailRow icon="pricetag-outline" label="Category" value={normalizeCategory(product.category) || "Not specified"} />
             <DetailRow icon="location-outline" label="Meet-up" value={product.location || "Not specified"} />
             <DetailRow icon="call-outline" label="Contact" value={product.contactNumber || "Not provided"} last />
           </View>
@@ -330,15 +350,15 @@ export default function ProductDetailScreen({ route, navigation }) {
           >
             <View style={styles.sellerLeft}>
               {product.sellerPhoto ? (
-                <Image source={{ uri: product.sellerPhoto }} style={styles.sellerAvatar} />
+                <CachedImage source={{ uri: product.sellerPhoto }} style={styles.sellerAvatar} cachePolicy="memory-disk" />
               ) : (
                 <View style={[styles.sellerAvatar, { backgroundColor: GREEN, alignItems: "center", justifyContent: "center" }]}>
-                  <Text style={{ fontSize: 22, fontWeight: "800", color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: "800", color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
                 </View>
               )}
               <View>
                 <Text style={styles.sellerName}>{product.sellerName || "Anonymous"}</Text>
-                <Text style={styles.sellerSub}>✅ SLSU Student</Text>
+                <Text style={styles.sellerSub}>SLSU Student</Text>
               </View>
             </View>
             <View style={styles.viewProfileBtn}>
@@ -347,7 +367,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           </TouchableOpacity>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 24 }} />
         </View>
       </ScrollView>
 
@@ -371,7 +391,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             onMomentumScrollEnd={(e) => setFullscreenIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
             renderItem={({ item }) => (
               <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: "center", alignItems: "center" }}>
-                <Image source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} resizeMode="contain" />
+                <CachedImage source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} contentFit="contain" cachePolicy="memory-disk" />
               </View>
             )}
           />
@@ -384,36 +404,36 @@ export default function ProductDetailScreen({ route, navigation }) {
       </Modal>
 
       {isOwner ? (
-        <View style={[styles.bottomBar, { paddingBottom: 14 + insets.bottom }]}>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing", { editListing: product })} disabled={marking || deleting}>
             <Ionicons name="create-outline" size={19} color={GREEN} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.markSoldBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
-            <Text style={styles.markSoldBtnText}>{marking ? "⏳ Updating..." : isSold ? "🟢 Mark Active" : "✅ Mark as Sold"}</Text>
+          <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
+            <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : "Mark as Sold"}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.deleteIconBtn, deleting && { opacity: 0.6 }]} activeOpacity={0.8} onPress={handleDelete} disabled={deleting || marking}>
-            <Ionicons name="trash-outline" size={22} color="#e74c3c" />
+            <Ionicons name="trash-outline" size={21} color={COLORS.error} />
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={[styles.bottomBar, { paddingBottom: 14 + insets.bottom }]}>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
+          <TouchableOpacity style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={GREEN} />
+          </TouchableOpacity>
           {isSold ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
-              <Ionicons name="chatbubble-ellipses" size={18} color="#fff" style={{ marginRight: 8 }} />
               <Text style={styles.primaryBtnText}>Ask if Still Available</Text>
             </TouchableOpacity>
           ) : (
-            <>
-              <TouchableOpacity style={[styles.outlineBtn, inCart && styles.outlineBtnActive]} activeOpacity={0.8} onPress={toggleCart}>
-                <Ionicons name={inCart ? "cart" : "cart-outline"} size={18} color={GREEN} style={{ marginRight: 6 }} />
-                <Text style={styles.outlineBtnText}>{inCart ? "In Cart" : "Add to Cart"}</Text>
+            inCart ? (
+              <TouchableOpacity style={[styles.primaryBtn, styles.inCartBtn]} activeOpacity={0.85} onPress={toggleCart}>
+                <Ionicons name="checkmark" size={19} color={GREEN} style={{ marginRight: 8 }} />
+                <Text style={[styles.primaryBtnText, { color: GREEN }]}>In Cart</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
-                <Ionicons name="chatbubble-ellipses" size={18} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.primaryBtnText}>Message Seller</Text>
-              </TouchableOpacity>
-            </>
+            ) : (
+              <GradientButton title="Add to Cart" icon="cart-outline" onPress={toggleCart} style={{ flex: 1 }} />
+            )
           )}
         </View>
       )}
@@ -504,64 +524,62 @@ function DetailRow({ icon, label, value, last }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG },
+  safe: { flex: 1, backgroundColor: COLORS.white },
   header: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10 },
-  headerBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(0,0,0,0.35)", alignItems: "center", justifyContent: "center" },
-  imageContainer: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.5, backgroundColor: "#1a1a1a" },
-  galleryImage: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT * 0.5 },
-  imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#F0F0F0" },
-  dotsRow: { position: "absolute", bottom: 44, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.45)" },
-  dotActive: { backgroundColor: "#fff", width: 20, borderRadius: 3 },
-  imageCountBadge: { position: "absolute", top: 14, right: 14, backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, flexDirection: "row", alignItems: "center" },
-  imageCountText: { color: "#fff", fontSize: 12, fontWeight: "600" },
-  typeBadge: { position: "absolute", bottom: 14, left: 14, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6, elevation: 2 },
-  typeBadgeText: { color: "#fff", fontSize: 12, fontWeight: "800" },
-  soldBanner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" },
-  soldBannerPill: { backgroundColor: "#e74c3c", paddingHorizontal: 28, paddingVertical: 10, borderRadius: 12 },
-  soldBannerText: { fontSize: 28, fontWeight: "900", color: "#fff", letterSpacing: 4 },
-  soldPill: { backgroundColor: "#FDECEA", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
-  soldPillText: { color: "#e74c3c", fontSize: 10, fontWeight: "800" },
-  cartBubbleActive: { backgroundColor: "#E8F5EC" },
-  outlineBtnActive: { backgroundColor: "#E8F5EC" },
-  expandHint: { position: "absolute", top: 14, left: "50%", marginLeft: -55, backgroundColor: "rgba(0,0,0,0.4)", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 4, flexDirection: "row", alignItems: "center" },
-  expandHintText: { color: "rgba(255,255,255,0.85)", fontSize: 11, fontWeight: "600" },
+  headerBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center" },
+  imageContainer: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: COLORS.surfaceAlt },
+  galleryImage: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT },
+  imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
+  dotsRow: { position: "absolute", bottom: 12, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.55)" },
+  dotActive: { backgroundColor: "#fff", width: 18 },
+  soldBanner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
+  soldBannerPill: { backgroundColor: COLORS.error, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 12 },
+  soldBannerText: { fontSize: 26, fontWeight: "900", color: "#fff", letterSpacing: 4 },
+  thumbRow: { paddingHorizontal: 16, paddingTop: 12, gap: 10 },
+  thumb: { width: 62, height: 62, borderRadius: RADIUS.md, borderWidth: 2, borderColor: "transparent" },
+  thumbActive: { borderColor: COLORS.primary },
   fullscreenClose: { position: "absolute", top: 52, right: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   fullscreenCounter: { position: "absolute", top: 58, left: 0, right: 0, zIndex: 10, alignItems: "center" },
   fullscreenDots: { position: "absolute", bottom: 48, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 },
-  content: { paddingHorizontal: 18, paddingTop: 22 },
-  titleBlock: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 },
-  productName: { fontSize: 23, fontWeight: "800", color: "#111", flex: 1, marginRight: 14, lineHeight: 30 },
-  priceBlock: { alignItems: "flex-end" },
-  price: { fontSize: 24, fontWeight: "900", color: GREEN },
-  pillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 18 },
-  pill: { backgroundColor: "#E8F0E4", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
-  pillText: { fontSize: 12, color: GREEN, fontWeight: "600" },
-  card: { backgroundColor: "#fff", borderRadius: 18, padding: 18, marginBottom: 14, borderWidth: 1, borderColor: "#EAEAEA", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  cardTitle: { fontSize: 14, fontWeight: "800", color: "#999", textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 10 },
-  description: { fontSize: 14, color: "#444", lineHeight: 22 },
-  detailRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 13 },
+
+  content: { paddingHorizontal: 18, paddingTop: 16 },
+  productName: { fontSize: 21, fontWeight: "700", color: COLORS.textPrimary, lineHeight: 28 },
+  price: { fontSize: 24, fontWeight: "800", marginTop: 6 },
+  ratingRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 8 },
+  ratingText: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary },
+  ratingSub: { fontWeight: "500", color: COLORS.textMuted },
+  metaRow: { flexDirection: "row", alignItems: "center", gap: 18, marginTop: 12 },
+  metaItem: { flexDirection: "row", alignItems: "center", gap: 5, flexShrink: 1 },
+  metaText: { fontSize: 13, color: COLORS.textSecondary },
+  pillsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 14 },
+  pill: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 5 },
+  pillText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: "600" },
+  divider: { height: 1, backgroundColor: COLORS.border, marginTop: 18 },
+  sectionTitle: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginTop: 18, marginBottom: 8 },
+  description: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 21 },
+  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border },
+  detailRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12 },
   detailIconBox: { width: 28, alignItems: "center" },
-  detailLabel: { fontSize: 13, color: "#aaa", width: 76, fontWeight: "500" },
-  detailValue: { fontSize: 13, color: "#222", fontWeight: "600", flex: 1 },
-  sellerCard: { backgroundColor: "#fff", borderRadius: 18, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: "#EAEAEA", elevation: 1, flexDirection: "row", alignItems: "center", justifyContent: "space-between", shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
-  sellerAvatar: { width: 52, height: 52, borderRadius: 26 },
-  sellerName: { fontSize: 15, fontWeight: "800", color: "#111", marginBottom: 3 },
-  sellerSub: { fontSize: 12, color: GREEN, fontWeight: "500" },
-  viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: "#E8F5EC", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 7 },
+  detailLabel: { fontSize: 13, color: COLORS.textMuted, width: 80 },
+  detailValue: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600", flex: 1 },
+  sellerCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 14, marginTop: 14, borderWidth: 1, borderColor: COLORS.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
+  sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
+  sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
+  sellerSub: { fontSize: 12, color: COLORS.primary, fontWeight: "500" },
+  viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
   viewProfileText: { fontSize: 12, color: GREEN, fontWeight: "700" },
-  bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingVertical: 14, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#F0F0F0", elevation: 8 },
-  outlineBtn: { flex: 1, flexDirection: "row", height: 54, borderRadius: 16, borderWidth: 2, borderColor: GREEN, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
-  outlineBtnText: { fontSize: 13, fontWeight: "700", color: GREEN },
-  primaryBtn: { flex: 1.3, flexDirection: "row", height: 54, borderRadius: 16, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
-  primaryBtnText: { fontSize: 15, fontWeight: "800", color: "#fff" },
-  editBtn: { flexDirection: "row", gap: 5, paddingHorizontal: 14, height: 54, borderRadius: 16, borderWidth: 2, borderColor: GREEN, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
+
+  bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 12, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
+  chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
+  primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  primaryBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
+  inCartBtn: { backgroundColor: COLORS.primaryPale },
+  editBtn: { flexDirection: "row", gap: 5, paddingHorizontal: 16, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
   editBtnText: { fontSize: 14, fontWeight: "700", color: GREEN },
-  markSoldBtn: { flex: 1, height: 54, borderRadius: 16, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
-  markActiveBtn: { backgroundColor: "#2980b9" },
-  markSoldBtnText: { fontSize: 12.5, fontWeight: "700", color: "#fff" },
-  deleteIconBtn: { width: 54, height: 54, borderRadius: 16, backgroundColor: "#FDECEA", alignItems: "center", justifyContent: "center" },
+  markActiveBtn: { backgroundColor: COLORS.info },
+  deleteIconBtn: { width: 52, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.errorLight, alignItems: "center", justifyContent: "center" },
 
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
   reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },

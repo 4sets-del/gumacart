@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator,
-  Image, RefreshControl, Platform, Modal,} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Image, RefreshControl, Modal,
+} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
 import {
   collection, getDocs, query, orderBy, where,
   doc, updateDoc, deleteDoc, serverTimestamp, getDoc, writeBatch, addDoc,
 } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
-const AMBER = "#e67e22";
-const RED = "#e74c3c";
+const GREEN = COLORS.primary;
+const LIGHT_BG = COLORS.background;
+const AMBER = COLORS.warning;
+const RED = COLORS.error;
 
 const TABS = [
   { id: "verifications", label: "Verify",   icon: "🎓" },
@@ -507,29 +507,25 @@ export default function AdminPanelScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.safe, { backgroundColor: LIGHT_BG, justifyContent: "center", alignItems: "center" }]} edges={['left','right']}>
+      <View style={[styles.safe, { justifyContent: "center", alignItems: "center" }]}>
         <ActivityIndicator color={GREEN} size="large" />
         <Text style={styles.loadingText}>Loading admin panel...</Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Profile"); }}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
-        <View style={{ alignItems: "center" }}>
-          <Text style={styles.headerTitle}>Admin Panel</Text>
-          <Text style={styles.headerSub}>SLSU-GumaCart</Text>
-        </View>
-        <View style={styles.adminBadge}>
-          <Text style={styles.adminBadgeText}>🔑</Text>
-        </View>
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="Admin Panel"
+        subtitle="SLSU-GumaCart"
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Profile" }); }}
+        right={
+          <View style={styles.adminBadge}>
+            <Ionicons name="key" size={18} color={GREEN} />
+          </View>
+        }
+      />
 
       <View style={styles.statsCard}>
         <StatBox num={users.length} label="Users" color="#111" />
@@ -848,7 +844,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardSub} numberOfLines={1}>Reported by {report.reporterName || "someone"}</Text>
                         <Text style={[styles.cardSub, { marginTop: 2 }]} numberOfLines={1}>{report.reason}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? "#E8F5EC" : "#F2F2F2" }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? "#E8F4EC" : "#F2F2F2" }]}>
                         <Text style={[styles.statusBadgeText, { color: report.status === "resolved" ? GREEN : "#999" }]}>
                           {report.status === "resolved" ? "✓ Resolved" : "○ Dismissed"}
                         </Text>
@@ -926,7 +922,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardName}>{appeal.userName || "User"}</Text>
                         <Text style={styles.cardSub}>{appeal.userEmail}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: appeal.status === "approved" ? "#E8F5EC" : "#F2F2F2" }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: appeal.status === "approved" ? "#E8F4EC" : "#F2F2F2" }]}>
                         <Text style={[styles.statusBadgeText, { color: appeal.status === "approved" ? GREEN : "#999" }]}>
                           {appeal.status === "approved" ? "✓ Restored" : "✕ Declined"}
                         </Text>
@@ -1108,7 +1104,7 @@ export default function AdminPanelScreen({ navigation }) {
           <Text style={styles.viewerHint}>Tap anywhere to close</Text>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -1124,7 +1120,7 @@ function StatBox({ num, label, color }) {
 function StatusBadge({ status }) {
   const config = {
     pending:    { color: AMBER, bg: "#FFF3E0", label: "⏳ Pending" },
-    verified:   { color: GREEN, bg: "#E8F5EC", label: "✓ Verified" },
+    verified:   { color: GREEN, bg: "#E8F4EC", label: "✓ Verified" },
     rejected:   { color: RED,   bg: "#FDECEA", label: "✕ Rejected" },
     unverified: { color: "#999", bg: "#F2F2F2", label: "○ Unverified" },
     banned:     { color: RED,   bg: "#FDECEA", label: "🚫 Banned" },
@@ -1158,46 +1154,41 @@ function EmptyState({ icon, text }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN, paddingTop: STATUSBAR_TOP },
+  safe: { flex: 1, backgroundColor: LIGHT_BG },
   body: { flex: 1, backgroundColor: LIGHT_BG },
   bodyScroll: { flex: 1, backgroundColor: LIGHT_BG },
-  loadingText: { marginTop: 14, fontSize: 13, color: "#999", fontWeight: "500" },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 10, paddingBottom: 20, backgroundColor: GREEN },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
-  headerSub: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 1 },
-  adminBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  adminBadgeText: { fontSize: 16 },
-  statsCard: { flexDirection: "row", backgroundColor: "#fff", marginHorizontal: 18, marginTop: -8, borderRadius: 18, borderWidth: 1, borderColor: "#E8EDE5", paddingVertical: 18, elevation: 4, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
+  loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: "500" },
+  adminBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 4 },
+  statsCard: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: 18, paddingVertical: 16, ...SHADOWS.sm },
   statBox: { flex: 1, alignItems: "center" },
   statNum: { fontSize: 20, fontWeight: "800" },
-  statLabel: { fontSize: 10, color: "#999", marginTop: 3, fontWeight: "500" },
-  statDivider: { width: 1, backgroundColor: "#F0F0F0" },
-  tabs: { flexDirection: "row", backgroundColor: "#fff", marginHorizontal: 18, marginTop: 14, borderRadius: 14, padding: 5, borderWidth: 1, borderColor: "#EAEAEA" },
-  tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: 10 },
-  tabActive: { backgroundColor: "#E8F5EC" },
+  statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 3, fontWeight: "500" },
+  statDivider: { width: 1, backgroundColor: COLORS.border },
+  tabs: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: RADIUS.md },
+  tabActive: { backgroundColor: COLORS.primaryPale },
   tabIcon: { fontSize: 18, marginBottom: 3 },
-  tabLabel: { fontSize: 11, color: "#999", fontWeight: "600" },
+  tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600" },
   tabLabelActive: { color: GREEN, fontWeight: "800" },
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   tabContent: { padding: 18 },
   groupHeading: { fontSize: 13, fontWeight: "800", color: "#666", marginBottom: 10, marginLeft: 2 },
-  subTabs: { flexDirection: "row", backgroundColor: "#E8EDE5", borderRadius: 12, padding: 4, marginBottom: 16 },
-  subTabRow: { flexDirection: "row", backgroundColor: "#E8EDE5", borderRadius: 12, padding: 4, marginBottom: 16 },
+  subTabs: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
+  subTabRow: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   approveRow: { flexDirection: "row", gap: 10 },
-  subTab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 9 },
-  subTabActive: { backgroundColor: "#fff", elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-  subTabText: { fontSize: 12, color: "#999", fontWeight: "600" },
-  subTabTextActive: { color: GREEN, fontWeight: "800" },
-  card: { backgroundColor: "#fff", borderRadius: 18, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: "#EAEAEA", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
+  subTab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: RADIUS.full },
+  subTabActive: { backgroundColor: GREEN },
+  subTabText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: "600" },
+  subTabTextActive: { color: "#fff", fontWeight: "700" },
+  card: { backgroundColor: COLORS.white, borderRadius: 18, padding: 16, marginBottom: 12, ...SHADOWS.sm },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   cardAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 12 },
   cardAvatarImg: { width: 46, height: 46, borderRadius: 23, marginRight: 12 },
   cardAvatarText: { fontSize: 18, fontWeight: "800", color: "#fff" },
   cardInfo: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: "700", color: "#111", marginBottom: 2 },
-  cardSub: { fontSize: 12, color: "#999" },
+  cardName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
+  cardSub: { fontSize: 12, color: COLORS.textMuted },
   listingImageBox: { width: 54, height: 54, borderRadius: 12, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center", marginRight: 12, overflow: "hidden" },
   listingThumb: { width: 54, height: 54, resizeMode: "cover" },
   listingThumbPlaceholder: { fontSize: 24 },
@@ -1208,10 +1199,10 @@ const styles = StyleSheet.create({
   proofThumb: { width: "100%", height: 160, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA", backgroundColor: "#F5F5F5" },
   proofHint: { position: "absolute", bottom: 8, right: 8, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   proofHintText: { color: "#fff", fontSize: 11, fontWeight: "600", marginLeft: 4 },
-  appealMsgBox: { backgroundColor: "#F8FAF6", borderRadius: 12, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: "#EEF3EA" },
+  appealMsgBox: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
   appealMsgLabel: { fontSize: 11, color: "#999", fontWeight: "700", marginBottom: 4 },
   appealMsgText: { fontSize: 13.5, color: "#333", lineHeight: 19 },
-  verifyDetails: { backgroundColor: "#F8FAF6", borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: "#EEF3EA" },
+  verifyDetails: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14, marginBottom: 12 },
   detailRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 7 },
   detailLabel: { fontSize: 12, color: "#999", fontWeight: "600" },
   detailValue: { fontSize: 12, color: "#333", flex: 1, textAlign: "right", fontWeight: "500" },
@@ -1219,9 +1210,9 @@ const styles = StyleSheet.create({
   statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   statusBadgeText: { fontSize: 11, fontWeight: "700" },
   cardActions: { flexDirection: "row", gap: 10 },
-  rejectBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
+  rejectBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
   rejectBtnText: { fontSize: 13, fontWeight: "700", color: RED },
-  approveBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: 12, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", elevation: 2 },
+  approveBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
   approveBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   deleteBtn: { flexDirection: "row", gap: 6, height: 42, borderRadius: 12, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
   deleteBtnText: { fontSize: 13, fontWeight: "700", color: RED },
@@ -1234,7 +1225,7 @@ const styles = StyleSheet.create({
   deleteUserBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: 12, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   deleteUserBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   emptyState: { alignItems: "center", paddingVertical: 60 },
-  emptyIconBox: { width: 90, height: 90, borderRadius: 45, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: 16, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   emptyIcon: { fontSize: 38 },
   emptyText: { fontSize: 14, color: "#999" },
 

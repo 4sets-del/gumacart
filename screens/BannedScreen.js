@@ -11,9 +11,10 @@ import {
 } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { useAuth } from '../context/AuthContext';
+import { COLORS, RADIUS } from '../constants/theme';
 
-const RED = '#C0392B';
-const BG = '#F7EDEC';
+const RED = COLORS.error;
+const BG = COLORS.white;
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
 function formatRemaining(ms) {
@@ -156,7 +157,7 @@ export default function BannedScreen() {
           ) : (
             <>
               {rejected && (
-                <View style={[styles.statusBox, { backgroundColor: '#FDECEA', borderColor: '#f5c6cb' }]}>
+                <View style={[styles.statusBox, { backgroundColor: COLORS.errorLight }]}>
                   <Text style={styles.statusTitle}>Previous appeal declined</Text>
                   <Text style={styles.statusText}>You may submit another appeal with more detail below.</Text>
                 </View>
@@ -165,7 +166,7 @@ export default function BannedScreen() {
               <TextInput
                 style={styles.input}
                 placeholder="Explain why your account should be restored…"
-                placeholderTextColor="#B99"
+                placeholderTextColor={COLORS.textMuted}
                 value={reason}
                 onChangeText={setReason}
                 multiline
@@ -185,7 +186,7 @@ export default function BannedScreen() {
           )}
 
           <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.7}>
-            <Ionicons name="log-out-outline" size={18} color="#777" style={{ marginRight: 6 }} />
+            <Ionicons name="log-out-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -196,27 +197,27 @@ export default function BannedScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: BG, paddingTop: STATUSBAR_TOP },
-  container: { flexGrow: 1, padding: 28, alignItems: 'center', justifyContent: 'center' },
-  iconCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: '#FBE4E1', alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: '800', color: '#1a1a1a', marginBottom: 10 },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center', lineHeight: 21, marginBottom: 22 },
-  reasonBox: { width: '100%', backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#E4C9C6', padding: 16, marginBottom: 16 },
+  container: { flexGrow: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
+  iconCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: COLORS.errorLight, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  title: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 10, letterSpacing: -0.4 },
+  subtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: 22 },
+  reasonBox: { width: '100%', backgroundColor: COLORS.errorLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 16 },
   reasonLabel: { fontSize: 11, fontWeight: '800', color: RED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
-  reasonValue: { fontSize: 14.5, color: '#333', lineHeight: 20, fontWeight: '600' },
-  timerBox: { width: '100%', backgroundColor: '#FEF5E7', borderRadius: 14, borderWidth: 1, borderColor: '#F5D89E', padding: 16, marginBottom: 22, alignItems: 'center' },
+  reasonValue: { fontSize: 14.5, color: COLORS.textPrimary, lineHeight: 20, fontWeight: '600' },
+  timerBox: { width: '100%', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 22, alignItems: 'center' },
   timerTitle: { fontSize: 12, fontWeight: '800', color: '#B9770E', textTransform: 'uppercase', letterSpacing: 0.5 },
   timerValue: { fontSize: 26, fontWeight: '800', color: '#8A5A0B', marginVertical: 4 },
   timerSub: { fontSize: 12.5, color: '#8A5A0B', textAlign: 'center' },
   timerHint: { fontSize: 12, color: '#A9863F', textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
-  label: { alignSelf: 'flex-start', fontSize: 14, fontWeight: '700', color: RED, marginBottom: 8 },
-  input: { width: '100%', minHeight: 120, backgroundColor: '#fff', borderRadius: 14, borderWidth: 1.5, borderColor: '#E4C9C6', padding: 14, fontSize: 15, color: '#333' },
-  counter: { alignSelf: 'flex-end', fontSize: 11, color: '#A98', marginTop: 6, marginBottom: 16 },
-  submitBtn: { width: '100%', height: 54, borderRadius: 14, backgroundColor: RED, alignItems: 'center', justifyContent: 'center', elevation: 2 },
+  label: { alignSelf: 'flex-start', fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
+  input: { width: '100%', minHeight: 120, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14, fontSize: 15, color: COLORS.textPrimary },
+  counter: { alignSelf: 'flex-end', fontSize: 11, color: COLORS.textMuted, marginTop: 6, marginBottom: 16 },
+  submitBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: RED, alignItems: 'center', justifyContent: 'center' },
   submitText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  statusBox: { width: '100%', backgroundColor: '#FEF5E7', borderRadius: 14, borderWidth: 1, borderColor: '#F5D89E', padding: 16, marginBottom: 24, alignItems: 'center' },
-  statusTitle: { fontSize: 15, fontWeight: '800', color: '#1a1a1a', marginBottom: 4 },
-  statusText: { fontSize: 13, color: '#666', textAlign: 'center', lineHeight: 19 },
-  appealEcho: { fontSize: 13, color: '#555', fontStyle: 'italic', marginTop: 10, textAlign: 'center' },
+  statusBox: { width: '100%', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 24, alignItems: 'center' },
+  statusTitle: { fontSize: 15, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 4 },
+  statusText: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 19 },
+  appealEcho: { fontSize: 13, color: COLORS.textSecondary, fontStyle: 'italic', marginTop: 10, textAlign: 'center' },
   signOutBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 30, padding: 10 },
-  signOutText: { fontSize: 14, color: '#777', fontWeight: '600' },
+  signOutText: { fontSize: 14, color: COLORS.textSecondary, fontWeight: '600' },
 });

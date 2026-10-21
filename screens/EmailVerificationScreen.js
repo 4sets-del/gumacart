@@ -6,10 +6,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { sendEmailVerification, signOut, reload } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
+import { COLORS, RADIUS } from '../constants/theme';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = '#2E6B3E';
-const BG = '#EAEDE8';
+const GREEN = COLORS.primary;
 
 export default function EmailVerificationScreen({ navigation }) {
   const [checking, setChecking] = useState(false);
@@ -89,9 +89,7 @@ export default function EmailVerificationScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
-
-      <View style={styles.blobTopRight} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.container}>
         <View style={styles.iconCircle}>
@@ -109,7 +107,7 @@ export default function EmailVerificationScreen({ navigation }) {
         </Text>
 
         <View style={styles.spamNote}>
-          <Ionicons name="alert-circle-outline" size={16} color="#e67e22" style={{ marginRight: 8 }} />
+          <Ionicons name="alert-circle-outline" size={16} color={COLORS.warning} style={{ marginRight: 8 }} />
           <Text style={styles.spamNoteText}>
             Can't find it? Check your <Text style={{ fontWeight: '800' }}>Spam</Text> or <Text style={{ fontWeight: '800' }}>Junk</Text> folder. If it's there, tap <Text style={{ fontWeight: '800' }}>"Not Spam"</Text> so future emails reach your inbox.
           </Text>
@@ -151,33 +149,20 @@ export default function EmailVerificationScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG, paddingTop: STATUSBAR_TOP },
-  blobTopRight: {
-    position: 'absolute', top: -60, right: -100,
-    width: 280, height: 280, borderRadius: 140,
-    backgroundColor: '#C8D9C0', opacity: 0.6,
-  },
-  container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
-  iconCircle: {
-    width: 110, height: 110, borderRadius: 55,
-    backgroundColor: '#D6E8D0', alignItems: 'center', justifyContent: 'center',
-    marginBottom: 24,
-  },
-  title: { fontSize: 24, fontWeight: '800', color: GREEN, marginBottom: 8, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: '#666', textAlign: 'center' },
-  email: { fontSize: 15, fontWeight: '700', color: '#222', marginTop: 4, marginBottom: 16 },
-  instructions: { fontSize: 13, color: '#888', textAlign: 'center', lineHeight: 20, marginBottom: 18 },
-  spamNote: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FFF4E6', borderRadius: 12, padding: 13, marginBottom: 26, borderWidth: 1, borderColor: '#FFE0B2' },
-  spamNoteText: { flex: 1, fontSize: 12, color: '#7A5A2E', lineHeight: 18 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 28 },
-  statusText: { fontSize: 13, color: GREEN, fontWeight: '600' },
-  checkBtn: {
-    backgroundColor: GREEN, borderRadius: 14, height: 56,
-    width: '100%', alignItems: 'center', justifyContent: 'center',
-    elevation: 2, shadowColor: GREEN, shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
-  },
+  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
+  container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
+  iconCircle: { width: 104, height: 104, borderRadius: 52, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  title: { fontSize: 24, fontWeight: '800', color: COLORS.textPrimary, marginBottom: 8, textAlign: 'center', letterSpacing: -0.4 },
+  subtitle: { fontSize: 14, color: COLORS.textSecondary, textAlign: 'center' },
+  email: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginTop: 4, marginBottom: 16 },
+  instructions: { fontSize: 13.5, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 18 },
+  spamNote: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 13, marginBottom: 24 },
+  spamNoteText: { flex: 1, fontSize: 12.5, color: '#7A5A2E', lineHeight: 18 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
+  statusText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
+  checkBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, height: 52, width: '100%', alignItems: 'center', justifyContent: 'center' },
   checkBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   resendBtn: { marginTop: 18, paddingVertical: 6 },
-  resendText: { fontSize: 14, color: GREEN, fontWeight: '600' },
-  differentEmailText: { fontSize: 13, color: '#999', textDecorationLine: 'underline' },
+  resendText: { fontSize: 14, color: COLORS.primary, fontWeight: '600' },
+  differentEmailText: { fontSize: 13, color: COLORS.textMuted, textDecorationLine: 'underline' },
 });

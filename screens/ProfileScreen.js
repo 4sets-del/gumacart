@@ -1,68 +1,74 @@
 import { useState, useEffect } from "react";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator,
-  RefreshControl, Image, Dimensions, Platform,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator, RefreshControl, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from "@expo/vector-icons";
-import { signOut, updateProfile } from "firebase/auth";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { auth, db, storage } from "../firebaseConfig";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
-
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
-const SCREEN_WIDTH = Dimensions.get("window").width;
-
-const TYPE_COLORS = { sell: GREEN, buy: "#2980b9", barter: "#e67e22", donate: "#e74c3c" };
-const TYPE_LABELS = { sell: "FOR SALE", buy: "WANTED", barter: "BARTER", donate: "FREE" };
+import { auth, db } from "../firebaseConfig";
+import { uploadFile } from "../utils/upload";
+import { LinearGradient } from "expo-linear-gradient";
+import { COLORS, SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName } from "../constants/theme";
 
 function StarRating({ rating, size = 14 }) {
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
       {[1, 2, 3, 4, 5].map((star) => (
-        <Ionicons key={star} name={star <= Math.round(rating) ? "star" : "star-outline"} size={size} color={star <= Math.round(rating) ? "#F4C542" : "#D5D5D5"} />
+        <Ionicons key={star} name={star <= Math.round(rating) ? "star" : "star-outline"} size={size} color={star <= Math.round(rating) ? COLORS.star : COLORS.borderStrong} />
       ))}
     </View>
   );
 }
 
+function MenuItem({ icon, label, onPress, badge, last, color = COLORS.primary }) {
+  return (
+    <TouchableOpacity style={[styles.menuItem, !last && styles.menuItemBorder]} activeOpacity={0.7} onPress={onPress}>
+      <View style={[styles.menuIcon, { backgroundColor: color + "1A" }]}>
+        <Ionicons name={icon} size={19} color={color} />
+      </View>
+      <Text style={styles.menuLabel}>{label}</Text>
+      {badge ? <View style={styles.menuBadge}><Text style={styles.menuBadgeText}>{badge}</Text></View> : null}
+      <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+    </TouchableOpacity>
+  );
+}
+
 export default function ProfileScreen({ navigation }) {
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const insets = useSafeAreaInsets();
+  const isFocused = useIsFocused();
+  const [listingCount, setListingCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState("active");
   const [cartCount, setCartCount] = useState(0);
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [userData, setUserData] = useState(null);
   const [reviews, setReviews] = useState([]);
   const [followerCount, setFollowerCount] = useState(0);
-  const [isAdmin, setIsAdmin] = useState(false);
   const user = auth.currentUser;
+  const isAdmin = userData?.role === "admin";
 
-  useEffect(() => {
-    const loadUserData = async () => {
-      if (!user?.uid) return;
+  const loadUserData = async () => {
+    if (!user?.uid) return;
+    try {
       const userDoc = await getDoc(doc(db, "users", user.uid));
       const data = userDoc.data();
-      setIsAdmin(data?.role === "admin");
       setProfilePhoto(data?.photoURL || user?.photoURL || null);
       setUserData(data);
-    };
-    loadUserData();
-  }, []);
+    } catch (e) {}
+  };
 
-  const loadMyListings = async () => {
+  const loadListingCount = async () => {
+    if (!auth.currentUser) return; // signing out: the screen may still refresh once
     try {
-      const q = query(collection(db, "listings"), where("sellerId", "==", user.uid), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      setListings(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })));
-    } catch (e) { console.log("Profile listings error:", e.message); }
-    finally { setLoading(false); }
+      const snapshot = await getDocs(query(collection(db, "listings"), where("sellerId", "==", user.uid)));
+      setListingCount(snapshot.size);
+    } catch (e) {
+      // Permission errors happen briefly while signing out; anything else is worth logging.
+      if (e.code !== "permission-denied") console.log("Profile listings error:", e.message);
+    }
   };
 
   const loadCartCount = async () => {
@@ -74,8 +80,7 @@ export default function ProfileScreen({ navigation }) {
 
   const loadReviews = async () => {
     try {
-      const q = query(collection(db, "reviews"), where("sellerId", "==", user.uid));
-      const snap = await getDocs(q);
+      const snap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", user.uid)));
       const items = snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => {
         const aTime = a.createdAt?.toDate?.() || new Date(0);
         const bTime = b.createdAt?.toDate?.() || new Date(0);
@@ -92,15 +97,16 @@ export default function ProfileScreen({ navigation }) {
     } catch (e) {}
   };
 
-  useEffect(() => { loadMyListings(); loadCartCount(); loadReviews(); loadFollowers(); }, []);
+  const loadAll = () => Promise.all([loadUserData(), loadListingCount(), loadCartCount(), loadReviews(), loadFollowers()]);
+
   useEffect(() => {
-    const unsubscribe = navigation.addListener("focus", () => { loadCartCount(); loadFollowers(); });
-    return unsubscribe;
+    loadAll();
+    return navigation.addListener("focus", () => { loadListingCount(); loadCartCount(); loadFollowers(); });
   }, [navigation]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadMyListings(); await loadCartCount(); await loadReviews(); await loadFollowers();
+    await loadAll();
     setRefreshing(false);
   };
 
@@ -129,17 +135,7 @@ export default function ProfileScreen({ navigation }) {
   const uploadPhoto = async (uri) => {
     setUploadingPhoto(true);
     try {
-      const storageRef = ref(storage, `profiles/${user.uid}/avatar.jpg`);
-      const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = () => reject(new Error("Network request failed"));
-        xhr.responseType = "blob";
-        xhr.open("GET", uri, true);
-        xhr.send(null);
-      });
-      await uploadBytes(storageRef, blob);
-      const downloadURL = await getDownloadURL(storageRef);
+      const downloadURL = await uploadFile(uri, `profiles/${user.uid}/avatar.jpg`, { maxSize: 600 });
       await updateProfile(user, { photoURL: downloadURL });
       await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL });
       setProfilePhoto(downloadURL);
@@ -153,265 +149,6 @@ export default function ProfileScreen({ navigation }) {
     await updateDoc(doc(db, "users", user.uid), { photoURL: null });
     setProfilePhoto(null);
   };
-
-  const getListingImage = (item) => {
-    if (item.images?.length > 0) return item.images[0];
-    if (item.image) return item.image;
-    return null;
-  };
-
-  const filteredListings = listings.filter((l) =>
-    activeTab === "active" ? l.status !== "sold" : l.status === "sold"
-  );
-
-  const totalListings = listings.length;
-  const activeSell = listings.filter((l) => l.type === "sell" && l.status !== "sold").length;
-  const activeBarter = listings.filter((l) => l.type === "barter").length;
-  const activeDonate = listings.filter((l) => l.type === "donate").length;
-
-  const avgRating = reviews.length > 0
-    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-    : userData?.avgRating || 0;
-
-  const ratingCounts = [5, 4, 3, 2, 1].map((star) => ({
-    star, count: reviews.filter((r) => r.rating === star).length,
-  }));
-
-  return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
-
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => navigation.navigate("Home")}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Settings")} activeOpacity={0.7} style={styles.settingsBtn}>
-          <Ionicons name="settings-outline" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={{ backgroundColor: LIGHT_BG }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}>
-
-        <View style={styles.profileHero}>
-          <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleChangePhoto}>
-            {uploadingPhoto ? (
-              <View style={styles.avatarCircle}><ActivityIndicator color="#fff" size="large" /></View>
-            ) : profilePhoto ? (
-              <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
-            ) : (
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{user?.displayName?.[0]?.toUpperCase() || "?"}</Text>
-              </View>
-            )}
-            <View style={styles.cameraBadge}>
-              <Ionicons name="camera" size={15} color={GREEN} />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.userName}>{user?.displayName || "Student"}</Text>
-          <Text style={styles.userEmail}>{user?.email}</Text>
-
-          {userData?.role === "faculty" && (
-            <View style={styles.facultyBadge}>
-              <Ionicons name="briefcase" size={13} color="#fff" style={{ marginRight: 5 }} />
-              <Text style={styles.facultyText}>Faculty</Text>
-            </View>
-          )}
-
-          {userData?.role !== "faculty" && userData?.facultyRequest === "pending" && (
-            <TouchableOpacity style={styles.facultyPending} activeOpacity={0.8} onPress={cancelFacultyRequest}>
-              <Ionicons name="time-outline" size={13} color="#fff" style={{ marginRight: 5 }} />
-              <Text style={styles.facultyPendingText}>Faculty verification pending · Cancel</Text>
-            </TouchableOpacity>
-          )}
-
-          {userData?.role !== "faculty" && userData?.facultyRequest === "rejected" && (
-            <TouchableOpacity style={styles.facultyRejected} activeOpacity={0.8} onPress={requestFacultyStatus}>
-              <Ionicons name="close-circle-outline" size={13} color="#fff" style={{ marginRight: 5 }} />
-              <Text style={styles.facultyPendingText}>Faculty request declined · Request again</Text>
-            </TouchableOpacity>
-          )}
-
-          {reviews.length > 0 && (
-            <View style={styles.heroRatingRow}>
-              <StarRating rating={avgRating} size={15} />
-              <Text style={styles.heroRatingText}>{avgRating.toFixed(1)} ({reviews.length} review{reviews.length !== 1 ? "s" : ""})</Text>
-            </View>
-          )}
-          <TouchableOpacity style={styles.followerPill} activeOpacity={0.8} onPress={() => navigation.navigate("Following")}>
-            <Ionicons name="people" size={14} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.followerPillText}>{followerCount} follower{followerCount !== 1 ? "s" : ""}</Text>
-          </TouchableOpacity>
-          {userData?.verificationStatus === "verified" && (
-            <View style={styles.verifiedBadge}>
-              <Ionicons name="checkmark-circle" size={13} color="#fff" style={{ marginRight: 5 }} />
-              <Text style={styles.verifiedText}>SLSU Verified Student</Text>
-            </View>
-          )}
-        </View>
-
-        <View style={styles.statsCard}>
-          {[
-            { label: "Total Posts", value: totalListings, color: "#111" },
-            { label: "Selling",     value: activeSell,    color: GREEN },
-            { label: "Barter",      value: activeBarter,  color: "#e67e22" },
-            { label: "Donate",      value: activeDonate,  color: "#e74c3c" },
-          ].map((stat, i, arr) => (
-            <View key={stat.label} style={{ flex: 1, flexDirection: "row" }}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: stat.color }]}>{stat.value}</Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-              {i < arr.length - 1 && <View style={styles.statDivider} />}
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.quickActionsGrid}>
-          <TouchableOpacity style={styles.quickActionBtn} activeOpacity={0.8} onPress={() => navigation.navigate("Following")}>
-            <Ionicons name="people" size={20} color={GREEN} />
-            <Text style={styles.quickActionLabel}>Following</Text>
-          </TouchableOpacity>
-          {isAdmin && (
-            <TouchableOpacity style={styles.quickActionBtn} activeOpacity={0.8} onPress={() => navigation.navigate("AdminPanel")}>
-              <Text style={styles.quickActionIcon}>🔑</Text>
-              <Text style={styles.quickActionLabel}>Admin Panel</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ratings & Reviews</Text>
-          <View style={styles.ratingSummaryCard}>
-            <View style={styles.ratingSummaryLeft}>
-              <Text style={styles.ratingBigNum}>{avgRating > 0 ? avgRating.toFixed(1) : "—"}</Text>
-              <StarRating rating={avgRating} size={16} />
-              <Text style={styles.ratingSummarySub}>{reviews.length} review{reviews.length !== 1 ? "s" : ""}</Text>
-            </View>
-            <View style={styles.ratingBreakdown}>
-              {ratingCounts.map(({ star, count }) => (
-                <View key={star} style={styles.breakdownRow}>
-                  <Text style={styles.breakdownStar}>{star}★</Text>
-                  <View style={styles.breakdownBar}>
-                    <View style={[styles.breakdownFill, { width: reviews.length > 0 ? `${(count / reviews.length) * 100}%` : "0%" }]} />
-                  </View>
-                  <Text style={styles.breakdownCount}>{count}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-          {reviews.length === 0 ? (
-            <View style={styles.emptyReviews}>
-              <View style={styles.emptyReviewsIconBox}>
-                <Ionicons name="star-outline" size={30} color={GREEN} />
-              </View>
-              <Text style={styles.emptyReviewsText}>No reviews yet</Text>
-            </View>
-          ) : (
-            reviews.slice(0, 5).map((review) => (
-              <View key={review.id} style={styles.reviewCard}>
-                <View style={styles.reviewHeader}>
-                  <View style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase() || "?"}</Text>
-                  </View>
-                  <View style={styles.reviewInfo}>
-                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                    <StarRating rating={review.rating} size={12} />
-                  </View>
-                  <Text style={styles.reviewDate}>{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : "Recently"}</Text>
-                </View>
-                {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
-              </View>
-            ))
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Listings</Text>
-          <View style={styles.tabs}>
-            {["active", "sold"].map((tab) => (
-              <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} activeOpacity={0.7} onPress={() => setActiveTab(tab)}>
-                <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tab === "active" ? `Active (${listings.filter(l => l.status !== "sold").length})` : `Sold / Done (${listings.filter(l => l.status === "sold").length})`}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-          {loading ? (
-            <View style={styles.loadingWrap}>
-              <ActivityIndicator color={GREEN} size="large" />
-              <Text style={styles.loadingText}>Loading your listings...</Text>
-            </View>
-          ) : filteredListings.length === 0 ? (
-            <View style={styles.emptyState}>
-              <View style={styles.emptyIconBox}>
-                <Text style={styles.emptyIcon}>📭</Text>
-              </View>
-              <Text style={styles.emptyTitle}>No listings yet</Text>
-              <Text style={styles.emptySubtext}>{activeTab === "active" ? "Post something to get started!" : "No sold items yet."}</Text>
-              {activeTab === "active" && (
-                <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing")}>
-                  <Ionicons name="add" size={18} color="#fff" style={{ marginRight: 6 }} />
-                  <Text style={styles.emptyBtnText}>Post a Listing</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : (
-            filteredListings.map((item) => {
-              const imgUrl = getListingImage(item);
-              const typeColor = TYPE_COLORS[item.type] || GREEN;
-              const typeLabel = TYPE_LABELS[item.type] || "FOR SALE";
-              const isRejected = item.status === "rejected";
-              const isPending = item.status === "pending";
-              return (
-                <TouchableOpacity
-                  key={item.id}
-                  style={[styles.listingCard, isRejected && styles.listingCardRejected]}
-                  onPress={() => isRejected
-                    ? navigation.navigate("CreateListing", { editListing: item })
-                    : navigation.navigate("ProductDetail", { product: item })}
-                  activeOpacity={0.88}
-                >
-                  <View style={styles.listingImageBox}>
-                    {imgUrl ? <Image source={{ uri: imgUrl }} style={styles.listingImage} /> : <Text style={styles.listingImagePlaceholder}>🛍️</Text>}
-                    <View style={[styles.listingTypeBadge, { backgroundColor: typeColor }]}>
-                      <Text style={styles.listingTypeBadgeText}>{typeLabel}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.listingInfo}>
-                    <Text style={styles.listingName} numberOfLines={2}>{item.name}</Text>
-                    {item.type === "donate" ? <Text style={[styles.listingPrice, { color: "#e74c3c" }]}>FREE</Text>
-                      : item.type === "barter" ? <Text style={[styles.listingPrice, { color: "#e67e22" }]}>For Barter</Text>
-                      : item.type === "buy" ? <Text style={[styles.listingPrice, { color: "#2980b9" }]}>Looking For</Text>
-                      : <Text style={styles.listingPrice}>₱{item.price?.toLocaleString()}</Text>}
-                    <View style={styles.listingLocationRow}>
-                      <Ionicons name="location-sharp" size={11} color="#aaa" />
-                      <Text style={styles.listingLocation} numberOfLines={1}>{item.location}</Text>
-                    </View>
-                    {item.status === "sold" && <View style={styles.soldPill}><Text style={styles.soldPillText}>SOLD</Text></View>}
-                    {isPending && (
-                      <View style={styles.pendingPill}><Text style={styles.pendingPillText}>⏳ Pending review</Text></View>
-                    )}
-                    {isRejected && (
-                      <>
-                        <View style={styles.rejectedPill}><Text style={styles.rejectedPillText}>⚠️ Rejected — tap to edit</Text></View>
-                        {item.rejectionReason ? (
-                          <Text style={styles.rejectReasonText} numberOfLines={2}>Reason: {item.rejectionReason}</Text>
-                        ) : null}
-                      </>
-                    )}
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#ccc" style={{ paddingRight: 12 }} />
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </View>
-
-        <View style={{ height: 50 }} />
-      </ScrollView>
-    </SafeAreaView>
-  );
 
   async function cancelFacultyRequest() {
     Alert.alert("Cancel request?", "This will withdraw your faculty verification request.", [
@@ -432,98 +169,201 @@ export default function ProfileScreen({ navigation }) {
     setUserData((prev) => ({ ...prev, facultyRequest: "pending" }));
     Alert.alert("Requested", "Your faculty status request was sent for review.");
   }
+
+  const avgRating = reviews.length > 0
+    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+    : userData?.avgRating || 0;
+
+  const isVerified = userData?.verificationStatus === "verified";
+
+  return (
+    <View style={styles.safe}>
+      {isFocused && <StatusBar barStyle="light-content" />}
+      {/* Keeps the area behind the status bar green even after the header scrolls away */}
+      <View pointerEvents="none" style={[styles.statusBacking, { height: insets.top }]} />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+        contentContainerStyle={{ paddingBottom: 24 }}
+      >
+        {/* ── GREEN HEADER ── */}
+        <LinearGradient colors={GRADIENTS.primaryDeep} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 12 }]}>
+          <View style={styles.heroCircle} />
+          <View style={styles.heroCircleSmall} />
+          <View style={styles.heroTop}>
+            <Text style={styles.heroTitle}>Profile</Text>
+            <TouchableOpacity style={styles.heroIconBtn} onPress={() => navigation.navigate("Settings")}>
+              <Ionicons name="settings-outline" size={21} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+
+        {/* ── PROFILE CARD ── */}
+        <View style={styles.profileCard}>
+          <View style={styles.identityRow}>
+            <TouchableOpacity style={styles.avatarWrapper} activeOpacity={0.85} onPress={handleChangePhoto}>
+              {uploadingPhoto ? (
+                <View style={styles.avatarFallback}><ActivityIndicator color={COLORS.primary} /></View>
+              ) : profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Text style={styles.avatarText}>{user?.displayName?.[0]?.toUpperCase() || "?"}</Text>
+                </View>
+              )}
+              <View style={styles.cameraBadge}>
+                <Ionicons name="camera" size={13} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.userName} numberOfLines={1}>{user?.displayName || "Student"}</Text>
+              <Text style={styles.userEmail} numberOfLines={1}>{user?.email}</Text>
+              <View style={styles.badgesRow}>
+                {isVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Ionicons name="checkmark-circle" size={13} color={COLORS.primary} />
+                    <Text style={styles.verifiedText}>Verified SLSU Student</Text>
+                  </View>
+                )}
+                {userData?.role === "faculty" && (
+                  <View style={[styles.verifiedBadge, { backgroundColor: COLORS.accentLight }]}>
+                    <Ionicons name="briefcase" size={12} color="#8A5A00" />
+                    <Text style={[styles.verifiedText, { color: "#8A5A00" }]}>Faculty</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {userData?.role !== "faculty" && userData?.facultyRequest === "pending" && (
+            <TouchableOpacity style={[styles.notice, { backgroundColor: COLORS.warningLight }]} activeOpacity={0.8} onPress={cancelFacultyRequest}>
+              <Ionicons name="time-outline" size={15} color={COLORS.warning} />
+              <Text style={[styles.noticeText, { color: COLORS.warning }]}>Faculty verification pending · Tap to cancel</Text>
+            </TouchableOpacity>
+          )}
+          {userData?.role !== "faculty" && userData?.facultyRequest === "rejected" && (
+            <TouchableOpacity style={[styles.notice, { backgroundColor: COLORS.errorLight }]} activeOpacity={0.8} onPress={requestFacultyStatus}>
+              <Ionicons name="close-circle-outline" size={15} color={COLORS.error} />
+              <Text style={[styles.noticeText, { color: COLORS.error }]}>Faculty request declined · Request again</Text>
+            </TouchableOpacity>
+          )}
+          {userData && !isVerified && !isAdmin && (
+            <TouchableOpacity style={[styles.notice, { backgroundColor: COLORS.primaryPale }]} activeOpacity={0.8} onPress={() => navigation.navigate("Verification")}>
+              <Ionicons name="shield-checkmark-outline" size={15} color={COLORS.primary} />
+              <Text style={[styles.noticeText, { color: COLORS.primary }]}>
+                {userData?.verificationStatus === "pending" ? "Student ID verification pending review" : "Verify your student ID to start selling"}
+              </Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={styles.statsRow}>
+            {[
+              { label: "Listings", value: listingCount, color: COLORS.primary },
+              { label: "Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", color: "#F59E0B" },
+              { label: "Reviews", value: reviews.length, color: "#2563EB" },
+              { label: "Followers", value: followerCount, color: "#7C3AED", onPress: () => navigation.navigate("Following") },
+            ].map((stat, i) => (
+              <TouchableOpacity key={stat.label} style={[styles.statItem, i > 0 && styles.statDivider]} activeOpacity={stat.onPress ? 0.7 : 1} onPress={stat.onPress}>
+                <Text style={[styles.statNumber, { color: stat.color }]}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* ── MENU ── */}
+        <View style={styles.menu}>
+          <MenuItem icon="pricetags" color="#16A34A" label="My Listings" onPress={() => navigation.navigate("MyListings")} />
+          <MenuItem icon="cart" color="#F59E0B" label="My Cart" badge={cartCount > 0 ? cartCount : null} onPress={() => navigation.navigate("Cart")} />
+          <MenuItem icon="chatbubble-ellipses" color="#2563EB" label="Messages" onPress={() => navigation.navigate("Main", { screen: "Messages" })} />
+          <MenuItem icon="people" color="#7C3AED" label="Followers & Following" onPress={() => navigation.navigate("Following")} />
+          <MenuItem icon="notifications" color="#E11D48" label="Notifications" onPress={() => navigation.navigate("Notifications")} />
+          {isAdmin && <MenuItem icon="key" color="#0D9488" label="Admin Panel" onPress={() => navigation.navigate("AdminPanel")} />}
+          <MenuItem icon="settings" color="#64748B" label="Settings" onPress={() => navigation.navigate("Settings")} />
+          <MenuItem icon="help-circle" color="#EA580C" label="Help & About" onPress={() => navigation.navigate("About")} last />
+        </View>
+
+        {/* ── REVIEWS ── */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recent Reviews</Text>
+          {reviews.length === 0 ? (
+            <View style={styles.emptyReviews}>
+              <Ionicons name="star-outline" size={26} color={COLORS.textMuted} />
+              <Text style={styles.emptyReviewsText}>No reviews yet</Text>
+            </View>
+          ) : (
+            reviews.slice(0, 5).map((review) => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <View style={[styles.reviewAvatar, { backgroundColor: colorForName(review.reviewerName) }]}>
+                    <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase() || "?"}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
+                    <StarRating rating={review.rating} size={12} />
+                  </View>
+                  <Text style={styles.reviewDate}>{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : "Recently"}</Text>
+                </View>
+                {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+              </View>
+            ))
+          )}
+        </View>
+      </ScrollView>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: GREEN },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
-  settingsBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  profileHero: { alignItems: "center", backgroundColor: GREEN, paddingTop: 10, paddingBottom: 36, paddingHorizontal: 20 },
-  avatarWrapper: { position: "relative", marginBottom: 14 },
-  avatarCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: "rgba(255,255,255,0.25)", alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: "rgba(255,255,255,0.6)" },
-  avatarImage: { width: 100, height: 100, borderRadius: 50, borderWidth: 3, borderColor: "#fff" },
-  avatarText: { fontSize: 44, fontWeight: "800", color: "#fff" },
-  cameraBadge: { position: "absolute", bottom: 2, right: 2, width: 32, height: 32, borderRadius: 16, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: GREEN, elevation: 3 },
-  userName: { fontSize: 24, fontWeight: "800", color: "#fff", marginBottom: 4 },
-  userEmail: { fontSize: 13, color: "rgba(255,255,255,0.75)", marginBottom: 10 },
-  facultyBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "#C79A2E", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 4, marginBottom: 6 },
-  facultyText: { fontSize: 12, color: "#fff", fontWeight: "700" },
-  facultyPending: { flexDirection: "row", alignItems: "center", backgroundColor: "#B9770E", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 4, marginBottom: 6 },
-  facultyRejected: { flexDirection: "row", alignItems: "center", backgroundColor: "#C0392B", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 4, marginBottom: 6 },
-  facultyPendingText: { fontSize: 12, color: "#fff", fontWeight: "700" },
-  heroRatingRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 },
-  followerPill: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.4)", marginBottom: 10 },
-  followerPillText: { fontSize: 12, color: "#fff", fontWeight: "600" },
-  heroRatingText: { fontSize: 12, color: "rgba(255,255,255,0.85)", fontWeight: "600" },
-  verifiedBadge: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.2)", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.4)" },
-  verifiedText: { fontSize: 12, color: "#fff", fontWeight: "600" },
-  statsCard: { flexDirection: "row", backgroundColor: "#fff", marginHorizontal: 20, marginTop: -18, borderRadius: 18, borderWidth: 1, borderColor: "#E8EDE5", paddingVertical: 18, elevation: 4, shadowColor: "#000", shadowOpacity: 0.08, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } },
-  statItem: { flex: 1, alignItems: "center" },
-  statNumber: { fontSize: 24, fontWeight: "800", marginBottom: 4 },
-  statLabel: { fontSize: 11, color: "#999", fontWeight: "500" },
-  statDivider: { width: 1, backgroundColor: "#F0F0F0", alignSelf: "stretch", marginVertical: 6 },
-  quickActionsGrid: { flexDirection: "row", flexWrap: "wrap", marginHorizontal: 20, marginTop: 16, marginBottom: 4, gap: 10 },
-  quickActionBtn: { flex: 1, minWidth: "18%", flexDirection: "row", justifyContent: "center", backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#EAEAEA", paddingVertical: 16, alignItems: "center", gap: 8, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  quickActionIconBox: { position: "relative" },
-  quickActionIcon: { fontSize: 20 },
-  quickActionLabel: { fontSize: 13, color: "#444", fontWeight: "700" },
-  section: { paddingHorizontal: 20, marginBottom: 8, marginTop: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: "800", color: "#111", marginBottom: 14 },
-  ratingSummaryCard: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#EAEAEA", padding: 16, marginBottom: 14, elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  ratingSummaryLeft: { alignItems: "center", justifyContent: "center", width: 90, gap: 4 },
-  ratingBigNum: { fontSize: 32, fontWeight: "800", color: "#F4C542" },
-  ratingSummarySub: { fontSize: 11, color: "#999" },
-  ratingBreakdown: { flex: 1, justifyContent: "center", paddingLeft: 14, borderLeftWidth: 1, borderLeftColor: "#F0F0F0" },
-  breakdownRow: { flexDirection: "row", alignItems: "center", marginBottom: 4 },
-  breakdownStar: { fontSize: 11, color: "#888", width: 22 },
-  breakdownBar: { flex: 1, height: 6, backgroundColor: "#F0F0F0", borderRadius: 3, marginHorizontal: 6, overflow: "hidden" },
-  breakdownFill: { height: "100%", backgroundColor: "#F4C542", borderRadius: 3 },
-  breakdownCount: { fontSize: 10, color: "#999", width: 16, textAlign: "right" },
-  emptyReviews: { alignItems: "center", paddingVertical: 30 },
-  emptyReviewsIconBox: { width: 64, height: 64, borderRadius: 32, backgroundColor: "#E8F5EC", alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  emptyReviewsText: { fontSize: 13, color: "#999" },
-  reviewCard: { backgroundColor: "#fff", borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "#EAEAEA", elevation: 1, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-  reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  reviewAvatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 10 },
-  reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
-  reviewInfo: { flex: 1 },
-  reviewerName: { fontSize: 13, fontWeight: "700", color: "#111", marginBottom: 2 },
-  reviewDate: { fontSize: 10, color: "#aaa" },
-  reviewComment: { fontSize: 13, color: "#555", lineHeight: 19 },
-  tabs: { flexDirection: "row", backgroundColor: "#E8EDE5", borderRadius: 14, padding: 4, marginBottom: 16 },
-  tab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: 11 },
-  tabActive: { backgroundColor: "#fff", elevation: 2, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-  tabText: { fontSize: 12, color: "#999", fontWeight: "600" },
-  tabTextActive: { color: GREEN, fontWeight: "800" },
-  loadingWrap: { alignItems: "center", paddingVertical: 40 },
-  loadingText: { marginTop: 12, fontSize: 13, color: "#999", fontWeight: "500" },
-  listingCard: { flexDirection: "row", backgroundColor: "#fff", borderRadius: 16, borderWidth: 1, borderColor: "#EAEAEA", marginBottom: 12, overflow: "hidden", elevation: 1, alignItems: "center", shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  listingImageBox: { width: 90, height: 90, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center", position: "relative" },
-  listingImage: { width: 90, height: 90 },
-  listingImagePlaceholder: { fontSize: 34 },
-  listingTypeBadge: { position: "absolute", bottom: 0, left: 0, right: 0, paddingVertical: 3, alignItems: "center" },
-  listingTypeBadgeText: { color: "#fff", fontSize: 9, fontWeight: "800" },
-  listingInfo: { flex: 1, padding: 12 },
-  listingName: { fontSize: 14, fontWeight: "700", color: "#111", marginBottom: 5, lineHeight: 19 },
-  listingPrice: { fontSize: 15, fontWeight: "800", color: GREEN, marginBottom: 4 },
-  listingLocationRow: { flexDirection: "row", alignItems: "center", gap: 3 },
-  listingLocation: { fontSize: 11, color: "#aaa", flex: 1 },
-  soldPill: { marginTop: 4, alignSelf: "flex-start", backgroundColor: "#FDECEA", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  soldPillText: { fontSize: 9, color: "#e74c3c", fontWeight: "800" },
-  emptyState: { alignItems: "center", paddingVertical: 50 },
-  emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#fff", alignItems: "center", justifyContent: "center", marginBottom: 12, elevation: 1, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
-  emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 17, fontWeight: "700", color: "#444", marginBottom: 6 },
-  emptySubtext: { fontSize: 13, color: "#aaa", marginBottom: 20 },
-  emptyBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: 14, paddingHorizontal: 26, paddingVertical: 13, elevation: 3 },
-  emptyBtnText: { color: "#fff", fontWeight: "800", fontSize: 14 },
+  statusBacking: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: COLORS.primaryDark },
+  safe: { flex: 1, backgroundColor: COLORS.background },
 
-  listingCardRejected: { borderColor: "#f5c6cb", borderWidth: 1.5, backgroundColor: "#fffafa" },
-  pendingPill: { alignSelf: "flex-start", backgroundColor: "#FEF5E7", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
-  pendingPillText: { fontSize: 10.5, fontWeight: "700", color: "#b9770e" },
-  rejectedPill: { alignSelf: "flex-start", backgroundColor: "#FDECEA", paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 4 },
-  rejectedPillText: { fontSize: 10.5, fontWeight: "700", color: "#c0392b" },
-  rejectReasonText: { fontSize: 11, color: "#a94442", marginTop: 3, fontStyle: "italic" },
+  hero: { paddingHorizontal: SPACING.lg, paddingBottom: 64, overflow: "hidden", borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
+  heroCircle: { position: "absolute", right: -60, top: -40, width: 200, height: 200, borderRadius: 100, backgroundColor: "rgba(255,255,255,0.10)" },
+  heroCircleSmall: { position: "absolute", left: -30, bottom: -50, width: 130, height: 130, borderRadius: 65, backgroundColor: "rgba(245,158,11,0.18)" },
+  heroTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  heroTitle: { fontSize: 22, fontWeight: "800", color: "#fff" },
+  heroIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
+
+  profileCard: { marginHorizontal: SPACING.lg, marginTop: -48, backgroundColor: COLORS.white, borderRadius: 20, padding: SPACING.lg, ...SHADOWS.md },
+  identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  avatarWrapper: { position: "relative" },
+  avatarImage: { width: 72, height: 72, borderRadius: 36 },
+  avatarFallback: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
+  avatarText: { fontSize: 30, fontWeight: "800", color: COLORS.primary },
+  cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
+  userName: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  userEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
+  badgesRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
+  verifiedText: { fontSize: 11, fontWeight: "700", color: COLORS.primary },
+  notice: { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: RADIUS.md, paddingHorizontal: 12, paddingVertical: 9, marginTop: 14 },
+  noticeText: { flex: 1, fontSize: 12.5, fontWeight: "600" },
+
+  statsRow: { flexDirection: "row", marginTop: SPACING.lg, paddingTop: SPACING.lg, borderTopWidth: 1, borderTopColor: COLORS.border },
+  statItem: { flex: 1, alignItems: "center" },
+  statDivider: { borderLeftWidth: 1, borderLeftColor: COLORS.border },
+  statNumber: { fontSize: 18, fontWeight: "800", color: COLORS.textPrimary },
+  statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
+
+  menu: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, backgroundColor: COLORS.white, borderRadius: 18, paddingHorizontal: SPACING.lg, ...SHADOWS.sm },
+  menuItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12 },
+  menuIcon: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center" },
+  menuItemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  menuLabel: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
+  menuBadge: { minWidth: 22, height: 22, borderRadius: 11, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
+  menuBadgeText: { color: "#fff", fontSize: 11, fontWeight: "800" },
+
+  section: { marginHorizontal: SPACING.lg, marginTop: SPACING.xl },
+  sectionTitle: { fontSize: 17, fontWeight: "800", color: COLORS.textPrimary, marginBottom: SPACING.md },
+  emptyReviews: { alignItems: "center", paddingVertical: 24, gap: 6, backgroundColor: COLORS.white, borderRadius: 16 },
+  emptyReviewsText: { fontSize: 13, color: COLORS.textMuted },
+  reviewCard: { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  reviewAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginRight: 10 },
+  reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  reviewerName: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
+  reviewDate: { fontSize: 10.5, color: COLORS.textMuted },
+  reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 19 },
 });

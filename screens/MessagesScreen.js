@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Alert, Image, RefreshControl, Platform,} from 'react-native';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, Alert, RefreshControl, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from "@expo/vector-icons";
 import {
-  collection, query, where, onSnapshot, orderBy,
-  doc, getDoc, deleteDoc, getDocs, updateDoc,
+  collection, query, where, onSnapshot, orderBy, doc, getDoc, deleteDoc, getDocs, updateDoc,
 } from "firebase/firestore";
+import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
+import { Image as CachedImage } from "expo-image";
+import { COLORS, colorForName } from "../constants/theme";
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
+const LIGHT_BG = COLORS.white;
 
 function timeAgo(date) {
   if (!date) return "";
@@ -28,6 +31,7 @@ function timeAgo(date) {
 }
 
 export default function MessagesScreen({ navigation }) {
+  const isFocused = useIsFocused();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -115,17 +119,11 @@ export default function MessagesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
+      {isFocused && <StatusBar barStyle="dark-content" />}
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Home"); }}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
-        </TouchableOpacity>
-        <View style={{ alignItems: "center" }}>
-          <Text style={styles.headerTitle}>Messages</Text>
-          {totalUnread > 0 && <Text style={styles.unreadCount}>{totalUnread} unread</Text>}
-        </View>
-        <View style={{ width: 40 }} />
+        <Text style={styles.headerTitle}>Messages</Text>
+        {totalUnread > 0 && <Text style={styles.unreadCount}>{totalUnread} unread</Text>}
       </View>
 
       {loading ? (
@@ -148,7 +146,7 @@ export default function MessagesScreen({ navigation }) {
               <Text style={styles.emptySub}>
                 When you message a seller or someone messages you, it will appear here.
               </Text>
-              <TouchableOpacity style={styles.browseBtn} activeOpacity={0.85} onPress={() => navigation.navigate("Home")}>
+              <TouchableOpacity style={styles.browseBtn} activeOpacity={0.85} onPress={() => navigation.navigate("Main", { screen: "Home" })}>
                 <Ionicons name="search" size={16} color="#fff" style={{ marginRight: 8 }} />
                 <Text style={styles.browseBtnText}>Browse Listings</Text>
               </TouchableOpacity>
@@ -174,9 +172,9 @@ export default function MessagesScreen({ navigation }) {
                   >
                     <View style={styles.avatarWrapper}>
                       {convo.otherUserPhoto ? (
-                        <Image source={{ uri: convo.otherUserPhoto }} style={styles.avatarImage} />
+                        <CachedImage source={{ uri: convo.otherUserPhoto }} style={styles.avatarImage} cachePolicy="memory-disk" />
                       ) : (
-                        <View style={styles.avatarCircle}>
+                        <View style={[styles.avatarCircle, { backgroundColor: colorForName(convo.otherUserName) }]}>
                           <Text style={styles.avatarText}>{convo.otherUserName?.[0]?.toUpperCase() || "?"}</Text>
                         </View>
                       )}
@@ -226,19 +224,18 @@ export default function MessagesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, backgroundColor: GREEN },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 17, fontWeight: "800", color: "#fff" },
-  unreadCount: { fontSize: 11, color: "rgba(255,255,255,0.8)", fontWeight: "600", marginTop: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
+  header: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white },
+  headerTitle: { fontSize: 24, fontWeight: "800", color: COLORS.textPrimary, letterSpacing: -0.4 },
+  unreadCount: { fontSize: 12.5, color: COLORS.primary, fontWeight: "700" },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
   loadingText: { marginTop: 14, fontSize: 13, color: "#999", fontWeight: "500" },
 
   list: { paddingHorizontal: 16, paddingTop: 10 },
 
-  convoCard: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderRadius: 18, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: "#EAEAEA", elevation: 1, shadowColor: "#000", shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  convoCardUnread: { backgroundColor: "#F5FAF6", borderColor: "#D0E8D8" },
+  convoCard: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.white, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  convoCardUnread: {},
 
   avatarWrapper: { position: "relative", marginRight: 12 },
   avatarCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
@@ -262,7 +259,7 @@ const styles = StyleSheet.create({
   unreadBadgeText: { color: "#fff", fontSize: 10, fontWeight: "800" },
 
   emptyState: { alignItems: "center", paddingVertical: 90, paddingHorizontal: 40 },
-  emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: "#E8F5EC", alignItems: "center", justifyContent: "center", marginBottom: 20 },
+  emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
   emptyTitle: { fontSize: 18, fontWeight: "800", color: "#333", marginBottom: 8 },
   emptySub: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20, marginBottom: 24 },
   browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: 16, paddingHorizontal: 26, paddingVertical: 14, elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },

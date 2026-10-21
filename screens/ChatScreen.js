@@ -1,24 +1,23 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform,
-  StatusBar, TextInput, KeyboardAvoidingView, Image, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, Alert, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { Ionicons } from "@expo/vector-icons";
 import {
-  collection, addDoc, query, orderBy, onSnapshot,
-  serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc,
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { ref, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
+import { Image as CachedImage } from "expo-image";
+import { uploadFile } from "../utils/upload";
+import { COLORS, colorForName } from "../constants/theme";
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = "#2E6B3E";
-const GREEN_LIGHT = "#E8F5EC";
-const BG = "#F0F4ED";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
+const GREEN_LIGHT = COLORS.primaryPale;
 
 // Emoji users can react with
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
@@ -178,17 +177,8 @@ export default function ChatScreen({ route, navigation }) {
     setUploadingMedia(true);
     try {
       const filename = `chats/${conversationId}/${Date.now()}.${isVideo ? "mp4" : "jpg"}`;
-      const storageRef = ref(storage, filename);
-      const blob = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.onload = () => resolve(xhr.response);
-        xhr.onerror = () => reject(new Error("Network request failed"));
-        xhr.responseType = "blob";
-        xhr.open("GET", asset.uri, true);
-        xhr.send(null);
-      });
-      await uploadBytes(storageRef, blob);
-      const mediaUrl = await getDownloadURL(storageRef);
+      // Photos are compressed before upload; videos are sent as recorded.
+      const mediaUrl = await uploadFile(asset.uri, filename, { compress: !isVideo });
       await sendMessage({ text: "", type: isVideo ? "video" : "image", mediaUrl });
     } catch (e) {
       Alert.alert("Error", "Failed to upload media.");
@@ -245,10 +235,10 @@ export default function ChatScreen({ route, navigation }) {
   const renderAvatar = (small = true) => {
     const size = small ? 32 : 42;
     if (otherUserPhoto) {
-      return <Image source={{ uri: otherUserPhoto }} style={{ width: size, height: size, borderRadius: size / 2, marginRight: small ? 8 : 10 }} />;
+      return <CachedImage source={{ uri: otherUserPhoto }} style={{ width: size, height: size, borderRadius: size / 2, marginRight: small ? 8 : 10 }} cachePolicy="memory-disk" />;
     }
     return (
-      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: small ? 8 : 10 }}>
+      <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colorForName(otherUserName), alignItems: "center", justifyContent: "center", marginRight: small ? 8 : 10 }}>
         <Text style={{ fontSize: size * 0.4, fontWeight: "700", color: "#fff" }}>{otherUserName?.[0]?.toUpperCase()}</Text>
       </View>
     );
@@ -283,7 +273,7 @@ export default function ChatScreen({ route, navigation }) {
 
             {msg.type === "image" && msg.mediaUrl ? (
               <TouchableOpacity onPress={() => { setViewerMedia(msg.mediaUrl); setViewerType("image"); setViewerVisible(true); }}>
-                <Image source={{ uri: msg.mediaUrl }} style={styles.msgImage} resizeMode="cover" />
+                <CachedImage source={{ uri: msg.mediaUrl }} style={styles.msgImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
                 <Text style={[styles.msgTime, isMe ? styles.msgTimeMe : styles.msgTimeThem, { marginTop: 6 }]}>
                   {timeLabel(msg.createdAt)}
                 </Text>
@@ -329,11 +319,11 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Messages"); }}>
-          <Ionicons name="arrow-back" size={22} color="#fff" />
+        <TouchableOpacity style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Messages" }); }}>
+          <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerInfo}
@@ -342,21 +332,27 @@ export default function ChatScreen({ route, navigation }) {
         >
           {renderAvatar(false)}
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerName}>{otherUserName}</Text>
+            <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
             {listingName ? (
-              <Text style={styles.headerListing} numberOfLines={1}>🛍️ {listingName}</Text>
+              <Text style={styles.headerListing} numberOfLines={1}>{listingName}</Text>
             ) : (
               <Text style={styles.headerOnline}>SLSU Student</Text>
             )}
           </View>
         </TouchableOpacity>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity
+          style={styles.backBtn}
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate("SellerProfile", { sellerId: otherUserId, sellerName: otherUserName })}
+        >
+          <Ionicons name="ellipsis-vertical" size={20} color={COLORS.textPrimary} />
+        </TouchableOpacity>
       </View>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
         <ScrollView
           ref={scrollRef}
-          style={[styles.messagesList, { backgroundColor: LIGHT_BG }]}
+          style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
           showsVerticalScrollIndicator={false}
@@ -411,12 +407,12 @@ export default function ChatScreen({ route, navigation }) {
 
         <View style={[styles.inputBar, { paddingBottom: 10 + insets.bottom }]}>
           <TouchableOpacity style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
-            <Ionicons name="add" size={24} color={GREEN} />
+            <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
           <TextInput
             style={styles.textInput}
-            placeholder="Message..."
-            placeholderTextColor="#bbb"
+            placeholder="Type a message..."
+            placeholderTextColor={COLORS.textMuted}
             value={text}
             onChangeText={setText}
             multiline
@@ -461,7 +457,7 @@ export default function ChatScreen({ route, navigation }) {
           </View>
 
           {viewerType === "image" && viewerMedia && (
-            <Image source={{ uri: viewerMedia }} style={styles.viewerImage} resizeMode="contain" />
+            <CachedImage source={{ uri: viewerMedia }} style={styles.viewerImage} contentFit="contain" cachePolicy="memory-disk" />
           )}
           {viewerType === "video" && viewerMedia && (
             <VideoView
@@ -530,14 +526,14 @@ export default function ChatScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: GREEN, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: GREEN, elevation: 4 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
-  headerInfo: { flexDirection: "row", alignItems: "center", flex: 1, marginLeft: 10 },
-  headerName: { fontSize: 16, fontWeight: "800", color: "#fff" },
-  headerListing: { fontSize: 11, color: "rgba(255,255,255,0.75)", marginTop: 1, maxWidth: 180 },
-  headerOnline: { fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 1 },
-  messagesList: { flex: 1 },
+  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 6, paddingVertical: 8, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  backBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
+  headerInfo: { flexDirection: "row", alignItems: "center", flex: 1, marginLeft: 2 },
+  headerName: { fontSize: 16, fontWeight: "700", color: COLORS.textPrimary },
+  headerListing: { fontSize: 12, color: COLORS.primary, marginTop: 1, maxWidth: 200 },
+  headerOnline: { fontSize: 12, color: COLORS.primary, marginTop: 1 },
+  messagesList: { flex: 1, backgroundColor: COLORS.white },
   messagesContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, flexGrow: 1 },
 
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 },
@@ -546,27 +542,27 @@ const styles = StyleSheet.create({
   emptyChatSub: { fontSize: 13, color: "#999" },
 
   dateDivider: { flexDirection: "row", alignItems: "center", marginVertical: 16, gap: 10 },
-  dateDividerLine: { flex: 1, height: 1, backgroundColor: "#E0E8DB" },
-  dateDividerText: { fontSize: 11, color: "#aaa", fontWeight: "600", paddingHorizontal: 4 },
+  dateDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
+  dateDividerText: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600", paddingHorizontal: 4 },
   msgRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 6 },
   msgRowMe: { justifyContent: "flex-end" },
-  msgBubble: { maxWidth: "75%", borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: "#fff", elevation: 1, borderBottomLeftRadius: 4, shadowColor: "#000", shadowOpacity: 0.05, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-  msgBubbleMe: { backgroundColor: GREEN, borderBottomLeftRadius: 20, borderBottomRightRadius: 4, elevation: 2 },
-  msgBubbleThem: { backgroundColor: "#fff", borderWidth: 1, borderColor: "#EEF0EC" },
-  msgText: { fontSize: 15, color: "#1a1a1a", lineHeight: 21 },
+  msgBubble: { maxWidth: "75%", borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10, borderBottomLeftRadius: 4 },
+  msgBubbleMe: { backgroundColor: COLORS.bubbleSent, borderBottomLeftRadius: 18, borderBottomRightRadius: 4 },
+  msgBubbleThem: { backgroundColor: COLORS.bubbleReceived },
+  msgText: { fontSize: 15, color: COLORS.textPrimary, lineHeight: 21 },
   msgTextMe: { color: "#fff" },
   msgTime: { fontSize: 10, marginTop: 3, alignSelf: "flex-end" },
-  msgTimeMe: { color: "rgba(255,255,255,0.6)" },
-  msgTimeThem: { color: "#bbb" },
+  msgTimeMe: { color: "rgba(255,255,255,0.7)" },
+  msgTimeThem: { color: COLORS.textMuted },
   msgImage: { width: 210, height: 160, borderRadius: 14 },
   msgVideoBox: { width: 210, height: 130, borderRadius: 14, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   msgVideoPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 6 },
   msgVideoText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
-  inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 12, paddingVertical: 10, backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#EAEAEA" },
-  mediaBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: GREEN_LIGHT, alignItems: "center", justifyContent: "center", marginRight: 8 },
-  textInput: { flex: 1, minHeight: 42, maxHeight: 120, backgroundColor: "#F5F5F5", borderRadius: 22, paddingHorizontal: 18, paddingVertical: 11, fontSize: 15, color: "#222", borderWidth: 1, borderColor: "#E8EDE5" },
-  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginLeft: 8, elevation: 3 },
-  sendBtnDisabled: { backgroundColor: "#D0D0D0", elevation: 0 },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 10, paddingTop: 10, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
+  mediaBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center", marginRight: 4 },
+  textInput: { flex: 1, minHeight: 42, maxHeight: 120, backgroundColor: COLORS.white, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginLeft: 8 },
+  sendBtnDisabled: { backgroundColor: COLORS.borderStrong },
   viewerOverlay: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   viewerTopBar: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUSBAR_TOP + 10, paddingBottom: 12, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.4)" },
   viewerBackBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },

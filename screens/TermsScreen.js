@@ -1,17 +1,12 @@
 import React, { useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  StatusBar, Platform,} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+} from 'react-native';
 import { Ionicons } from "@expo/vector-icons";
-const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
+import ScreenHeader from "../components/ScreenHeader";
+import { COLORS, RADIUS, SHADOWS } from "../constants/theme";
 
-const GREEN = "#2E6B3E";
-const LIGHT_BG = "#F0F4ED";
+const GREEN = COLORS.primary;
 
 const TERMS = [
   {
@@ -68,19 +63,11 @@ export default function TermsScreen({ navigation }) {
   const [expanded, setExpanded] = useState(null);
 
   return (
-    <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={LIGHT_BG} />
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          activeOpacity={0.7}
-          onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Settings"); }}
-        >
-          <Ionicons name="arrow-back" size={22} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Terms & Conditions</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <View style={styles.safe}>
+      <ScreenHeader
+        title="Terms & Conditions"
+        onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Settings"); }}
+      />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         <View style={styles.introBanner}>
           <View style={styles.introIconCircle}>
@@ -108,7 +95,7 @@ export default function TermsScreen({ navigation }) {
                   <Text style={[styles.termNumText, expanded === index && styles.termNumTextActive]}>{index + 1}</Text>
                 </View>
                 <Text style={styles.termTitle}>{section.title.replace(/^\d+\.\s*/, "")}</Text>
-                <Ionicons name={expanded === index ? "chevron-up" : "chevron-down"} size={16} color={expanded === index ? GREEN : "#bbb"} />
+                <Ionicons name={expanded === index ? "chevron-up" : "chevron-down"} size={16} color={expanded === index ? GREEN : COLORS.textMuted} />
               </View>
               {expanded === index && (
                 <Text style={styles.termContent}>{section.content}</Text>
@@ -126,34 +113,31 @@ export default function TermsScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingVertical: 14, backgroundColor: LIGHT_BG, borderBottomWidth: 1, borderBottomColor: "#E0E8DB" },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", borderWidth: 1, borderColor: "#E0E8DB", alignItems: "center", justifyContent: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "800", color: GREEN },
-  introBanner: { margin: 20, backgroundColor: GREEN, borderRadius: 22, padding: 26, alignItems: "center", elevation: 4, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  introIconCircle: { width: 64, height: 64, borderRadius: 32, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  introBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 22, padding: 24, alignItems: "center" },
+  introIconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
   introTitle: { fontSize: 22, fontWeight: "800", color: "#fff", marginBottom: 2 },
-  introSubtitle: { fontSize: 14, color: "rgba(255,255,255,0.8)", marginBottom: 12 },
-  introDatePill: { backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4, marginBottom: 14 },
-  introDate: { fontSize: 11, color: "rgba(255,255,255,0.9)", fontWeight: "600" },
+  introSubtitle: { fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 12 },
+  introDatePill: { backgroundColor: "rgba(255,255,255,0.18)", borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 4, marginBottom: 14 },
+  introDate: { fontSize: 11, color: "#fff", fontWeight: "600" },
   introText: { fontSize: 13, color: "rgba(255,255,255,0.9)", textAlign: "center", lineHeight: 20 },
-  termsContainer: { paddingHorizontal: 20, gap: 10 },
-  termCard: { backgroundColor: "#fff", borderRadius: 14, borderWidth: 1, borderColor: "#E8EDE5", padding: 16, elevation: 1, shadowColor: "#000", shadowOpacity: 0.03, shadowRadius: 4, shadowOffset: { width: 0, height: 1 } },
-  termCardExpanded: { borderColor: GREEN, borderWidth: 1.5 },
+  termsContainer: { paddingHorizontal: 16, gap: 10 },
+  termCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1.5, borderColor: "transparent", ...SHADOWS.sm },
+  termCardExpanded: { borderColor: GREEN },
   termHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
-  termNumBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: "#F0F4ED", alignItems: "center", justifyContent: "center" },
+  termNumBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
   termNumBadgeActive: { backgroundColor: GREEN },
-  termNumText: { fontSize: 13, fontWeight: "800", color: "#999" },
+  termNumText: { fontSize: 13, fontWeight: "800", color: COLORS.textMuted },
   termNumTextActive: { color: "#fff" },
-  termTitle: { fontSize: 14, fontWeight: "700", color: "#222", flex: 1 },
-  termContent: { fontSize: 13, color: "#555", lineHeight: 22, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: "#F0F0F0" },
-  footer: { margin: 20, backgroundColor: "#E8F5EC", borderRadius: 16, padding: 20, alignItems: "center", borderWidth: 1, borderColor: "#C8E6D0" },
-  footerText: { fontSize: 13, color: GREEN, textAlign: "center", lineHeight: 20, marginBottom: 10 },
+  termTitle: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, flex: 1 },
+  termContent: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 22, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
+  footer: { margin: 16, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.lg, padding: 20, alignItems: "center" },
+  footerText: { fontSize: 13, color: COLORS.primaryDark, textAlign: "center", lineHeight: 20, marginBottom: 10 },
   footerSubRow: { flexDirection: "row", alignItems: "center" },
   footerSub: { fontSize: 13, fontWeight: "700", color: GREEN },
 });
