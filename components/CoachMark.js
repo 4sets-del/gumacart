@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Modal } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { FONTS } from '../constants/theme';
+import { COLORS, FONTS } from '../constants/theme';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const GREEN = '#1B6B3A';
@@ -140,38 +140,40 @@ export default function CoachMark({ visible, steps, onFinish }) {
 }
 
 const styles = StyleSheet.create({
-  dimFull: { flex: 1, backgroundColor: 'rgba(10,20,10,0.8)' },
-  dim: { position: 'absolute', backgroundColor: 'rgba(10,20,10,0.8)' },
+  dimFull: { flex: 1, backgroundColor: 'rgba(8,24,14,0.82)' },
+  dim: { position: 'absolute', backgroundColor: 'rgba(8,24,14,0.82)' },
   spotlightBorder: {
     position: 'absolute',
-    borderRadius: 14,
-    borderWidth: 2.5,
-    borderColor: '#8BE28B',
+    borderRadius: 16,
+    borderWidth: 3,
+    borderColor: COLORS.accent,
   },
   tooltipWrap: { position: 'absolute', left: 20, right: 20 },
   arrow: { position: 'absolute' },
   tooltip: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    backgroundColor: COLORS.white,
+    borderRadius: 18,
     padding: 16,
-    elevation: 6,
+    borderLeftWidth: 5,
+    borderLeftColor: COLORS.primary,
+    elevation: 8,
     shadowColor: '#000',
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 5 },
   },
-  tooltipTitle: { fontSize: 16, fontFamily: FONTS.heading, color: '#1B1F1B', marginBottom: 4 },
-  tooltipText: { fontSize: 13.5, color: '#555', lineHeight: 19 },
+  tooltipTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
+  tooltipText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 20 },
   tooltipFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginTop: 14,
   },
-  skipText: { color: '#999', fontWeight: '600', fontSize: 13.5 },
+  skipText: { color: COLORS.textMuted, fontWeight: '600', fontSize: 13.5 },
   dotsRow: { flexDirection: 'row', gap: 5 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#DDD' },
-  dotActive: { backgroundColor: GREEN, width: 16 },
-  nextBtn: { backgroundColor: GREEN, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: COLORS.border },
+  dotActive: { backgroundColor: COLORS.accent, width: 18 },
+  nextBtn: { backgroundColor: COLORS.primary, borderRadius: 999, paddingHorizontal: 18, paddingVertical: 9 },
   nextBtnText: { color: '#fff', fontFamily: FONTS.heading, fontSize: 13.5 },
 });
