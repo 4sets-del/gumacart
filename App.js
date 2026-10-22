@@ -12,6 +12,7 @@ import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 import OfflineNotice from './components/OfflineNotice';
+import { AlertHost } from './components/AppAlert';
 import ErrorBoundary from './components/ErrorBoundary';
 import { initCrashReporting } from './utils/crashReporting';
 
@@ -42,6 +43,7 @@ export default function App() {
           <AppNavigator />
         </ErrorBoundary>
         <OfflineNotice />
+        <AlertHost />
       </AuthProvider>
       </ThemeProvider>
     </SafeAreaProvider>

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, RefreshControl, Alert,
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, FlatList, RefreshControl, 
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import { Image } from "expo-image";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";

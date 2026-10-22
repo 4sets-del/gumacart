@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator, RefreshControl, TextInput, Modal, Image, Platform, KeyboardAvoidingView,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, TextInput, Modal, Image, Platform, KeyboardAvoidingView,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -197,7 +198,7 @@ export default function SellerProfileScreen({ route, navigation }) {
         await updateDoc(doc(db, "reviews", editingReviewId), { rating: myRating, comment: myReview.trim(), editedAt: serverTimestamp() });
         setShowRatingModal(false); setEditingReviewId(null); setMyRating(0); setMyReview("");
         await loadAll();
-        Alert.alert("✅ Review Updated!");
+        Alert.alert("Review Updated!");
         return;
       }
       const existingSnap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", sellerId), where("reviewerId", "==", currentUser.uid)));
@@ -209,7 +210,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       });
       setShowRatingModal(false); setMyRating(0); setMyReview("");
       await loadAll();
-      Alert.alert("✅ Review Submitted!", "Thank you for your feedback.");
+      Alert.alert("Review Submitted!", "Thank you for your feedback.");
     } catch (e) {
       Alert.alert("Error", "Failed to submit review.");
     } finally { setSubmittingReview(false); }

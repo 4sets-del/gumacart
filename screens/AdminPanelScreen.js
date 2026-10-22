@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Image, RefreshControl, Modal,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Image, RefreshControl, Modal,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   collection, getDocs, query, orderBy, where, limit, startAfter, getCountFromServer,

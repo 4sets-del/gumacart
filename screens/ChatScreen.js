@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, ActivityIndicator,
 } from "react-native";
+import { Alert } from '../components/AppAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -247,8 +248,8 @@ export default function ChatScreen({ route, navigation }) {
 
   const showMediaOptions = () => {
     Alert.alert("Send Media", "Choose an option", [
-      { text: "📷 Take Photo/Video", onPress: () => pickMedia("camera") },
-      { text: "🖼️ Choose from Gallery", onPress: () => pickMedia("gallery") },
+      { text: "Take Photo/Video", icon: "camera", onPress: () => pickMedia("camera") },
+      { text: "Choose from Gallery", icon: "images", onPress: () => pickMedia("gallery") },
       { text: "Cancel", style: "cancel" },
     ]);
   };

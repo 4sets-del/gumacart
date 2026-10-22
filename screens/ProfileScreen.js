@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Alert, ActivityIndicator, RefreshControl, Image,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Image,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -117,9 +118,9 @@ export default function ProfileScreen({ navigation }) {
 
   const handleChangePhoto = () => {
     Alert.alert("Change Profile Photo", "Choose an option", [
-      { text: "📷 Take Photo", onPress: () => pickImage("camera") },
-      { text: "🖼️ Choose from Gallery", onPress: () => pickImage("gallery") },
-      profilePhoto ? { text: "Remove Photo", style: "destructive", onPress: removePhoto } : null,
+      { text: "Take Photo", icon: "camera", onPress: () => pickImage("camera") },
+      { text: "Choose from Gallery", icon: "images", onPress: () => pickImage("gallery") },
+      profilePhoto ? { text: "Remove Photo", icon: "trash", style: "destructive", onPress: removePhoto } : null,
       { text: "Cancel", style: "cancel" },
     ].filter(Boolean));
   };
@@ -144,7 +145,7 @@ export default function ProfileScreen({ navigation }) {
       await updateProfile(user, { photoURL: downloadURL });
       await updateDoc(doc(db, "users", user.uid), { photoURL: downloadURL });
       setProfilePhoto(downloadURL);
-      Alert.alert("✅ Updated", "Profile photo updated!");
+      Alert.alert("Updated", "Profile photo updated!");
     } catch (e) { Alert.alert("Error", "Failed to upload photo."); }
     finally { setUploadingPhoto(false); }
   };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Alert, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
@@ -73,8 +74,8 @@ export default function VerificationScreen({ navigation }) {
 
   const showPhotoOptions = () => {
     Alert.alert("Upload Student ID", "Choose an option", [
-      { text: "📷 Take Photo", onPress: takeIdPhoto },
-      { text: "🖼️ Choose from Gallery", onPress: pickIdPhoto },
+      { text: "Take Photo", icon: "camera", onPress: takeIdPhoto },
+      { text: "Choose from Gallery", icon: "images", onPress: pickIdPhoto },
       { text: "Cancel", style: "cancel" },
     ]);
   };
@@ -102,7 +103,7 @@ export default function VerificationScreen({ navigation }) {
         },
         verificationStatus: "pending",
       });
-      Alert.alert("✅ Submitted!", "Your verification is being reviewed. You'll be notified once approved. This usually takes 1-2 days.", [
+      Alert.alert("Submitted!", "Your verification is being reviewed. You'll be notified once approved. This usually takes 1-2 days.", [
         { text: "OK", onPress: () => navigation.goBack() },
       ]);
     } catch (e) {

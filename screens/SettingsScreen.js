@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert, ActivityIndicator, Switch, Modal, KeyboardAvoidingView, Platform,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Switch, Modal, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   updateProfile, updatePassword, EmailAuthProvider,
@@ -121,7 +122,7 @@ export default function SettingsScreen({ navigation }) {
     Alert.alert("Profile Photo", "Choose an option", [
       { text: "Take Photo", onPress: () => pickPhoto("camera") },
       { text: "Choose from Gallery", onPress: () => pickPhoto("gallery") },
-      photoURL ? { text: "Remove Photo", style: "destructive", onPress: () => savePhoto(null).catch(() => {}) } : null,
+      photoURL ? { text: "Remove Photo", icon: "trash", style: "destructive", onPress: () => savePhoto(null).catch(() => {}) } : null,
       { text: "Cancel", style: "cancel" },
     ].filter(Boolean));
   };
@@ -134,7 +135,7 @@ export default function SettingsScreen({ navigation }) {
       await updateDoc(doc(db, "users", user.uid), {
         name: name.trim(), address: address.trim(), age: age ? Number(age) : null,
       });
-      Alert.alert("✅ Updated", "Your profile has been saved.");
+      Alert.alert("Updated", "Your profile has been saved.");
       setShowEditModal(false);
     } catch (e) { Alert.alert("Error", "Failed to update profile."); }
     finally { setSavingProfile(false); }
@@ -149,7 +150,7 @@ export default function SettingsScreen({ navigation }) {
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
       await updatePassword(user, newPassword);
-      Alert.alert("✅ Password Changed", "Your password has been updated.");
+      Alert.alert("Password Changed", "Your password has been updated.");
       setShowPasswordModal(false);
       setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
     } catch (e) {

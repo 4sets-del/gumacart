@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, StatusBar, Alert, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator,
   AppState, Platform, Linking,} from 'react-native';
+import { Alert } from '../components/AppAlert';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -69,7 +70,7 @@ export default function EmailVerificationScreen({ navigation }) {
     setResending(true);
     try {
       await sendEmailVerification(user);
-      Alert.alert('📧 Email Sent', 'A new verification link has been sent to your email.');
+      Alert.alert('Email Sent', 'A new verification link has been sent to your email.');
       setCooldown(45);
     } catch (e) {
       if (e.code === 'auth/too-many-requests') {

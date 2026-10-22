@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Alert, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
 } from 'react-native';
+import { Alert } from '../components/AppAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -101,7 +102,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       else {
         await addToCart(currentUser.uid, product);
         setInCart(true);
-        Alert.alert("🛒 Added to Cart", `"${product.name}" has been saved to your cart.`);
+        Alert.alert("Added to Cart", `"${product.name}" has been saved to your cart.`);
       }
     } catch (e) { Alert.alert("Error", "Could not update cart."); }
   };
@@ -330,7 +331,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             await Promise.all(allUrls.map(async (url) => { try { await deleteObject(sRef(storage, url)); } catch (e) {} }));
           }
           await deleteDoc(doc(db, "listings", product.id));
-          Alert.alert("✅ Deleted", "Listing removed.", [{ text: "OK", onPress: () => navigation.goBack() }]);
+          Alert.alert("Deleted", "Listing removed.", [{ text: "OK", onPress: () => navigation.goBack() }]);
         } catch (e) { Alert.alert("Error", "Failed to delete."); }
         finally { setDeleting(false); }
       }},
