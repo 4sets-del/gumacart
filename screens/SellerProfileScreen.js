@@ -39,6 +39,8 @@ export default function SellerProfileScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
+  // Opened from a "How was your purchase?" notification: show the rating form.
+  const openRating = route.params?.openRating === true;
   const [reportVisible, setReportVisible] = useState(false);
   const [pendingReason, setPendingReason] = useState(null);
   const [proofImage, setProofImage] = useState(null);
@@ -54,6 +56,10 @@ export default function SellerProfileScreen({ route, navigation }) {
   const [followLoading, setFollowLoading] = useState(false);
   const currentUser = auth.currentUser;
   const isOwnProfile = currentUser?.uid === sellerId;
+
+  useEffect(() => {
+    if (openRating && !loading && !isOwnProfile) setShowRatingModal(true);
+  }, [openRating, loading, isOwnProfile]);
 
   const loadAll = async () => {
     try {

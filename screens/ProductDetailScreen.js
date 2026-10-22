@@ -6,6 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   doc, deleteDoc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs,
+  orderBy, limit,
 } from "firebase/firestore";
 import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
@@ -17,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
+import { getUserBasics } from "../utils/userCache";
 import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 import { addToCart, removeFromCart } from "../utils/cart";
@@ -183,17 +185,57 @@ export default function ProductDetailScreen({ route, navigation }) {
     } catch (e) { Alert.alert("Error", "Could not start conversation."); }
   };
 
+  // Marking as sold asks who bought it (from the seller's recent chats), so
+  // the server can invite that buyer to rate the seller.
+  const [buyerPickerVisible, setBuyerPickerVisible] = useState(false);
+  const [buyerOptions, setBuyerOptions] = useState([]);
+
+  const setSoldStatus = async (sold, buyerId = null) => {
+    setMarking(true);
+    try {
+      await updateDoc(doc(db, "listings", product.id), sold
+        ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp() }
+        : { status: "active", soldTo: null });
+      setIsSold(sold);
+      if (sold && buyerId) Alert.alert("Marked as sold", "We'll ask the buyer to rate you.");
+    } catch (e) {
+      Alert.alert("Error", "Failed to update.");
+    } finally {
+      setMarking(false);
+    }
+  };
+
+  const openBuyerPicker = async () => {
+    try {
+      const snap = await getDocs(query(
+        collection(db, "conversations"),
+        where("participants", "array-contains", currentUser.uid),
+        orderBy("lastMessageTime", "desc"),
+        limit(15),
+      ));
+      const ids = snap.docs.map((d) => d.data().participants.find((id) => id !== currentUser.uid)).filter(Boolean);
+      const people = await Promise.all(ids.map(async (uid) => ({ uid, ...(await getUserBasics(uid)) })));
+      setBuyerOptions(people);
+    } catch (e) {
+      setBuyerOptions([]);
+    }
+    setBuyerPickerVisible(true);
+  };
+
   const handleMarkSold = async () => {
-    const newStatus = isSold ? "active" : "sold";
-    Alert.alert(isSold ? "Mark as Active?" : "Mark as Sold?", isSold ? "Move listing back to active." : "Archive this listing.", [
-      { text: "Cancel", style: "cancel" },
-      { text: isSold ? "Mark Active" : "Mark as Sold", onPress: async () => {
-        setMarking(true);
-        try { await updateDoc(doc(db, "listings", product.id), { status: newStatus }); setIsSold(!isSold); }
-        catch (e) { Alert.alert("Error", "Failed to update."); }
-        finally { setMarking(false); }
-      }},
-    ]);
+    if (isSold) {
+      Alert.alert("Mark as Active?", "Move listing back to active.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Mark Active", onPress: () => setSoldStatus(false) },
+      ]);
+    } else {
+      openBuyerPicker();
+    }
+  };
+
+  const chooseBuyer = (buyerId) => {
+    setBuyerPickerVisible(false);
+    setSoldStatus(true, buyerId);
   };
 
   const handleDelete = async () => {
@@ -437,6 +479,32 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
         </View>
       )}
+
+      {/* Mark as sold → who bought it? */}
+      <Modal statusBarTranslucent visible={buyerPickerVisible} transparent animationType="fade" onRequestClose={() => setBuyerPickerVisible(false)}>
+        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => setBuyerPickerVisible(false)}>
+          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
+            <View style={styles.reportHandle} />
+            <Text style={styles.reportTitle}>Who bought it?</Text>
+            <Text style={styles.reportSub}>We'll invite them to rate you. Ratings help you get more buyers.</Text>
+            <ScrollView style={{ maxHeight: 320 }}>
+              {buyerOptions.map((person) => (
+                <TouchableOpacity key={person.uid} style={styles.reasonRow} activeOpacity={0.7} onPress={() => chooseBuyer(person.uid)}>
+                  <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} style={{ marginRight: 12 }} />
+                  <Text style={styles.reasonText} numberOfLines={1}>{person.name}</Text>
+                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              ))}
+              {buyerOptions.length === 0 && (
+                <Text style={[styles.reportSub, { marginTop: 4 }]}>No recent chats found.</Text>
+              )}
+            </ScrollView>
+            <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => chooseBuyer(null)}>
+              <Text style={styles.reportCancelText}>Skip — sold to someone else</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
 
       <Modal statusBarTranslucent visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={closeReport}>

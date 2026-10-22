@@ -301,6 +301,18 @@ exports.onListingStatusChange = functions
       });
     }
 
+    // Seller marked it sold and picked the buyer: invite them to rate.
+    if (after.status === "sold" && after.soldTo && after.soldTo !== sellerId) {
+      const sellerName = after.sellerName || "the seller";
+      await notifyUser(after.soldTo, {
+        storeType: "rate_prompt",
+        styleKey: "review",
+        title: "How was your purchase?",
+        body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
+        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
+      });
+    }
+
     if (after.status === "rejected") {
       await notifyUser(sellerId, {
         storeType: "system",

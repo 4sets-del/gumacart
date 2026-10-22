@@ -240,7 +240,7 @@ export default function AppNavigator() {
         navRef.navigate('Main', { screen: 'Profile' });
       } else if (nav === 'profile') {
         if (data.profileId) {
-          navRef.navigate('SellerProfile', { sellerId: data.profileId, sellerName: data.profileName || 'User' });
+          navRef.navigate('SellerProfile', { sellerId: data.profileId, sellerName: data.profileName || 'User', openRating: data.rate === '1' });
         } else {
           navRef.navigate('Main', { screen: 'Profile' });
         }

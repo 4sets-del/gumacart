@@ -18,6 +18,7 @@ const NOTIF_ICONS = (COLORS) => ({
   message:     { icon: 'chatbubble-ellipses', color: '#2563EB' },
   follow:      { icon: 'person-add',          color: '#7C3AED' },
   review:      { icon: 'star',                color: '#F59E0B' },
+  rate_prompt: { icon: 'star-half',           color: '#F59E0B' },
   offer:       { icon: 'pricetag',            color: COLORS.primary },
   sold:        { icon: 'checkmark-circle',    color: COLORS.primary },
   new_listing: { icon: 'bag-handle',          color: '#EA580C' },
@@ -38,7 +39,7 @@ const FILTERS = [
 function categoryOf(n) {
   if (n.type === 'message' || n.nav === 'chat') return 'messages';
   if (n.nav === 'listing') return 'listings';
-  if (n.type === 'follow' || n.type === 'review') return 'social';
+  if (n.type === 'follow' || n.type === 'review' || n.type === 'rate_prompt') return 'social';
   return 'account';
 }
 
@@ -142,6 +143,7 @@ export default function NotificationsScreen({ navigation }) {
         navigation.navigate('SellerProfile', {
           sellerId: notif.profileId,
           sellerName: notif.profileName || 'User',
+          openRating: notif.rate === '1',
         });
       } else {
         navigation.navigate("Main", { screen: "Profile" });
