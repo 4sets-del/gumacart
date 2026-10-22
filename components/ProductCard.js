@@ -23,7 +23,8 @@ function Rating({ rating, size = 11 }) {
 function Thumb({ item, style, emojiSize }) {
   const { styles } = useTheme(createStyles);
   const img = listingImage(item);
-  const badge = typeMeta(item.type).badge;
+  const reserved = item.reserved === true && item.status !== 'sold';
+  const badge = reserved ? 'RESERVED' : typeMeta(item.type).badge;
   return (
     <View style={[styles.thumb, style]}>
       {img ? (
@@ -39,7 +40,7 @@ function Thumb({ item, style, emojiSize }) {
         <Text style={{ fontSize: emojiSize }}>🛍️</Text>
       )}
       {badge && (
-        <View style={[styles.badge, { backgroundColor: typeMeta(item.type).color }]}>
+        <View style={[styles.badge, { backgroundColor: reserved ? '#D9822B' : typeMeta(item.type).color }]}>
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}

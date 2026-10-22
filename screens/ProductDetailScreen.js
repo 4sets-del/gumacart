@@ -51,6 +51,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [deleting, setDeleting] = useState(false);
   const [marking, setMarking] = useState(false);
   const isSold = product.status === "sold";
+  // Promised to a buyer but not sold yet; still listed, marked "Reserved".
+  const isReserved = !isSold && product.reserved === true;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
@@ -215,7 +217,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     setMarking(true);
     try {
       await updateDoc(doc(db, "listings", product.id), sold
-        ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp() }
+        ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp(), reserved: false }
         : { status: "active", soldTo: null });
       setProduct((p) => ({ ...p, status: sold ? "sold" : "active" })); // instant; the live update confirms it
       if (sold && buyerId) Alert.alert("Marked as sold", "We'll ask the buyer to rate you.");
@@ -241,6 +243,17 @@ export default function ProductDetailScreen({ route, navigation }) {
       setBuyerOptions([]);
     }
     setBuyerPickerVisible(true);
+  };
+
+  const toggleReserved = async () => {
+    const next = !isReserved;
+    setProduct((p) => ({ ...p, reserved: next }));
+    try {
+      await updateDoc(doc(db, "listings", product.id), { reserved: next });
+    } catch (e) {
+      setProduct((p) => ({ ...p, reserved: !next }));
+      Alert.alert("Error", "Could not update the listing.");
+    }
   };
 
   const handleMarkSold = async () => {
@@ -379,8 +392,12 @@ export default function ProductDetailScreen({ route, navigation }) {
 
           <View style={styles.metaRow}>
             <View style={styles.metaItem}>
-              <Ionicons name={isSold ? "close-circle-outline" : "checkmark-circle-outline"} size={16} color={isSold ? COLORS.error : COLORS.primary} />
-              <Text style={styles.metaText}>{isSold ? "Sold" : "Available"}</Text>
+              <Ionicons
+                name={isSold ? "close-circle-outline" : isReserved ? "bookmark-outline" : "checkmark-circle-outline"}
+                size={16}
+                color={isSold ? COLORS.error : isReserved ? COLORS.warning : COLORS.primary}
+              />
+              <Text style={styles.metaText}>{isSold ? "Sold" : isReserved ? "Reserved for a buyer" : "Available"}</Text>
             </View>
             {product.location ? (
               <View style={styles.metaItem}>
@@ -488,6 +505,19 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
+          {!isSold && (
+            <TouchableOpacity
+              style={[styles.reserveBtn, isReserved && styles.reserveBtnOn]}
+              activeOpacity={0.85}
+              onPress={toggleReserved}
+              disabled={marking || deleting}
+              accessibilityRole="button"
+              accessibilityLabel={isReserved ? "Unreserve listing" : "Mark as reserved"}
+            >
+              <Ionicons name={isReserved ? "bookmark" : "bookmark-outline"} size={19} color={isReserved ? "#fff" : COLORS.warning} />
+              <Text style={[styles.reserveBtnText, isReserved && { color: "#fff" }]}>{isReserved ? "Reserved" : "Reserve"}</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
             <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : "Mark as Sold"}</Text>
           </TouchableOpacity>
@@ -503,6 +533,11 @@ export default function ProductDetailScreen({ route, navigation }) {
           {isSold ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
               <Text style={styles.primaryBtnText}>Ask if Still Available</Text>
+            </TouchableOpacity>
+          ) : isReserved ? (
+            <TouchableOpacity style={[styles.primaryBtn, styles.reservedBuyerBtn]} activeOpacity={0.85} onPress={handleMessageSeller}>
+              <Ionicons name="bookmark" size={17} color={COLORS.warning} style={{ marginRight: 8 }} />
+              <Text style={[styles.primaryBtnText, { color: COLORS.warning }]}>Reserved · Ask to be next</Text>
             </TouchableOpacity>
           ) : (
             inCart ? (
@@ -679,13 +714,17 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   unavailableBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
   unavailableText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.error },
+  reserveBtn: { width: 64, height: 52, gap: 1, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.warning, alignItems: "center", justifyContent: "center" },
+  reserveBtnOn: { backgroundColor: COLORS.warning },
+  reserveBtnText: { fontSize: 10.5, fontWeight: "700", color: COLORS.warning },
+  reservedBuyerBtn: { backgroundColor: COLORS.warningLight },
   bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 12, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
   chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
   inCartBtn: { backgroundColor: COLORS.primaryPale },
-  editBtn: { flexDirection: "row", gap: 5, paddingHorizontal: 16, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  editBtnText: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
+  editBtn: { width: 58, height: 52, gap: 1, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  editBtnText: { fontSize: 10.5, fontWeight: "700", color: COLORS.primary },
   markActiveBtn: { backgroundColor: COLORS.info },
   deleteIconBtn: { width: 52, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.errorLight, alignItems: "center", justifyContent: "center" },
 

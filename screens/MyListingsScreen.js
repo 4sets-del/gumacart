@@ -14,6 +14,7 @@ import GradientButton from '../components/GradientButton';
 const STATUS_PILLS = (COLORS) => ({
   active:   { label: 'Active',         color: COLORS.primary, bg: COLORS.primaryPale },
   pending:  { label: 'Pending review', color: COLORS.warning, bg: COLORS.warningLight },
+  reserved: { label: 'Reserved',       color: COLORS.warning, bg: COLORS.warningLight },
   rejected: { label: 'Rejected',       color: COLORS.error,   bg: COLORS.errorLight },
   sold:     { label: 'Sold',           color: COLORS.textSecondary, bg: COLORS.surfaceAlt },
 });
@@ -87,7 +88,8 @@ export default function MyListingsScreen({ navigation }) {
             </View>
           }
           renderItem={({ item }) => {
-            const pill = STATUS_PILLS(COLORS)[item.status] || STATUS_PILLS(COLORS).active;
+            const pills = STATUS_PILLS(COLORS);
+            const pill = item.status === 'active' && item.reserved ? pills.reserved : pills[item.status] || pills.active;
             return (
               <ProductRow
                 item={item}
