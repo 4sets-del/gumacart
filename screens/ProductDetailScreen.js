@@ -54,6 +54,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const isSold = product.status === "sold";
   // Promised to a buyer but not sold yet; still listed, marked "Reserved".
   const isReserved = !isSold && product.reserved === true;
+  const reservedForMe = isReserved && product.reservedFor === currentUser?.uid;
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
@@ -210,16 +211,18 @@ export default function ProductDetailScreen({ route, navigation }) {
     } catch (e) { Alert.alert("Error", "Could not start conversation."); }
   };
 
-  // Marking as sold asks who bought it (from the seller's recent chats), so
-  // the server can invite that buyer to rate the seller.
+  // Reserving and marking sold both ask "for/to whom": interested buyers
+  // first, then the seller's other recent chats. The server uses the choice
+  // to notify that buyer (and everyone else who was interested).
   const [buyerPickerVisible, setBuyerPickerVisible] = useState(false);
   const [buyerOptions, setBuyerOptions] = useState([]);
+  const [pickerMode, setPickerMode] = useState("sold"); // "sold" | "reserve"
 
   const setSoldStatus = async (sold, buyerId = null) => {
     setMarking(true);
     try {
       await updateDoc(doc(db, "listings", product.id), sold
-        ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp(), reserved: false }
+        ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp(), reserved: false, reservedFor: null }
         : { status: "active", soldTo: null });
       setProduct((p) => ({ ...p, status: sold ? "sold" : "active" })); // instant; the live update confirms it
       if (sold && buyerId) Alert.alert("Marked as sold", "We'll ask the buyer to rate you.");
@@ -230,7 +233,10 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
-  const openBuyerPicker = async () => {
+  const openBuyerPicker = async (mode) => {
+    setPickerMode(mode);
+    const interested = await getInterested(product.id);
+    let chatIds = [];
     try {
       const snap = await getDocs(query(
         collection(db, "conversations"),
@@ -238,23 +244,40 @@ export default function ProductDetailScreen({ route, navigation }) {
         orderBy("lastMessageTime", "desc"),
         limit(15),
       ));
-      const ids = snap.docs.map((d) => d.data().participants.find((id) => id !== currentUser.uid)).filter(Boolean);
-      const people = await Promise.all(ids.map(async (uid) => ({ uid, ...(await getUserBasics(uid)) })));
-      setBuyerOptions(people);
-    } catch (e) {
-      setBuyerOptions([]);
-    }
+      chatIds = snap.docs.map((d) => d.data().participants.find((id) => id !== currentUser.uid)).filter(Boolean);
+    } catch (e) {}
+    const interestedIds = new Set(interested.map((p) => p.uid));
+    const ids = [...interested.map((p) => p.uid), ...chatIds.filter((id) => !interestedIds.has(id))];
+    const people = await Promise.all(ids.map(async (uid) => ({
+      uid,
+      interested: interestedIds.has(uid),
+      ...(await getUserBasics(uid)),
+    })));
+    setBuyerOptions(people);
     setBuyerPickerVisible(true);
   };
 
-  const toggleReserved = async () => {
-    const next = !isReserved;
-    setProduct((p) => ({ ...p, reserved: next }));
+  const setReservation = async (reserved, buyerId = null) => {
+    const changes = reserved
+      ? { reserved: true, reservedFor: buyerId, reservedAt: serverTimestamp(), reserveReminderSent: false }
+      : { reserved: false, reservedFor: null, reservedAt: null };
+    setProduct((p) => ({ ...p, reserved, reservedFor: reserved ? buyerId : null }));
     try {
-      await updateDoc(doc(db, "listings", product.id), { reserved: next });
+      await updateDoc(doc(db, "listings", product.id), changes);
     } catch (e) {
-      setProduct((p) => ({ ...p, reserved: !next }));
+      setProduct((p) => ({ ...p, reserved: !reserved }));
       Alert.alert("Error", "Could not update the listing.");
+    }
+  };
+
+  const toggleReserved = () => {
+    if (isReserved) {
+      Alert.alert("Release reservation?", "The item becomes available again and interested buyers are notified.", [
+        { text: "Cancel", style: "cancel" },
+        { text: "Release", onPress: () => setReservation(false) },
+      ]);
+    } else {
+      openBuyerPicker("reserve");
     }
   };
 
@@ -265,13 +288,14 @@ export default function ProductDetailScreen({ route, navigation }) {
         { text: "Mark Active", onPress: () => setSoldStatus(false) },
       ]);
     } else {
-      openBuyerPicker();
+      openBuyerPicker("sold");
     }
   };
 
   const chooseBuyer = (buyerId) => {
     setBuyerPickerVisible(false);
-    setSoldStatus(true, buyerId);
+    if (pickerMode === "reserve") setReservation(true, buyerId);
+    else setSoldStatus(true, buyerId);
   };
 
   const handleDelete = async () => {
@@ -399,7 +423,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 size={16}
                 color={isSold ? COLORS.error : isReserved ? COLORS.warning : COLORS.primary}
               />
-              <Text style={styles.metaText}>{isSold ? "Sold" : isReserved ? "Reserved for a buyer" : "Available"}</Text>
+              <Text style={styles.metaText}>{isSold ? "Sold" : reservedForMe ? "Reserved for you" : isReserved ? "Reserved for a buyer" : "Available"}</Text>
             </View>
             {product.location ? (
               <View style={styles.metaItem}>
@@ -536,6 +560,11 @@ export default function ProductDetailScreen({ route, navigation }) {
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
               <Text style={styles.primaryBtnText}>Ask if Still Available</Text>
             </TouchableOpacity>
+          ) : reservedForMe ? (
+            <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
+              <Ionicons name="bookmark" size={17} color="#fff" style={{ marginRight: 8 }} />
+              <Text style={styles.primaryBtnText}>Reserved for you · Message seller</Text>
+            </TouchableOpacity>
           ) : isReserved ? (
             <TouchableOpacity style={[styles.primaryBtn, styles.reservedBuyerBtn]} activeOpacity={0.85} onPress={handleMessageSeller}>
               <Ionicons name="bookmark" size={17} color={COLORS.warning} style={{ marginRight: 8 }} />
@@ -559,13 +588,18 @@ export default function ProductDetailScreen({ route, navigation }) {
         <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => setBuyerPickerVisible(false)}>
           <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
             <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>Who bought it?</Text>
-            <Text style={styles.reportSub}>We'll invite them to rate you. Ratings help you get more buyers.</Text>
+            <Text style={styles.reportTitle}>{pickerMode === "reserve" ? "Reserve for whom?" : "Who bought it?"}</Text>
+            <Text style={styles.reportSub}>
+              {pickerMode === "reserve"
+                ? "They'll see it's reserved for them. Others who were interested are told it's reserved."
+                : "We'll invite them to rate you, and let others who were interested know it's sold."}
+            </Text>
             <ScrollView style={{ maxHeight: 320 }}>
               {buyerOptions.map((person) => (
                 <TouchableOpacity key={person.uid} style={styles.reasonRow} activeOpacity={0.7} onPress={() => chooseBuyer(person.uid)}>
                   <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} style={{ marginRight: 12 }} />
                   <Text style={styles.reasonText} numberOfLines={1}>{person.name}</Text>
+                  {person.interested && <Text style={styles.interestedTag}>Interested</Text>}
                   <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                 </TouchableOpacity>
               ))}
@@ -574,7 +608,9 @@ export default function ProductDetailScreen({ route, navigation }) {
               )}
             </ScrollView>
             <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => chooseBuyer(null)}>
-              <Text style={styles.reportCancelText}>Skip — sold to someone else</Text>
+              <Text style={styles.reportCancelText}>
+                {pickerMode === "reserve" ? "Someone not on this list" : "Skip — sold to someone else"}
+              </Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -716,6 +752,7 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   unavailableBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
   unavailableText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.error },
+  interestedTag: { fontSize: 11, fontWeight: "700", color: COLORS.primary, backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginRight: 6, overflow: "hidden" },
   reserveBtn: { width: 64, height: 52, gap: 1, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.warning, alignItems: "center", justifyContent: "center" },
   reserveBtnOn: { backgroundColor: COLORS.warning },
   reserveBtnText: { fontSize: 10.5, fontWeight: "700", color: COLORS.warning },
