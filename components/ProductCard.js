@@ -59,6 +59,7 @@ export const ProductCard = React.memo(function ProductCard({ item, rating, onPre
       <View style={styles.cardBody}>
         <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle(item)}</Text>
         <Text style={[styles.cardPrice, { color: price.color }]} numberOfLines={1}>{price.text}</Text>
+        {item.quantity > 1 && item.status !== 'sold' ? <Text style={styles.stockText}>{item.quantity} available</Text> : null}
         <Rating rating={rating} />
       </View>
     </TouchableOpacity>
@@ -92,6 +93,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   cardThumb: { width: '100%', aspectRatio: 1.1 },
   cardBody: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, gap: 3 },
   cardTitle: { fontSize: 12.5, fontWeight: '600', color: COLORS.textPrimary },
+  stockText: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
   cardPrice: { fontSize: 14, fontFamily: FONTS.heading },
 
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 10, borderWidth: 1, borderColor: COLORS.border, gap: 12 },

@@ -52,6 +52,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [deleting, setDeleting] = useState(false);
   const [marking, setMarking] = useState(false);
   const isSold = product.status === "sold";
+  // Listings can have several identical items; each sale takes one.
+  const stock = Math.max(1, Number(product.quantity) || 1);
   // Promised to a buyer but not sold yet; still listed, marked "Reserved".
   const isReserved = !isSold && product.reserved === true;
   const reservedForMe = isReserved && product.reservedFor === currentUser?.uid;
@@ -292,10 +294,29 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
+  // Sell one unit of a multi-quantity listing; the last one marks it sold.
+  const sellOne = async (buyerId) => {
+    if (stock <= 1) return setSoldStatus(true, buyerId);
+    setMarking(true);
+    try {
+      await updateDoc(doc(db, "listings", product.id), {
+        quantity: stock - 1,
+        lastSaleTo: buyerId,
+        lastSaleAt: serverTimestamp(),
+      });
+      setProduct((p) => ({ ...p, quantity: stock - 1 }));
+      Alert.alert("Sold one", `${stock - 1} left.${buyerId ? " We'll ask the buyer to rate you." : ""}`);
+    } catch (e) {
+      Alert.alert("Error", "Failed to update.");
+    } finally {
+      setMarking(false);
+    }
+  };
+
   const chooseBuyer = (buyerId) => {
     setBuyerPickerVisible(false);
     if (pickerMode === "reserve") setReservation(true, buyerId);
-    else setSoldStatus(true, buyerId);
+    else sellOne(buyerId);
   };
 
   const handleDelete = async () => {
@@ -423,7 +444,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 size={16}
                 color={isSold ? COLORS.error : isReserved ? COLORS.warning : COLORS.primary}
               />
-              <Text style={styles.metaText}>{isSold ? "Sold" : reservedForMe ? "Reserved for you" : isReserved ? "Reserved for a buyer" : "Available"}</Text>
+              <Text style={styles.metaText}>{isSold ? "Sold" : reservedForMe ? "Reserved for you" : isReserved ? "Reserved for a buyer" : stock > 1 ? `${stock} available` : "Available"}</Text>
             </View>
             {product.location ? (
               <View style={styles.metaItem}>
@@ -531,7 +552,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
-          {!isSold && (
+          {!isSold && stock === 1 && (
             <TouchableOpacity
               style={[styles.reserveBtn, isReserved && styles.reserveBtnOn]}
               activeOpacity={0.85}
@@ -545,7 +566,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
-            <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : "Mark as Sold"}</Text>
+            <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : stock > 1 ? `Sold one (${stock} left)` : "Mark as Sold"}</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Delete listing" style={[styles.deleteIconBtn, deleting && { opacity: 0.6 }]} activeOpacity={0.8} onPress={handleDelete} disabled={deleting || marking}>
             <Ionicons name="trash-outline" size={21} color={COLORS.error} />

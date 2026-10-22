@@ -42,6 +42,7 @@ export default function CartScreen({ navigation }) {
             sellerId: data.sellerId,
             sellerName: data.sellerName || item.sellerName || "Seller",
             price: data.price ?? item.price,
+            stock: Math.max(1, Number(data.quantity) || 1),
             unavailable: data.status !== "active",
           };
         } catch (e) {
@@ -68,7 +69,8 @@ export default function CartScreen({ navigation }) {
   };
 
   const changeQuantity = async (item, delta) => {
-    const quantity = Math.max(1, Math.min(99, (item.quantity || 1) + delta));
+    // Can't ask for more than the seller has.
+    const quantity = Math.max(1, Math.min(item.stock || 1, (item.quantity || 1) + delta));
     if (quantity === item.quantity) return;
     setCartItems((prev) => prev.map((i) => (i.cartDocId === item.cartDocId ? { ...i, quantity } : i)));
     try { await updateDoc(doc(db, "users", user.uid, "cart", item.cartDocId), { quantity }); } catch (e) {}

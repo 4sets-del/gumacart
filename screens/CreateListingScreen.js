@@ -54,6 +54,8 @@ export default function CreateListingScreen({ navigation, route }) {
   const [description, setDescription]       = useState(editListing?.description || "");
   const [specifications, setSpecifications] = useState(editListing?.specifications || "");
   const [price, setPrice]                   = useState(editListing?.price ? String(editListing.price) : "");
+  // How many identical items the seller has (e.g. food, crafts, shirts).
+  const [quantity, setQuantity]             = useState(Math.max(1, Number(editListing?.quantity) || 1));
   const [category, setCategory]             = useState(normalizeCategory(editListing?.category));
   const [condition, setCondition]           = useState(editListing?.condition || "");
   const [location, setLocation]             = useState(editListing?.location || "");
@@ -178,6 +180,7 @@ export default function CreateListingScreen({ navigation, route }) {
         description: description.trim(),
         specifications: specifications.trim(),
         price: listingType === "sell" ? Number(price) : 0,
+        quantity: showQuantity ? quantity : 1,
         category, condition, location, contactNumber: contactNumber.trim(),
         image: imageUrls[0], images: imageUrls,
       };
@@ -214,6 +217,7 @@ export default function CreateListingScreen({ navigation, route }) {
   };
 
   const showPrice = listingType === 'sell' || listingType === 'buy';
+  const showQuantity = listingType === 'sell' || listingType === 'donate';
 
   return (
     <View style={styles.safe}>
@@ -340,6 +344,25 @@ export default function CreateListingScreen({ navigation, route }) {
           )}
 
           <FieldError msg={shownErrors.price} />
+
+          {/* Quantity */}
+          {showQuantity && (
+            <>
+              <View style={styles.sectionLabelRow}>
+                <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>How many do you have?</Text>
+                <Text style={styles.required}>{quantity > 1 ? "sold one at a time" : "single item"}</Text>
+              </View>
+              <View style={styles.qtyRow}>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Decrease quantity" style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.max(1, q - 1))}>
+                  <Ionicons name="remove" size={20} color={COLORS.textPrimary} />
+                </TouchableOpacity>
+                <Text style={styles.qtyValue}>{quantity}</Text>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Increase quantity" style={styles.qtyBtn} onPress={() => setQuantity((q) => Math.min(99, q + 1))}>
+                  <Ionicons name="add" size={20} color={COLORS.textPrimary} />
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           {/* Category */}
           <Text style={styles.sectionLabel}>Category</Text>
@@ -487,6 +510,9 @@ const createStyles = (COLORS) => StyleSheet.create({
   conditionBtnActive: { backgroundColor: COLORS.primary },
   conditionLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   conditionLabelActive: { color: "#fff", fontWeight: "700" },
+  qtyRow: { flexDirection: "row", alignItems: "center", gap: 18 },
+  qtyBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  qtyValue: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, minWidth: 28, textAlign: "center" },
   previewRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
   previewInfo: { flex: 1, flexDirection: "row", gap: 8, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 12 },
   fieldError: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
