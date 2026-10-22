@@ -6,7 +6,8 @@ import { GRADIENTS, RADIUS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 // Main call-to-action button with a left-to-right gradient fill.
-export default function GradientButton({ title, onPress, loading, disabled, icon, colors = GRADIENTS.primary, style, height = 52 }) {
+// `loadingText` (optional) is shown next to the spinner, e.g. upload progress.
+export default function GradientButton({ title, onPress, loading, loadingText, disabled, icon, colors = GRADIENTS.primary, style, height = 52 }) {
   const { styles } = useTheme(createStyles);
   return (
     <TouchableOpacity
@@ -17,7 +18,10 @@ export default function GradientButton({ title, onPress, loading, disabled, icon
     >
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.fill, { height }]}>
         {loading ? (
-          <ActivityIndicator color="#fff" />
+          <View style={styles.row}>
+            <ActivityIndicator color="#fff" />
+            {loadingText ? <Text style={styles.text}>{loadingText}</Text> : null}
+          </View>
         ) : (
           <View style={styles.row}>
             {icon ? <Ionicons name={icon} size={19} color="#fff" /> : null}

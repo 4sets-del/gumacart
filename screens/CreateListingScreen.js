@@ -139,6 +139,8 @@ export default function CreateListingScreen({ navigation, route }) {
   if (!/^(09\d{9}|\+639\d{9})$/.test(contactNumber.replace(/\s/g, ""))) errors.contact = "Enter a mobile number like 09XXXXXXXXX.";
   const shownErrors = triedSubmit ? errors : {};
 
+  const [uploadProgress, setUploadProgress] = useState(null); // { done, total } while posting
+
   const handleSubmit = async () => {
     const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
     const userData = userDoc.data();
@@ -159,8 +161,16 @@ export default function CreateListingScreen({ navigation, route }) {
     try {
       // Only upload images that are new local files. Existing ones are already
       // remote URLs (start with http) and should be kept as-is.
+      // Upload new photos in parallel, counting each one as it finishes.
+      const newCount = images.filter((uri) => !uri.startsWith("http")).length;
+      let done = 0;
+      setUploadProgress({ done, total: newCount });
       const imageUrls = await Promise.all(
-        images.map((uri) => (uri.startsWith("http") ? Promise.resolve(uri) : uploadImage(uri)))
+        images.map((uri) => (uri.startsWith("http") ? Promise.resolve(uri) : uploadImage(uri).then((url) => {
+          done += 1;
+          setUploadProgress({ done, total: newCount });
+          return url;
+        })))
       );
 
       const payload = {
@@ -200,7 +210,7 @@ export default function CreateListingScreen({ navigation, route }) {
       }
     } catch (error) {
       Alert.alert("Error", isEditing ? "Failed to update listing." : "Failed to post listing. Please try again.");
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setUploadProgress(null); }
   };
 
   const showPrice = listingType === 'sell' || listingType === 'buy';
@@ -429,6 +439,11 @@ export default function CreateListingScreen({ navigation, route }) {
             icon={isEditing ? "save-outline" : "rocket-outline"}
             onPress={handleSubmit}
             loading={loading}
+            loadingText={
+              uploadProgress && uploadProgress.done < uploadProgress.total
+                ? `Uploading photo ${uploadProgress.done + 1} of ${uploadProgress.total}…`
+                : "Saving…"
+            }
             style={{ marginTop: 14 }}
           />
 
