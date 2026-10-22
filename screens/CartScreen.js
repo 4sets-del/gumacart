@@ -7,7 +7,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
-import { COLORS, SPACING, RADIUS, FONTS } from "../constants/theme";
+import { SPACING, RADIUS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import { listingImage, priceLabel } from "../constants/listings";
 import { startConversation } from "../utils/chat";
@@ -15,6 +16,7 @@ import { startConversation } from "../utils/chat";
 const peso = (n) => `₱${Number(n).toLocaleString()}`;
 
 export default function CartScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ export default function CartScreen({ navigation }) {
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <View style={styles.header}>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.headerBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
@@ -259,8 +261,8 @@ export default function CartScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm },
   headerBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   headerTitle: { flex: 1, fontSize: 22, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginLeft: 4 },
@@ -284,7 +286,7 @@ const styles = StyleSheet.create({
   stepBtn: { width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: COLORS.borderStrong, alignItems: "center", justifyContent: "center" },
   qty: { fontSize: 14, fontWeight: "600", color: COLORS.textPrimary, minWidth: 14, textAlign: "center" },
 
-  footer: { paddingHorizontal: SPACING.lg, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.white },
+  footer: { paddingHorizontal: SPACING.lg, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.surface },
   subtotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   subtotalLabel: { fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
   subtotalValue: { fontSize: 18, color: COLORS.textPrimary, fontFamily: FONTS.heading },
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
   footerHint: { fontSize: 11.5, color: COLORS.textMuted, textAlign: "center", marginTop: 8 },
 
   sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
-  sheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
+  sheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
   sheetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sheetSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 4, marginBottom: 10 },
   sellerRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },

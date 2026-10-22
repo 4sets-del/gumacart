@@ -1,4 +1,8 @@
-import { COLORS } from './theme';
+import { ACTIVE_THEME } from './theme';
+
+// Colors are read from the active palette when each helper runs, so they
+// follow light/dark mode.
+const palette = () => ACTIVE_THEME.colors;
 
 // The marketplace categories. `name` is what gets stored on listing docs.
 export const CATEGORIES = [
@@ -25,20 +29,29 @@ export function normalizeCategory(category) {
   return LEGACY_CATEGORIES[category] || category;
 }
 
+// Soft background for a category: the pastel tint in light mode, a faint
+// wash of the category color in dark mode.
+export function categoryTint(cat) {
+  return palette().isDark ? `${cat.color}2E` : cat.tint;
+}
+
 export function categoryMeta(category) {
   const name = normalizeCategory(category);
   return CATEGORIES.find((c) => c.name === name) || CATEGORIES[CATEGORIES.length - 1];
 }
 
 export const LISTING_TYPES = {
-  sell:   { label: 'For Sale', badge: null,     color: COLORS.sell,   bg: COLORS.sellBg },
-  buy:    { label: 'Wanted',   badge: 'WANTED', color: COLORS.buy,    bg: COLORS.buyBg },
-  barter: { label: 'Barter',   badge: 'BARTER', color: COLORS.barter, bg: COLORS.barterBg },
-  donate: { label: 'Free',     badge: 'FREE',   color: COLORS.donate, bg: COLORS.donateBg },
+  sell:   { label: 'For Sale', badge: null },
+  buy:    { label: 'Wanted',   badge: 'WANTED' },
+  barter: { label: 'Barter',   badge: 'BARTER' },
+  donate: { label: 'Free',     badge: 'FREE' },
 };
 
+// Label, badge text and colors for a listing type (sell/buy/barter/donate).
 export function typeMeta(type) {
-  return LISTING_TYPES[type] || LISTING_TYPES.sell;
+  const key = LISTING_TYPES[type] ? type : 'sell';
+  const c = palette();
+  return { ...LISTING_TYPES[key], color: c[key], bg: c[`${key}Bg`] };
 }
 
 export function listingImage(item) {
@@ -51,12 +64,12 @@ export function listingTitle(item) {
 
 // Text + color for the price line of a listing card.
 export function priceLabel(item) {
-  if (item.type === 'donate') return { text: 'FREE', color: COLORS.donate };
-  if (item.type === 'barter') return { text: 'For Barter', color: COLORS.barter };
+  if (item.type === 'donate') return { text: 'FREE', color: palette().donate };
+  if (item.type === 'barter') return { text: 'For Barter', color: palette().barter };
   if (item.type === 'buy') {
     return item.price
-      ? { text: `Budget ₱${Number(item.price).toLocaleString()}`, color: COLORS.buy }
-      : { text: 'Looking For', color: COLORS.buy };
+      ? { text: `Budget ₱${Number(item.price).toLocaleString()}`, color: palette().buy }
+      : { text: 'Looking For', color: palette().buy };
   }
-  return { text: item.price != null ? `₱${Number(item.price).toLocaleString()}` : '₱—', color: COLORS.primary };
+  return { text: item.price != null ? `₱${Number(item.price).toLocaleString()}` : '₱—', color: palette().primary };
 }

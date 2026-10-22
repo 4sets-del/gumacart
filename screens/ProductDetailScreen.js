@@ -12,7 +12,8 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
-import { COLORS, RADIUS, FONTS } from "../constants/theme";
+import { RADIUS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
@@ -20,7 +21,6 @@ import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 import { addToCart, removeFromCart } from "../utils/cart";
 
-const GREEN = COLORS.primary;
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const SCREEN_HEIGHT = Dimensions.get("window").height;
@@ -29,6 +29,7 @@ const IMAGE_HEIGHT = Math.round(SCREEN_HEIGHT * 0.42);
 const TYPE_LABELS = { sell: "For Sale", buy: "Looking For", barter: "For Barter", donate: "Free" };
 
 export default function ProductDetailScreen({ route, navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const { product } = route.params;
   const [inCart, setInCart] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -351,7 +352,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               {product.sellerPhoto ? (
                 <CachedImage source={{ uri: product.sellerPhoto }} style={styles.sellerAvatar} cachePolicy="memory-disk" />
               ) : (
-                <View style={[styles.sellerAvatar, { backgroundColor: GREEN, alignItems: "center", justifyContent: "center" }]}>
+                <View style={[styles.sellerAvatar, { backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" }]}>
                   <Text style={{ fontSize: 20, fontFamily: FONTS.heading, color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
                 </View>
               )}
@@ -362,7 +363,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
             <View style={styles.viewProfileBtn}>
               <Text style={styles.viewProfileText}>View Profile</Text>
-              <Ionicons name="chevron-forward" size={13} color={GREEN} />
+              <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
             </View>
           </TouchableOpacity>
 
@@ -405,7 +406,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       {isOwner ? (
         <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing", { editListing: product })} disabled={marking || deleting}>
-            <Ionicons name="create-outline" size={19} color={GREEN} />
+            <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
@@ -418,7 +419,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       ) : (
         <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Message seller" style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color={GREEN} />
+            <Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primary} />
           </TouchableOpacity>
           {isSold ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
@@ -427,8 +428,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           ) : (
             inCart ? (
               <TouchableOpacity style={[styles.primaryBtn, styles.inCartBtn]} activeOpacity={0.85} onPress={toggleCart}>
-                <Ionicons name="checkmark" size={19} color={GREEN} style={{ marginRight: 8 }} />
-                <Text style={[styles.primaryBtnText, { color: GREEN }]}>In Cart</Text>
+                <Ionicons name="checkmark" size={19} color={COLORS.primary} style={{ marginRight: 8 }} />
+                <Text style={[styles.primaryBtnText, { color: COLORS.primary }]}>In Cart</Text>
               </TouchableOpacity>
             ) : (
               <GradientButton title="Add to Cart" icon="cart-outline" onPress={toggleCart} style={{ flex: 1 }} />
@@ -450,9 +451,9 @@ export default function ProductDetailScreen({ route, navigation }) {
               <>
                 {REPORT_REASONS.map((reason) => (
                   <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="flag-outline" size={18} color="#666" style={{ marginRight: 12 }} />
+                    <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
                     <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={closeReport}>
@@ -472,7 +473,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                     <TextInput
                       style={styles.otherInput}
                       placeholder="Tell us what's wrong…"
-                      placeholderTextColor="#B0B0B0"
+                      placeholderTextColor={COLORS.textMuted}
                       value={customReason}
                       onChangeText={setCustomReason}
                       multiline
@@ -492,7 +493,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                   </View>
                 ) : (
                   <TouchableOpacity style={styles.proofAddBtn} activeOpacity={0.8} onPress={pickProofImage}>
-                    <Ionicons name="camera-outline" size={20} color={GREEN} style={{ marginRight: 8 }} />
+                    <Ionicons name="camera-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
                     <Text style={styles.proofAddText}>Add a screenshot or photo</Text>
                   </TouchableOpacity>
                 )}
@@ -513,17 +514,18 @@ export default function ProductDetailScreen({ route, navigation }) {
 }
 
 function DetailRow({ icon, label, value, last }) {
+  const { COLORS, styles } = useTheme(createStyles);
   return (
-    <View style={[styles.detailRow, !last && { borderBottomWidth: 1, borderBottomColor: "#F5F5F5" }]}>
-      <View style={styles.detailIconBox}><Ionicons name={icon} size={16} color={GREEN} /></View>
+    <View style={[styles.detailRow, !last && { borderBottomWidth: 1, borderBottomColor: COLORS.border }]}>
+      <View style={styles.detailIconBox}><Ionicons name={icon} size={16} color={COLORS.primary} /></View>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10 },
   headerBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center" },
   imageContainer: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: COLORS.surfaceAlt },
@@ -531,7 +533,7 @@ const styles = StyleSheet.create({
   imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
   dotsRow: { position: "absolute", bottom: 12, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.55)" },
-  dotActive: { backgroundColor: "#fff", width: 18 },
+  dotActive: { backgroundColor: COLORS.surface, width: 18 },
   soldBanner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   soldBannerPill: { backgroundColor: COLORS.error, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 12 },
   soldBannerText: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", letterSpacing: 4 },
@@ -557,47 +559,47 @@ const styles = StyleSheet.create({
   divider: { height: 1, backgroundColor: COLORS.border, marginTop: 18 },
   sectionTitle: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginTop: 18, marginBottom: 8 },
   description: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 21 },
-  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border },
   detailRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 12 },
   detailIconBox: { width: 28, alignItems: "center" },
   detailLabel: { fontSize: 13, color: COLORS.textMuted, width: 80 },
   detailValue: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600", flex: 1 },
-  sellerCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 14, marginTop: 14, borderWidth: 1, borderColor: COLORS.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  sellerCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14, marginTop: 14, borderWidth: 1, borderColor: COLORS.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
   sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
   sellerSub: { fontSize: 12, color: COLORS.primary, fontWeight: "500" },
   viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
-  viewProfileText: { fontSize: 12, color: GREEN, fontWeight: "700" },
+  viewProfileText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
 
-  bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 12, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
-  chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
-  primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 12, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
   inCartBtn: { backgroundColor: COLORS.primaryPale },
-  editBtn: { flexDirection: "row", gap: 5, paddingHorizontal: 16, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
-  editBtnText: { fontSize: 14, fontWeight: "700", color: GREEN },
+  editBtn: { flexDirection: "row", gap: 5, paddingHorizontal: 16, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  editBtnText: { fontSize: 14, fontWeight: "700", color: COLORS.primary },
   markActiveBtn: { backgroundColor: COLORS.info },
   deleteIconBtn: { width: 52, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.errorLight, alignItems: "center", justifyContent: "center" },
 
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
-  reasonText: { flex: 1, fontSize: 15, color: "#222", fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: "#FDECEA", borderRadius: 12, padding: 14, marginBottom: 14 },
-  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: "#c0392b" },
-  fieldLabel: { fontSize: 13, fontWeight: "700", color: "#444", marginBottom: 8 },
-  otherInput: { backgroundColor: "#F7F9F5", borderRadius: 12, borderWidth: 1.5, borderColor: "#E4EBDE", padding: 12, fontSize: 14, color: "#222", minHeight: 70, marginBottom: 16 },
-  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: GREEN, borderStyle: "dashed", marginBottom: 16 },
-  proofAddText: { fontSize: 14, color: GREEN, fontWeight: "700" },
+  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
+  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
+  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
+  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  reasonText: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
+  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 14 },
+  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: COLORS.error },
+  fieldLabel: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary, marginBottom: 8 },
+  otherInput: { backgroundColor: COLORS.surfaceAlt, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, padding: 12, fontSize: 14, color: COLORS.textPrimary, minHeight: 70, marginBottom: 16 },
+  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: "dashed", marginBottom: 16 },
+  proofAddText: { fontSize: 14, color: COLORS.primary, fontWeight: "700" },
   proofPreviewWrap: { position: "relative", marginBottom: 16, alignSelf: "flex-start" },
-  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA" },
-  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: "#fff", borderRadius: 13 },
+  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
+  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: COLORS.surface, borderRadius: 13 },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
   reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
+  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

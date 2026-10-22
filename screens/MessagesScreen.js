@@ -11,11 +11,10 @@ import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
 import { getUserBasics } from "../utils/userCache";
 import { Image as CachedImage } from "expo-image";
-import { COLORS, colorForName, FONTS } from "../constants/theme";
+import { colorForName, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = COLORS.primary;
-const LIGHT_BG = COLORS.white;
 
 function timeAgo(date) {
   if (!date) return "";
@@ -32,6 +31,7 @@ function timeAgo(date) {
 }
 
 export default function MessagesScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const isFocused = useIsFocused();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -123,7 +123,7 @@ export default function MessagesScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      {isFocused && <StatusBar barStyle="dark-content" />}
+      {isFocused && <StatusBar barStyle={COLORS.statusBar} />}
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
@@ -132,19 +132,19 @@ export default function MessagesScreen({ navigation }) {
 
       {loading ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color={GREEN} size="large" />
+          <ActivityIndicator color={COLORS.primary} size="large" />
           <Text style={styles.loadingText}>Loading messages...</Text>
         </View>
       ) : (
         <ScrollView
-          style={{ backgroundColor: LIGHT_BG }}
+          style={{ backgroundColor: COLORS.surface }}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} colors={[GREEN]} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} colors={[COLORS.primary]} />}
         >
           {conversations.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
-                <Ionicons name="chatbubbles-outline" size={44} color={GREEN} />
+                <Ionicons name="chatbubbles-outline" size={44} color={COLORS.primary} />
               </View>
               <Text style={styles.emptyTitle}>No Messages Yet</Text>
               <Text style={styles.emptySub}>
@@ -227,45 +227,45 @@ export default function MessagesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface, paddingTop: STATUSBAR_TOP },
+  header: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", paddingHorizontal: 16, paddingVertical: 12, backgroundColor: COLORS.surface },
   headerTitle: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.4 },
   unreadCount: { fontSize: 12.5, color: COLORS.primary, fontWeight: "700" },
 
   loadingWrap: { flex: 1, alignItems: "center", justifyContent: "center" },
-  loadingText: { marginTop: 14, fontSize: 13, color: "#999", fontWeight: "500" },
+  loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: "500" },
 
   list: { paddingHorizontal: 16, paddingTop: 10 },
 
-  convoCard: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.white, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  convoCard: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surface, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   convoCardUnread: {},
 
   avatarWrapper: { position: "relative", marginRight: 12 },
-  avatarCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  avatarCircle: { width: 54, height: 54, borderRadius: 27, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 54, height: 54, borderRadius: 27 },
   avatarText: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff" },
-  onlineDot: { position: "absolute", bottom: 1, right: 1, width: 14, height: 14, borderRadius: 7, backgroundColor: GREEN, borderWidth: 2, borderColor: "#fff" },
+  onlineDot: { position: "absolute", bottom: 1, right: 1, width: 14, height: 14, borderRadius: 7, backgroundColor: COLORS.primary, borderWidth: 2, borderColor: COLORS.surface },
 
   convoContent: { flex: 1 },
   convoTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 3 },
-  convoName: { fontSize: 15, fontWeight: "600", color: "#555", flex: 1, marginRight: 8 },
-  convoNameUnread: { fontFamily: FONTS.heading, color: "#111" },
-  convoTime: { fontSize: 11, color: "#bbb" },
-  convoTimeUnread: { color: GREEN, fontWeight: "700" },
-  convoListing: { fontSize: 11, color: GREEN, marginBottom: 3, fontWeight: "500" },
+  convoName: { fontSize: 15, fontWeight: "600", color: COLORS.textSecondary, flex: 1, marginRight: 8 },
+  convoNameUnread: { fontFamily: FONTS.heading, color: COLORS.textPrimary },
+  convoTime: { fontSize: 11, color: COLORS.textMuted },
+  convoTimeUnread: { color: COLORS.primary, fontWeight: "700" },
+  convoListing: { fontSize: 11, color: COLORS.primary, marginBottom: 3, fontWeight: "500" },
 
   convoBottomRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  convoPreview: { fontSize: 13, color: "#aaa", flex: 1 },
-  convoPreviewUnread: { color: "#333", fontWeight: "600" },
+  convoPreview: { fontSize: 13, color: COLORS.textMuted, flex: 1 },
+  convoPreviewUnread: { color: COLORS.textPrimary, fontWeight: "600" },
 
-  unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, marginLeft: 8 },
+  unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 5, marginLeft: 8 },
   unreadBadgeText: { color: "#fff", fontSize: 10, fontFamily: FONTS.heading },
 
   emptyState: { alignItems: "center", paddingVertical: 90, paddingHorizontal: 40 },
   emptyIconBox: { width: 100, height: 100, borderRadius: 50, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
-  emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: "#333", marginBottom: 8 },
-  emptySub: { fontSize: 14, color: "#999", textAlign: "center", lineHeight: 20, marginBottom: 24 },
-  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: 16, paddingHorizontal: 26, paddingVertical: 14, elevation: 3, shadowColor: GREEN, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
+  emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8 },
+  emptySub: { fontSize: 14, color: COLORS.textMuted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
+  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.primary, borderRadius: 16, paddingHorizontal: 26, paddingVertical: 14, elevation: 3, shadowColor: COLORS.primary, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   browseBtnText: { color: "#fff", fontFamily: FONTS.heading, fontSize: 15 },
 });

@@ -4,9 +4,9 @@ import {
 } from 'react-native';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
 
 const TERMS = [
   {
@@ -60,6 +60,7 @@ const TERMS = [
 ];
 
 export default function TermsScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const [expanded, setExpanded] = useState(null);
 
   return (
@@ -95,7 +96,7 @@ export default function TermsScreen({ navigation }) {
                   <Text style={[styles.termNumText, expanded === index && styles.termNumTextActive]}>{index + 1}</Text>
                 </View>
                 <Text style={styles.termTitle}>{section.title.replace(/^\d+\.\s*/, "")}</Text>
-                <Ionicons name={expanded === index ? "chevron-up" : "chevron-down"} size={16} color={expanded === index ? GREEN : COLORS.textMuted} />
+                <Ionicons name={expanded === index ? "chevron-up" : "chevron-down"} size={16} color={expanded === index ? COLORS.primary : COLORS.textMuted} />
               </View>
               {expanded === index && (
                 <Text style={styles.termContent}>{section.content}</Text>
@@ -108,7 +109,7 @@ export default function TermsScreen({ navigation }) {
             By using SLSU-GumaCart, you agree to these Terms and Conditions and commit to being a responsible member of the SLSU marketplace community.
           </Text>
           <View style={styles.footerSubRow}>
-            <Ionicons name="school" size={14} color={GREEN} style={{ marginRight: 6 }} />
+            <Ionicons name="school" size={14} color={COLORS.primary} style={{ marginRight: 6 }} />
             <Text style={styles.footerSub}>For SLSU Students and Faculty Only</Text>
           </View>
         </View>
@@ -117,9 +118,9 @@ export default function TermsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  introBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 22, padding: 24, alignItems: "center" },
+  introBanner: { margin: 16, backgroundColor: COLORS.primary, borderRadius: 22, padding: 24, alignItems: "center" },
   introIconCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", marginBottom: 12 },
   introTitle: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff", marginBottom: 2 },
   introSubtitle: { fontSize: 14, color: "rgba(255,255,255,0.85)", marginBottom: 12 },
@@ -127,11 +128,11 @@ const styles = StyleSheet.create({
   introDate: { fontSize: 11, color: "#fff", fontWeight: "600" },
   introText: { fontSize: 13, color: "rgba(255,255,255,0.9)", textAlign: "center", lineHeight: 20 },
   termsContainer: { paddingHorizontal: 16, gap: 10 },
-  termCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1.5, borderColor: "transparent", ...SHADOWS.sm },
-  termCardExpanded: { borderColor: GREEN },
+  termCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1.5, borderColor: "transparent", ...SHADOWS.sm },
+  termCardExpanded: { borderColor: COLORS.primary },
   termHeader: { flexDirection: "row", alignItems: "center", gap: 12 },
   termNumBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
-  termNumBadgeActive: { backgroundColor: GREEN },
+  termNumBadgeActive: { backgroundColor: COLORS.primary },
   termNumText: { fontSize: 13, fontFamily: FONTS.heading, color: COLORS.textMuted },
   termNumTextActive: { color: "#fff" },
   termTitle: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, flex: 1 },
@@ -139,5 +140,5 @@ const styles = StyleSheet.create({
   footer: { margin: 16, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.lg, padding: 20, alignItems: "center" },
   footerText: { fontSize: 13, color: COLORS.primaryDark, textAlign: "center", lineHeight: 20, marginBottom: 10 },
   footerSubRow: { flexDirection: "row", alignItems: "center" },
-  footerSub: { fontSize: 13, fontWeight: "700", color: GREEN },
+  footerSub: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
 });

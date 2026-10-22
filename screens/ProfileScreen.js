@@ -11,9 +11,11 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS } from "../constants/theme";
+import { SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
 function StarRating({ rating, size = 14 }) {
+  const { COLORS } = useTheme();
   return (
     <View style={{ flexDirection: "row", gap: 2 }}>
       {[1, 2, 3, 4, 5].map((star) => (
@@ -23,7 +25,9 @@ function StarRating({ rating, size = 14 }) {
   );
 }
 
-function MenuItem({ icon, label, onPress, badge, last, color = COLORS.primary }) {
+function MenuItem({ icon, label, onPress, badge, last, color }) {
+  const { COLORS, styles } = useTheme(createStyles);
+  color = color || COLORS.primary;
   return (
     <TouchableOpacity style={[styles.menuItem, !last && styles.menuItemBorder]} activeOpacity={0.7} onPress={onPress}>
       <View style={[styles.menuIcon, { backgroundColor: color + "1A" }]}>
@@ -37,6 +41,7 @@ function MenuItem({ icon, label, onPress, badge, last, color = COLORS.primary })
 }
 
 export default function ProfileScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const [listingCount, setListingCount] = useState(0);
@@ -228,8 +233,8 @@ export default function ProfileScreen({ navigation }) {
                 )}
                 {userData?.role === "faculty" && (
                   <View style={[styles.verifiedBadge, { backgroundColor: COLORS.accentLight }]}>
-                    <Ionicons name="briefcase" size={12} color="#8A5A00" />
-                    <Text style={[styles.verifiedText, { color: "#8A5A00" }]}>Faculty</Text>
+                    <Ionicons name="briefcase" size={12} color={COLORS.warning} />
+                    <Text style={[styles.verifiedText, { color: COLORS.warning }]}>Faculty</Text>
                   </View>
                 )}
               </View>
@@ -315,8 +320,8 @@ export default function ProfileScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  statusBacking: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: COLORS.primaryDark },
+const createStyles = (COLORS) => StyleSheet.create({
+  statusBacking: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: BRAND_DEEP },
   safe: { flex: 1, backgroundColor: COLORS.background },
 
   hero: { paddingHorizontal: SPACING.lg, paddingBottom: 64, overflow: "hidden", borderBottomLeftRadius: 28, borderBottomRightRadius: 28 },
@@ -326,13 +331,13 @@ const styles = StyleSheet.create({
   heroTitle: { fontSize: 22, fontFamily: FONTS.heading, color: "#fff" },
   heroIconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
 
-  profileCard: { marginHorizontal: SPACING.lg, marginTop: -48, backgroundColor: COLORS.white, borderRadius: 20, padding: SPACING.lg, ...SHADOWS.md },
+  profileCard: { marginHorizontal: SPACING.lg, marginTop: -48, backgroundColor: COLORS.surface, borderRadius: 20, padding: SPACING.lg, ...SHADOWS.md },
   identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatarWrapper: { position: "relative" },
   avatarImage: { width: 72, height: 72, borderRadius: 36 },
   avatarFallback: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
   avatarText: { fontSize: 30, fontFamily: FONTS.heading, color: COLORS.primary },
-  cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#fff" },
+  cameraBadge: { position: "absolute", bottom: 0, right: 0, width: 24, height: 24, borderRadius: 12, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: COLORS.surface },
   userName: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   userEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
   badgesRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
@@ -347,7 +352,7 @@ const styles = StyleSheet.create({
   statNumber: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
 
-  menu: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, backgroundColor: COLORS.white, borderRadius: 18, paddingHorizontal: SPACING.lg, ...SHADOWS.sm },
+  menu: { marginHorizontal: SPACING.lg, marginTop: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: 18, paddingHorizontal: SPACING.lg, ...SHADOWS.sm },
   menuItem: { flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12 },
   menuIcon: { width: 36, height: 36, borderRadius: 11, alignItems: "center", justifyContent: "center" },
   menuItemBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
@@ -357,9 +362,9 @@ const styles = StyleSheet.create({
 
   section: { marginHorizontal: SPACING.lg, marginTop: SPACING.xl },
   sectionTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: SPACING.md },
-  emptyReviews: { alignItems: "center", paddingVertical: 24, gap: 6, backgroundColor: COLORS.white, borderRadius: 16 },
+  emptyReviews: { alignItems: "center", paddingVertical: 24, gap: 6, backgroundColor: COLORS.surface, borderRadius: 16 },
   emptyReviewsText: { fontSize: 13, color: COLORS.textMuted },
-  reviewCard: { backgroundColor: COLORS.white, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  reviewCard: { backgroundColor: COLORS.surface, borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   reviewAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginRight: 10 },
   reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },

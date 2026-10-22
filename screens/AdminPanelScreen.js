@@ -12,9 +12,8 @@ import { httpsCallable } from "firebase/functions";
 import { useActiveListings } from "../utils/useListings";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
-const LIGHT_BG = COLORS.background;
 const AMBER = COLORS.warning;
 const RED = COLORS.error;
 
@@ -43,6 +42,7 @@ const BAN_DURATIONS = [
 ];
 
 export default function AdminPanelScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const [activeTab, setActiveTab]       = useState("verifications");
   const [verifySubTab, setVerifySubTab] = useState("pending");
   const [listingSubTab, setListingSubTab] = useState("pending");
@@ -528,7 +528,7 @@ export default function AdminPanelScreen({ navigation }) {
   if (loading) {
     return (
       <View style={[styles.safe, { justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator color={GREEN} size="large" />
+        <ActivityIndicator color={COLORS.primary} size="large" />
         <Text style={styles.loadingText}>Loading admin panel...</Text>
       </View>
     );
@@ -542,7 +542,7 @@ export default function AdminPanelScreen({ navigation }) {
         onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Profile" }); }}
         right={
           <View style={styles.adminBadge}>
-            <Ionicons name="key" size={18} color={GREEN} />
+            <Ionicons name="key" size={18} color={COLORS.primary} />
           </View>
         }
       />
@@ -554,7 +554,7 @@ export default function AdminPanelScreen({ navigation }) {
         <View style={styles.statDivider} />
         <StatBox num={totals.listings} label="Listings" color="#2563EB" onPress={() => setActiveTab("listings")} />
         <View style={styles.statDivider} />
-        <StatBox num={verifications.filter((v) => v.verificationStatus === "verified").length} label="Verified" color={GREEN} onPress={() => setActiveTab("verifications")} />
+        <StatBox num={verifications.filter((v) => v.verificationStatus === "verified").length} label="Verified" color={COLORS.primary} onPress={() => setActiveTab("verifications")} />
       </View>
 
       <View style={styles.tabs}>
@@ -581,7 +581,7 @@ export default function AdminPanelScreen({ navigation }) {
       </View>
 
       <View style={styles.body}>
-      <ScrollView style={styles.bodyScroll} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}>
+      <ScrollView style={styles.bodyScroll} contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}>
 
         {activeTab === "verifications" && (
           <View style={styles.tabContent}>
@@ -621,7 +621,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardName}>{user.name}</Text>
                         <Text style={styles.cardSub}>{user.email}</Text>
                         {user.verificationStatus === "verified" && (
-                          <Text style={[styles.cardSub, { color: GREEN, fontWeight: "700", marginTop: 2 }]}>✓ Verified student</Text>
+                          <Text style={[styles.cardSub, { color: COLORS.primary, fontWeight: "700", marginTop: 2 }]}>✓ Verified student</Text>
                         )}
                       </View>
                       <View style={[styles.typePill, { backgroundColor: "#C79A2E" }]}>
@@ -728,11 +728,11 @@ export default function AdminPanelScreen({ navigation }) {
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardName} numberOfLines={1}>{listing.name}</Text>
                       <Text style={styles.cardSub}>by {listing.sellerName}</Text>
-                      <Text style={[styles.cardSub, { fontWeight: "700", color: GREEN, marginTop: 2 }]}>
+                      <Text style={[styles.cardSub, { fontWeight: "700", color: COLORS.primary, marginTop: 2 }]}>
                         {listing.type === "donate" ? "FREE" : listing.type === "barter" ? "For Barter" : `₱${listing.price?.toLocaleString()}`}
                       </Text>
                     </View>
-                    <View style={[styles.typePill, { backgroundColor: listing.type === "donate" ? RED : listing.type === "barter" ? AMBER : listing.type === "buy" ? "#2980b9" : GREEN }]}>
+                    <View style={[styles.typePill, { backgroundColor: listing.type === "donate" ? RED : listing.type === "barter" ? AMBER : listing.type === "buy" ? "#2980b9" : COLORS.primary }]}>
                       <Text style={styles.typePillText}>{listing.type?.toUpperCase()}</Text>
                     </View>
                   </TouchableOpacity>
@@ -788,7 +788,7 @@ export default function AdminPanelScreen({ navigation }) {
                   return (
                     <View key={group.key} style={styles.card}>
                       <TouchableOpacity style={styles.cardHeader} activeOpacity={0.7} onPress={() => openReportTarget(group.reports[0])}>
-                        <View style={[styles.listingImageBox, { backgroundColor: "#FDECEA", alignItems: "center", justifyContent: "center" }]}>
+                        <View style={[styles.listingImageBox, { backgroundColor: COLORS.errorLight, alignItems: "center", justifyContent: "center" }]}>
                           <Ionicons name="flag" size={22} color={RED} />
                         </View>
                         <View style={styles.cardInfo}>
@@ -811,7 +811,7 @@ export default function AdminPanelScreen({ navigation }) {
                           {n > 1 && (
                             <View style={styles.countPill}><Text style={styles.countPillText}>{n}×</Text></View>
                           )}
-                          <Ionicons name="chevron-forward" size={16} color="#CCC" style={{ marginTop: 6 }} />
+                          <Ionicons name="chevron-forward" size={16} color={COLORS.textMuted} style={{ marginTop: 6 }} />
                         </View>
                       </TouchableOpacity>
 
@@ -839,7 +839,7 @@ export default function AdminPanelScreen({ navigation }) {
                           </TouchableOpacity>
                         ) : null}
                         <TouchableOpacity style={styles.dismissBtn} activeOpacity={0.8} onPress={() => dismissReportGroup(group)}>
-                          <Ionicons name="checkmark" size={15} color="#666" />
+                          <Ionicons name="checkmark" size={15} color={COLORS.textSecondary} />
                           <Text style={styles.dismissBtnText}>Dismiss</Text>
                         </TouchableOpacity>
                       </View>
@@ -854,8 +854,8 @@ export default function AdminPanelScreen({ navigation }) {
                 resolvedReports.map((report) => (
                   <View key={report.id} style={styles.card}>
                     <TouchableOpacity style={[styles.cardHeader, { marginBottom: report.proofImageUrl ? 10 : 0 }]} activeOpacity={0.7} onPress={() => openReportTarget(report)}>
-                      <View style={[styles.listingImageBox, { backgroundColor: "#F2F2F2", alignItems: "center", justifyContent: "center" }]}>
-                        <Ionicons name="flag-outline" size={22} color="#999" />
+                      <View style={[styles.listingImageBox, { backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" }]}>
+                        <Ionicons name="flag-outline" size={22} color={COLORS.textMuted} />
                       </View>
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardName} numberOfLines={1}>
@@ -865,7 +865,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={[styles.cardSub, { marginTop: 2 }]} numberOfLines={1}>{report.reason}</Text>
                       </View>
                       <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? "#E8F4EC" : "#F2F2F2" }]}>
-                        <Text style={[styles.statusBadgeText, { color: report.status === "resolved" ? GREEN : "#999" }]}>
+                        <Text style={[styles.statusBadgeText, { color: report.status === "resolved" ? COLORS.primary : "#999" }]}>
                           {report.status === "resolved" ? "✓ Resolved" : "○ Dismissed"}
                         </Text>
                       </View>
@@ -935,7 +935,7 @@ export default function AdminPanelScreen({ navigation }) {
                 {resolvedAppeals.map((appeal) => (
                   <View key={appeal.id} style={styles.card}>
                     <View style={[styles.cardHeader, { marginBottom: appeal.message ? 12 : 0 }]}>
-                      <View style={[styles.cardAvatar, { backgroundColor: appeal.status === "approved" ? GREEN : "#999" }]}>
+                      <View style={[styles.cardAvatar, { backgroundColor: appeal.status === "approved" ? COLORS.primary : "#999" }]}>
                         <Ionicons name={appeal.status === "approved" ? "checkmark" : "close"} size={20} color="#fff" />
                       </View>
                       <View style={styles.cardInfo}>
@@ -943,7 +943,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardSub}>{appeal.userEmail}</Text>
                       </View>
                       <View style={[styles.statusBadge, { backgroundColor: appeal.status === "approved" ? "#E8F4EC" : "#F2F2F2" }]}>
-                        <Text style={[styles.statusBadgeText, { color: appeal.status === "approved" ? GREEN : "#999" }]}>
+                        <Text style={[styles.statusBadgeText, { color: appeal.status === "approved" ? COLORS.primary : "#999" }]}>
                           {appeal.status === "approved" ? "✓ Restored" : "✕ Declined"}
                         </Text>
                       </View>
@@ -988,7 +988,7 @@ export default function AdminPanelScreen({ navigation }) {
                   {u.id !== auth.currentUser.uid && (
                     <View style={styles.userActionsRow}>
                       <TouchableOpacity style={[styles.banBtn, u.role === "banned" && styles.unbanBtn]} activeOpacity={0.8} onPress={() => u.role === "banned" ? unbanUser(u.id) : openBan(u.id, u.name)}>
-                        <Text style={[styles.banBtnText, u.role === "banned" && { color: GREEN }]}>{u.role === "banned" ? "Unban" : "Ban"}</Text>
+                        <Text style={[styles.banBtnText, u.role === "banned" && { color: COLORS.primary }]}>{u.role === "banned" ? "Unban" : "Ban"}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity style={styles.deleteUserBtn} activeOpacity={0.85} onPress={() => deleteUser(u.id, u.name)}>
                         <Ionicons name="trash-outline" size={14} color="#fff" />
@@ -999,7 +999,7 @@ export default function AdminPanelScreen({ navigation }) {
                 </View>
               ))
             )}
-            {loadingUsers && <ActivityIndicator color={GREEN} style={{ marginVertical: 16 }} />}
+            {loadingUsers && <ActivityIndicator color={COLORS.primary} style={{ marginVertical: 16 }} />}
             {!loadingUsers && hasMoreUsers && (
               <TouchableOpacity style={styles.loadMoreBtn} activeOpacity={0.8} onPress={() => loadUsers(true)}>
                 <Text style={styles.loadMoreText}>Load more users</Text>
@@ -1024,9 +1024,9 @@ export default function AdminPanelScreen({ navigation }) {
               <>
                 {REJECT_REASONS.map((reason) => (
                   <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="alert-circle-outline" size={18} color="#666" style={{ marginRight: 12 }} />
+                    <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
                     <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => { setRejectVisible(false); setPendingReason(null); }}>
@@ -1064,9 +1064,9 @@ export default function AdminPanelScreen({ navigation }) {
               <>
                 {BAN_REASONS.map((reason) => (
                   <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setBanReason(reason)}>
-                    <Ionicons name="alert-circle-outline" size={18} color="#666" style={{ marginRight: 12 }} />
+                    <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
                     <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setBanVisible(false)}>
@@ -1084,9 +1084,9 @@ export default function AdminPanelScreen({ navigation }) {
                     <Ionicons name={d.key === "permanent" ? "ban" : "time-outline"} size={18} color={d.key === "permanent" ? RED : "#666"} style={{ marginRight: 12 }} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.reasonText}>{d.label}</Text>
-                      <Text style={{ fontSize: 12, color: "#999", marginTop: 1 }}>{d.sub}</Text>
+                      <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 1 }}>{d.sub}</Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setBanReason(null)}>
@@ -1099,9 +1099,9 @@ export default function AdminPanelScreen({ navigation }) {
                   <Ionicons name="alert-circle" size={18} color={RED} style={{ marginRight: 10 }} />
                   <Text style={styles.reasonSelectedText}>{banReason}</Text>
                 </View>
-                <View style={[styles.reasonSelected, { backgroundColor: "#FEF5E7" }]}>
-                  <Ionicons name="time" size={18} color="#B9770E" style={{ marginRight: 10 }} />
-                  <Text style={[styles.reasonSelectedText, { color: "#B9770E" }]}>
+                <View style={[styles.reasonSelected, { backgroundColor: COLORS.warningLight }]}>
+                  <Ionicons name="time" size={18} color={COLORS.warning} style={{ marginRight: 10 }} />
+                  <Text style={[styles.reasonSelectedText, { color: COLORS.warning }]}>
                     {BAN_DURATIONS.find((d) => d.key === banDuration)?.label}
                   </Text>
                 </View>
@@ -1135,6 +1135,7 @@ export default function AdminPanelScreen({ navigation }) {
 }
 
 function StatBox({ num, label, color, onPress }) {
+  const { styles } = useTheme(createStyles);
   return (
     <TouchableOpacity style={styles.statBox} activeOpacity={0.6} onPress={onPress} disabled={!onPress}>
       <Text style={[styles.statNum, { color }]}>{num}</Text>
@@ -1144,11 +1145,12 @@ function StatBox({ num, label, color, onPress }) {
 }
 
 function StatusBadge({ status }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const config = {
     pending:    { color: AMBER, bg: "#FFF3E0", label: "⏳ Pending" },
-    verified:   { color: GREEN, bg: "#E8F4EC", label: "✓ Verified" },
+    verified:   { color: COLORS.primary, bg: "#E8F4EC", label: "✓ Verified" },
     rejected:   { color: RED,   bg: "#FDECEA", label: "✕ Rejected" },
-    unverified: { color: "#999", bg: "#F2F2F2", label: "○ Unverified" },
+    unverified: { color: COLORS.textMuted, bg: "#F2F2F2", label: "○ Unverified" },
     banned:     { color: RED,   bg: "#FDECEA", label: "Banned" },
   };
   const c = config[status] || config.unverified;
@@ -1160,6 +1162,7 @@ function StatusBadge({ status }) {
 }
 
 function DetailRow({ label, value }) {
+  const { styles } = useTheme(createStyles);
   return (
     <View style={styles.detailRow}>
       <Text style={styles.detailLabel}>{label}</Text>
@@ -1169,6 +1172,7 @@ function DetailRow({ label, value }) {
 }
 
 function EmptyState({ icon, text }) {
+  const { COLORS, styles } = useTheme(createStyles);
   return (
     <View style={styles.emptyState}>
       <View style={styles.emptyIconBox}>
@@ -1179,74 +1183,74 @@ function EmptyState({ icon, text }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: LIGHT_BG },
-  body: { flex: 1, backgroundColor: LIGHT_BG },
-  bodyScroll: { flex: 1, backgroundColor: LIGHT_BG },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.background },
+  body: { flex: 1, backgroundColor: COLORS.background },
+  bodyScroll: { flex: 1, backgroundColor: COLORS.background },
   loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: "500" },
   adminBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 4 },
-  statsCard: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: 18, paddingVertical: 16, ...SHADOWS.sm },
+  statsCard: { flexDirection: "row", backgroundColor: COLORS.surface, marginHorizontal: 16, marginTop: 12, borderRadius: 18, paddingVertical: 16, ...SHADOWS.sm },
   statBox: { flex: 1, alignItems: "center" },
   statNum: { fontSize: 20, fontFamily: FONTS.heading },
   statLabel: { fontSize: 11, color: COLORS.textMuted, marginTop: 3, fontWeight: "500" },
   statDivider: { width: 1, backgroundColor: COLORS.border },
-  tabs: { flexDirection: "row", backgroundColor: COLORS.white, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
+  tabs: { flexDirection: "row", backgroundColor: COLORS.surface, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
   tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: RADIUS.md },
   tabActive: { backgroundColor: COLORS.primaryPale },
   tabIcon: { fontSize: 18, marginBottom: 3 },
   tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600" },
-  tabLabelActive: { color: GREEN, fontFamily: FONTS.heading },
+  tabLabelActive: { color: COLORS.primary, fontFamily: FONTS.heading },
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },
   tabContent: { padding: 18 },
   loadMoreBtn: { alignSelf: "center", marginTop: 6, marginBottom: 16, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 999, backgroundColor: COLORS.primaryPale },
-  loadMoreText: { fontSize: 13.5, fontWeight: "700", color: GREEN },
-  groupHeading: { fontSize: 13, fontFamily: FONTS.heading, color: "#666", marginBottom: 10, marginLeft: 2 },
+  loadMoreText: { fontSize: 13.5, fontWeight: "700", color: COLORS.primary },
+  groupHeading: { fontSize: 13, fontFamily: FONTS.heading, color: COLORS.textSecondary, marginBottom: 10, marginLeft: 2 },
   subTabs: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   subTabRow: { flexDirection: "row", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3, marginBottom: 16 },
   approveRow: { flexDirection: "row", gap: 10 },
   subTab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: RADIUS.full },
-  subTabActive: { backgroundColor: GREEN },
+  subTabActive: { backgroundColor: COLORS.primary },
   subTabText: { fontSize: 12, color: COLORS.textSecondary, fontWeight: "600" },
   subTabTextActive: { color: "#fff", fontWeight: "700" },
-  card: { backgroundColor: COLORS.white, borderRadius: 18, padding: 16, marginBottom: 12, ...SHADOWS.sm },
+  card: { backgroundColor: COLORS.surface, borderRadius: 18, padding: 16, marginBottom: 12, ...SHADOWS.sm },
   cardHeader: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  cardAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 12 },
+  cardAvatar: { width: 46, height: 46, borderRadius: 23, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", marginRight: 12 },
   cardAvatarImg: { width: 46, height: 46, borderRadius: 23, marginRight: 12 },
   cardAvatarText: { fontSize: 18, fontFamily: FONTS.heading, color: "#fff" },
   cardInfo: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
   cardSub: { fontSize: 12, color: COLORS.textMuted },
-  listingImageBox: { width: 54, height: 54, borderRadius: 12, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center", marginRight: 12, overflow: "hidden" },
+  listingImageBox: { width: 54, height: 54, borderRadius: 12, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginRight: 12, overflow: "hidden" },
   listingThumb: { width: 54, height: 54, resizeMode: "cover" },
   listingThumbPlaceholder: { fontSize: 24 },
   typePill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   typePillText: { color: "#fff", fontSize: 9, fontFamily: FONTS.heading },
   countPill: { marginTop: 6, backgroundColor: RED, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
   countPillText: { color: "#fff", fontSize: 10, fontFamily: FONTS.heading },
-  proofThumb: { width: "100%", height: 160, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA", backgroundColor: "#F5F5F5" },
+  proofThumb: { width: "100%", height: 160, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceAlt },
   proofHint: { position: "absolute", bottom: 8, right: 8, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   proofHintText: { color: "#fff", fontSize: 11, fontWeight: "600", marginLeft: 4 },
   appealMsgBox: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
-  appealMsgLabel: { fontSize: 11, color: "#999", fontWeight: "700", marginBottom: 4 },
-  appealMsgText: { fontSize: 13.5, color: "#333", lineHeight: 19 },
+  appealMsgLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "700", marginBottom: 4 },
+  appealMsgText: { fontSize: 13.5, color: COLORS.textPrimary, lineHeight: 19 },
   verifyDetails: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14, marginBottom: 12 },
   detailRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 7 },
-  detailLabel: { fontSize: 12, color: "#999", fontWeight: "600" },
-  detailValue: { fontSize: 12, color: "#333", flex: 1, textAlign: "right", fontWeight: "500" },
+  detailLabel: { fontSize: 12, color: COLORS.textMuted, fontWeight: "600" },
+  detailValue: { fontSize: 12, color: COLORS.textPrimary, flex: 1, textAlign: "right", fontWeight: "500" },
   idPhoto: { width: "100%", height: 170, borderRadius: 12, marginTop: 8 },
   statusBadge: { borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
   statusBadgeText: { fontSize: 11, fontWeight: "700" },
   cardActions: { flexDirection: "row", gap: 10 },
   rejectBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
   rejectBtnText: { fontSize: 13, fontWeight: "700", color: RED },
-  approveBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  approveBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   approveBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   deleteBtn: { flexDirection: "row", gap: 6, height: 42, borderRadius: 12, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
   deleteBtnText: { fontSize: 13, fontWeight: "700", color: RED },
-  dismissBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: "#CBCBCB", alignItems: "center", justifyContent: "center" },
-  dismissBtnText: { fontSize: 13, fontWeight: "700", color: "#666" },
-  unbanBtn: { borderColor: GREEN },
+  dismissBtn: { flex: 1, flexDirection: "row", gap: 5, height: 44, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" },
+  dismissBtnText: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
+  unbanBtn: { borderColor: COLORS.primary },
   userActionsRow: { flexDirection: "row", gap: 10 },
   banBtn: { flex: 1, height: 42, borderRadius: 12, borderWidth: 1.5, borderColor: RED, alignItems: "center", justifyContent: "center" },
   banBtnText: { fontSize: 13, fontWeight: "700", color: RED },
@@ -1255,21 +1259,21 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: "center", paddingVertical: 60 },
   emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   emptyIcon: { fontSize: 38 },
-  emptyText: { fontSize: 14, color: "#999" },
+  emptyText: { fontSize: 14, color: COLORS.textMuted },
 
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
-  reasonText: { flex: 1, fontSize: 14.5, color: "#222", fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: "#FDECEA", borderRadius: 12, padding: 14, marginBottom: 12 },
-  reasonSelectedText: { flex: 1, fontSize: 14, fontWeight: "700", color: "#c0392b" },
+  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
+  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
+  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
+  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  reasonText: { flex: 1, fontSize: 14.5, color: COLORS.textPrimary, fontWeight: "500" },
+  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 12 },
+  reasonSelectedText: { flex: 1, fontSize: 14, fontWeight: "700", color: COLORS.error },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center", marginTop: 6 },
   reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
+  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 
   expandHint: { position: "absolute", bottom: 8, right: 8, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   expandHintText: { color: "#fff", fontSize: 11, fontWeight: "600", marginLeft: 4 },

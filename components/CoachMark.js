@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Modal } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, FONTS } from '../constants/theme';
+import { FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
-const GREEN = '#1B6B3A';
 const PADDING = 8;
 
 // A sequential "coach mark" walkthrough: dims the screen, spotlights one
 // icon at a time (measured live via a ref), draws an arrow toward it, and
 // shows a small tooltip card explaining what it does.
 export default function CoachMark({ visible, steps, onFinish }) {
+  const { styles } = useTheme(createStyles);
   const [stepIndex, setStepIndex] = useState(0);
   const [target, setTarget] = useState(null);
 
@@ -139,7 +140,7 @@ export default function CoachMark({ visible, steps, onFinish }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   dimFull: { flex: 1, backgroundColor: 'rgba(8,24,14,0.82)' },
   dim: { position: 'absolute', backgroundColor: 'rgba(8,24,14,0.82)' },
   spotlightBorder: {
@@ -151,7 +152,7 @@ const styles = StyleSheet.create({
   tooltipWrap: { position: 'absolute', left: 20, right: 20 },
   arrow: { position: 'absolute' },
   tooltip: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.surface,
     borderRadius: 18,
     padding: 16,
     borderLeftWidth: 5,

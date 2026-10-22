@@ -6,9 +6,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import ScreenHeader from "../components/ScreenHeader";
 import { LinearGradient } from "expo-linear-gradient";
 import Constants from "expo-constants";
-import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
 
 const MAKERS = [
   {
@@ -35,14 +35,15 @@ const MAKERS = [
   },
 ];
 
-const PILLARS = [
+const PILLARS = (COLORS) => ([
   { icon: "lock-closed",     title: "Safe",         desc: "Only SLSU members. No strangers, no scammers.", color: "#2563EB" },
-  { icon: "shield-checkmark", title: "Trusted",     desc: "Verified student badges build community trust.", color: GREEN },
+  { icon: "shield-checkmark", title: "Trusted",     desc: "Verified student badges build community trust.", color: COLORS.primary },
   { icon: "cash",            title: "Affordable",   desc: "No fees. Free for all SLSU members.",            color: "#EA580C" },
   { icon: "school",          title: "Campus-Based", desc: "Meet up safely within SLSU grounds.",            color: "#7C3AED" },
-];
+]);
 
 export default function AboutScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   return (
     <View style={styles.safe}>
       <ScreenHeader
@@ -90,7 +91,7 @@ export default function AboutScreen({ navigation }) {
           <Text style={styles.sectionTitle}>Our Mission</Text>
           <View style={styles.missionCard}>
             <View style={styles.missionIconCircle}>
-              <Ionicons name="flag" size={22} color={GREEN} />
+              <Ionicons name="flag" size={22} color={COLORS.primary} />
             </View>
             <Text style={styles.missionText}>
               To provide a safe, accessible, and trusted marketplace exclusively for the SLSU community — making it easier for students and faculty to buy, sell, barter, and donate within a circle they know and trust.
@@ -102,7 +103,7 @@ export default function AboutScreen({ navigation }) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Why GumaCart?</Text>
           <View style={styles.pillarsGrid}>
-            {PILLARS.map((p) => (
+            {PILLARS(COLORS).map((p) => (
               <View key={p.title} style={[styles.pillarCard, { borderTopColor: p.color }]}>
                 <View style={[styles.pillarIconBox, { backgroundColor: p.color + "15" }]}>
                   <Ionicons name={p.icon} size={21} color={p.color} />
@@ -147,11 +148,11 @@ export default function AboutScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
 
   // Hero
-  heroBanner: { margin: 16, backgroundColor: GREEN, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
+  heroBanner: { margin: 16, backgroundColor: COLORS.primary, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
   heroPhoto: { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 420 },
   heroCircle: { position: "absolute", right: -50, top: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: COLORS.primaryLight, opacity: 0.5 },
   heroLogo: { width: 72, height: 72, borderRadius: 18, marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
@@ -164,38 +165,38 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 12 },
 
   // Story
-  storyCard: { backgroundColor: COLORS.white, borderRadius: 18, padding: 20, ...SHADOWS.sm },
-  storyQuote: { fontSize: 56, color: GREEN, lineHeight: 48, fontFamily: FONTS.heading, marginBottom: 4, opacity: 0.3 },
+  storyCard: { backgroundColor: COLORS.surface, borderRadius: 18, padding: 20, ...SHADOWS.sm },
+  storyQuote: { fontSize: 56, color: COLORS.primary, lineHeight: 48, fontFamily: FONTS.heading, marginBottom: 4, opacity: 0.3 },
   storyText: { fontSize: 14, color: COLORS.textSecondary, lineHeight: 23, marginBottom: 14 },
-  storyAppName: { fontWeight: "700", color: GREEN },
+  storyAppName: { fontWeight: "700", color: COLORS.primary },
 
   // Mission
   missionCard: { backgroundColor: COLORS.primaryPale, borderRadius: 18, padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 14 },
-  missionIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center" },
+  missionIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: "center", justifyContent: "center" },
   missionIcon: { fontSize: 22 },
   missionText: { flex: 1, fontSize: 14, color: COLORS.primaryDark, lineHeight: 22, fontWeight: "500" },
 
   // Pillars
   pillarsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
-  pillarCard: { width: "47.5%", backgroundColor: COLORS.white, borderRadius: RADIUS.lg, borderTopWidth: 3, padding: 14, ...SHADOWS.sm },
+  pillarCard: { width: "47.5%", backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderTopWidth: 3, padding: 14, ...SHADOWS.sm },
   pillarIconBox: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 },
   pillarIcon: { fontSize: 21 },
   pillarTitle: { fontSize: 15, fontFamily: FONTS.heading, marginBottom: 4 },
   pillarDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
 
   // Makers
-  makerCard: { backgroundColor: COLORS.white, borderRadius: 18, padding: 16, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", gap: 14, ...SHADOWS.sm },
-  makerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  makerCard: { backgroundColor: COLORS.surface, borderRadius: 18, padding: 16, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", gap: 14, ...SHADOWS.sm },
+  makerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   makerAvatarText: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff" },
   makerPhoto: { width: 64, height: 64, borderRadius: 32 },
   makerInfo: { flex: 1 },
   makerName: { fontSize: 16, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
   makerRolePill: { alignSelf: "flex-start", backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
-  makerRoleText: { fontSize: 11, color: GREEN, fontWeight: "700" },
+  makerRoleText: { fontSize: 11, color: COLORS.primary, fontWeight: "700" },
   makerDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
 
   // Footer
   footer: { marginHorizontal: 16, marginTop: 4, marginBottom: 20, alignItems: "center", paddingVertical: 12 },
-  footerText: { fontSize: 14, color: GREEN, fontWeight: "700", marginBottom: 6 },
+  footerText: { fontSize: 14, color: COLORS.primary, fontWeight: "700", marginBottom: 6 },
   footerSub: { fontSize: 11, color: COLORS.textMuted, textAlign: "center", lineHeight: 16 },
 });

@@ -7,17 +7,19 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, query, where, orderBy, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { ProductRow } from '../components/ProductCard';
-import { COLORS, SPACING, RADIUS, FONTS } from '../constants/theme';
+import { SPACING, RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 
-const STATUS_PILLS = {
+const STATUS_PILLS = (COLORS) => ({
   active:   { label: 'Active',         color: COLORS.primary, bg: COLORS.primaryPale },
   pending:  { label: 'Pending review', color: COLORS.warning, bg: COLORS.warningLight },
   rejected: { label: 'Rejected',       color: COLORS.error,   bg: COLORS.errorLight },
   sold:     { label: 'Sold',           color: COLORS.textSecondary, bg: COLORS.surfaceAlt },
-};
+});
 
 export default function MyListingsScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const [listings, setListings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +53,7 @@ export default function MyListingsScreen({ navigation }) {
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <View style={styles.header}>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.headerBtn} onPress={() => navigation.goBack()}>
@@ -85,7 +87,7 @@ export default function MyListingsScreen({ navigation }) {
             </View>
           }
           renderItem={({ item }) => {
-            const pill = STATUS_PILLS[item.status] || STATUS_PILLS.active;
+            const pill = STATUS_PILLS(COLORS)[item.status] || STATUS_PILLS(COLORS).active;
             return (
               <ProductRow
                 item={item}
@@ -114,8 +116,8 @@ export default function MyListingsScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.sm, paddingVertical: SPACING.sm },
   headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginLeft: 4 },

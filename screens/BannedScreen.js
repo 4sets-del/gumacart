@@ -12,9 +12,9 @@ import { auth, db } from '../firebaseConfig';
 import { signOutUser } from '../utils/auth';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const RED = COLORS.error;
-const BG = COLORS.white;
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
 function formatRemaining(ms) {
@@ -31,6 +31,7 @@ function formatRemaining(ms) {
 }
 
 export default function BannedScreen() {
+  const { COLORS, styles } = useTheme(createStyles);
   const { user, userProfile } = useAuth();
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(true);
@@ -110,7 +111,7 @@ export default function BannedScreen() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
-      <StatusBar barStyle="dark-content" backgroundColor={BG} />
+      <StatusBar barStyle={COLORS.statusBar} backgroundColor={COLORS.white} />
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <View style={styles.iconCircle}>
@@ -133,7 +134,7 @@ export default function BannedScreen() {
 
           {isTemporary && (
             <View style={styles.timerBox}>
-              <Ionicons name="time-outline" size={22} color="#B9770E" style={{ marginBottom: 6 }} />
+              <Ionicons name="time-outline" size={22} color={COLORS.warning} style={{ marginBottom: 6 }} />
               <Text style={styles.timerTitle}>Time remaining</Text>
               <Text style={styles.timerValue}>{formatRemaining(remainingMs)}</Text>
               <Text style={styles.timerSub}>
@@ -145,7 +146,7 @@ export default function BannedScreen() {
 
           {pending ? (
             <View style={styles.statusBox}>
-              <Ionicons name="time-outline" size={20} color="#B9770E" style={{ marginBottom: 6 }} />
+              <Ionicons name="time-outline" size={20} color={COLORS.warning} style={{ marginBottom: 6 }} />
               <Text style={styles.statusTitle}>Appeal under review</Text>
               <Text style={styles.statusText}>
                 You’ve submitted an appeal. An admin will review it and your access will be restored if it’s approved.
@@ -195,8 +196,8 @@ export default function BannedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: BG, paddingTop: STATUSBAR_TOP },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface, paddingTop: STATUSBAR_TOP },
   container: { flexGrow: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
   iconCircle: { width: 92, height: 92, borderRadius: 46, backgroundColor: COLORS.errorLight, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
   title: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 10, letterSpacing: -0.4 },
@@ -205,10 +206,10 @@ const styles = StyleSheet.create({
   reasonLabel: { fontSize: 11, fontFamily: FONTS.heading, color: RED, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
   reasonValue: { fontSize: 14.5, color: COLORS.textPrimary, lineHeight: 20, fontWeight: '600' },
   timerBox: { width: '100%', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 16, marginBottom: 22, alignItems: 'center' },
-  timerTitle: { fontSize: 12, fontFamily: FONTS.heading, color: '#B9770E', textTransform: 'uppercase', letterSpacing: 0.5 },
-  timerValue: { fontSize: 26, fontFamily: FONTS.heading, color: '#8A5A0B', marginVertical: 4 },
-  timerSub: { fontSize: 12.5, color: '#8A5A0B', textAlign: 'center' },
-  timerHint: { fontSize: 12, color: '#A9863F', textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
+  timerTitle: { fontSize: 12, fontFamily: FONTS.heading, color: COLORS.warning, textTransform: 'uppercase', letterSpacing: 0.5 },
+  timerValue: { fontSize: 26, fontFamily: FONTS.heading, color: COLORS.warning, marginVertical: 4 },
+  timerSub: { fontSize: 12.5, color: COLORS.warning, textAlign: 'center' },
+  timerHint: { fontSize: 12, color: COLORS.warning, textAlign: 'center', marginTop: 6, fontStyle: 'italic' },
   label: { alignSelf: 'flex-start', fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginBottom: 8 },
   input: { width: '100%', minHeight: 120, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14, fontSize: 15, color: COLORS.textPrimary },
   counter: { alignSelf: 'flex-end', fontSize: 11, color: COLORS.textMuted, marginTop: 6, marginBottom: 16 },

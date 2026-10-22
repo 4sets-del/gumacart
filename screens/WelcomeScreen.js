@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, StatusBar, Image, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, FONTS } from '../constants/theme';
+import { FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -11,17 +12,18 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const PHOTO_H = Math.max(SCREEN_H, Math.round(SCREEN_W * (1448 / 1086)));
 
 export default function WelcomeScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <Image source={require('../assets/slsu-campus.jpg')} style={styles.photo} resizeMode="cover" />
 
-      {/* White fade at the top so the logo and text read clearly */}
+      {/* Fade at the top (white, or dark in dark mode) so the logo and text read clearly */}
       <LinearGradient
-        colors={['#FFFFFF', 'rgba(255,255,255,0.94)', 'rgba(255,255,255,0)']}
+        colors={[COLORS.surface, `${COLORS.surface}F0`, `${COLORS.surface}00`]}
         locations={[0, 0.45, 1]}
         style={[styles.topFade, { height: SCREEN_H * 0.58 }]}
       />
@@ -48,8 +50,8 @@ export default function WelcomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.surface },
   photo: { position: 'absolute', left: 0, right: 0, bottom: 0, width: SCREEN_W, height: PHOTO_H },
   topFade: { position: 'absolute', top: 0, left: 0, right: 0 },
   bottomFade: { position: 'absolute', bottom: 0, left: 0, right: 0 },

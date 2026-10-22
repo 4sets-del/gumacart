@@ -20,8 +20,9 @@ import CoachMark from '../components/CoachMark';
 import { ProductCard } from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
 import { LinearGradient } from 'expo-linear-gradient';
-import { COLORS, SPACING, RADIUS, GRADIENTS, SHADOWS, FONTS } from '../constants/theme';
-import { CATEGORIES } from '../constants/listings';
+import { SPACING, RADIUS, GRADIENTS, SHADOWS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { CATEGORIES, categoryTint } from '../constants/listings';
 import { useActiveListings } from '../utils/useListings';
 import { useSellerRatings } from '../utils/sellerRatings';
 import { popularityScore } from '../utils/views';
@@ -33,13 +34,13 @@ const GRID_CARD_W = (SCREEN_W - SPACING.lg * 2 - GRID_GAP) / 2;
 const PAGE_SIZE = 20;
 
 // Quick filter by listing type (what the old bottom-bar "Filter" button did).
-const TYPE_FILTERS = [
+const TYPE_FILTERS = (COLORS) => ([
   { id: 'all',    label: 'All',         icon: 'apps',            color: COLORS.primary },
   { id: 'sell',   label: 'For Sale',    icon: 'pricetag',        color: COLORS.sell },
   { id: 'buy',    label: 'Looking For', icon: 'search',          color: COLORS.buy },
   { id: 'barter', label: 'Barter',      icon: 'swap-horizontal', color: COLORS.barter },
   { id: 'donate', label: 'Donate',      icon: 'gift',            color: COLORS.donate },
-];
+]);
 
 const BANNERS = [
   { title: 'Good Finds,\nGreat Deals!', text: 'Shop local. Support your fellow SLSU students.', icon: 'bag-handle', colors: GRADIENTS.primary },
@@ -48,6 +49,7 @@ const BANNERS = [
 ];
 
 export default function HomeScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { listings, loading: listingsLoading } = useActiveListings();
@@ -280,7 +282,7 @@ export default function HomeScreen({ navigation }) {
           </TouchableOpacity>
           {CATEGORIES.map((cat) => (
             <TouchableOpacity key={cat.name} style={styles.categoryItem} activeOpacity={0.7} onPress={() => openCategory(cat.name)}>
-              <View style={[styles.categoryCircle, { backgroundColor: cat.tint, borderColor: cat.color + '40' }]}>
+              <View style={[styles.categoryCircle, { backgroundColor: categoryTint(cat), borderColor: cat.color + '40' }]}>
                 <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
               </View>
               <Text style={styles.categoryLabel} numberOfLines={2}>{cat.name}</Text>
@@ -320,7 +322,7 @@ export default function HomeScreen({ navigation }) {
             {/* ── FEATURED ── */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIcon, { backgroundColor: '#FEF3C7' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
+                <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B2E' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
                 <Text style={styles.sectionTitle}>Featured Listings</Text>
               </View>
               <TouchableOpacity onPress={() => navigation.navigate('Search')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -336,13 +338,13 @@ export default function HomeScreen({ navigation }) {
             {/* ── ALL LISTINGS ── */}
             <View style={styles.sectionHeader}>
               <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIcon, { backgroundColor: '#DBEAFE' }]}><Ionicons name="sparkles" size={15} color="#2563EB" /></View>
+                <View style={[styles.sectionIcon, { backgroundColor: '#2563EB2E' }]}><Ionicons name="sparkles" size={15} color="#2563EB" /></View>
                 <Text style={styles.sectionTitle}>Latest Listings</Text>
               </View>
               <Text style={styles.sectionCount}>{shownListings.length} items</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
-              {TYPE_FILTERS.map((t) => {
+              {TYPE_FILTERS(COLORS).map((t) => {
                 const active = typeFilter === t.id;
                 return (
                   <TouchableOpacity
@@ -360,7 +362,7 @@ export default function HomeScreen({ navigation }) {
             {shownListings.length === 0 ? (
               <View style={styles.typeEmpty}>
                 <Ionicons name="file-tray-outline" size={30} color={COLORS.textMuted} />
-                <Text style={styles.emptySub}>No {TYPE_FILTERS.find((t) => t.id === typeFilter)?.label} listings right now.</Text>
+                <Text style={styles.emptySub}>No {TYPE_FILTERS(COLORS).find((t) => t.id === typeFilter)?.label} listings right now.</Text>
               </View>
             ) : (
               <View style={styles.grid}>
@@ -376,7 +378,7 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
 
   // Header
@@ -389,11 +391,11 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 19, fontFamily: FONTS.heading, color: '#fff', letterSpacing: -0.3 },
   headerRight: { flexDirection: 'row', gap: 8 },
   iconBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.16)', alignItems: 'center', justifyContent: 'center' },
-  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff' },
+  badge: { position: 'absolute', top: -2, right: -2, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: '#F59E0B', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3, borderWidth: 1.5, borderColor: COLORS.surface },
   badgeText: { fontSize: 9, color: COLORS.white, fontFamily: FONTS.heading },
 
   // Search
-  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.lg, backgroundColor: COLORS.white, borderRadius: RADIUS.full, paddingHorizontal: SPACING.lg, height: 48, ...SHADOWS.md },
+  searchWrap: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: SPACING.lg, backgroundColor: COLORS.surface, borderRadius: RADIUS.full, paddingHorizontal: SPACING.lg, height: 48, ...SHADOWS.md },
   searchPlaceholder: { flex: 1, fontSize: 13.5, color: COLORS.textMuted },
 
   // Banner
@@ -425,7 +427,7 @@ const styles = StyleSheet.create({
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg, gap: GRID_GAP },
   skeletonTitle: { height: 18, borderRadius: 9, backgroundColor: COLORS.surfaceAlt },
   typeRow: { paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: SPACING.md },
-  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, backgroundColor: COLORS.white },
+  typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, backgroundColor: COLORS.surface },
   typeChipText: { fontSize: 12.5, fontWeight: '700' },
   typeEmpty: { alignItems: 'center', paddingVertical: 30, gap: 6 },
 

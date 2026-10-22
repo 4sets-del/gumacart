@@ -13,11 +13,10 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
-import { COLORS, colorForName, FONTS } from "../constants/theme";
+import { colorForName, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = COLORS.primary;
-const GREEN_LIGHT = COLORS.primaryPale;
 
 // Emoji users can react with
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
@@ -29,6 +28,7 @@ function timeLabel(date) {
 }
 
 export default function ChatScreen({ route, navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const { conversationId, otherUserId, otherUserName, listingName } = route.params;
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
@@ -349,7 +349,7 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <View style={styles.header}>
         <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.backBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Messages" }); }}>
@@ -401,7 +401,7 @@ export default function ChatScreen({ route, navigation }) {
           {items.length === 0 && (
             <View style={styles.emptyChat}>
               <View style={styles.emptyChatIcon}>
-                <Ionicons name="chatbubble-ellipses-outline" size={40} color={GREEN} />
+                <Ionicons name="chatbubble-ellipses-outline" size={40} color={COLORS.primary} />
               </View>
               <Text style={styles.emptyChatTitle}>Start the conversation</Text>
               <Text style={styles.emptyChatSub}>Say hello to {otherUserName}!</Text>
@@ -441,7 +441,7 @@ export default function ChatScreen({ route, navigation }) {
               </Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReplyTo(null)} activeOpacity={0.7} style={styles.replyBarClose}>
-              <Ionicons name="close" size={18} color="#888" />
+              <Ionicons name="close" size={18} color={COLORS.textMuted} />
             </TouchableOpacity>
           </View>
         )}
@@ -541,7 +541,7 @@ export default function ChatScreen({ route, navigation }) {
               activeOpacity={0.7}
               onPress={() => { setReplyTo(actionMsg); setActionMsg(null); }}
             >
-              <Ionicons name="arrow-undo-outline" size={20} color="#333" style={{ marginRight: 14 }} />
+              <Ionicons name="arrow-undo-outline" size={20} color={COLORS.textPrimary} style={{ marginRight: 14 }} />
               <Text style={styles.sheetItemText}>Reply</Text>
             </TouchableOpacity>
 
@@ -566,23 +566,23 @@ export default function ChatScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 6, paddingVertical: 8, backgroundColor: COLORS.white, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface, paddingTop: STATUSBAR_TOP },
+  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 6, paddingVertical: 8, backgroundColor: COLORS.surface, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   backBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center" },
   headerInfo: { flexDirection: "row", alignItems: "center", flex: 1, marginLeft: 2 },
   headerName: { fontSize: 16, fontWeight: "700", color: COLORS.textPrimary },
   headerListing: { fontSize: 12, color: COLORS.primary, marginTop: 1, maxWidth: 200 },
   headerOnline: { fontSize: 12, color: COLORS.primary, marginTop: 1 },
-  messagesList: { flex: 1, backgroundColor: COLORS.white },
+  messagesList: { flex: 1, backgroundColor: COLORS.surface },
   messagesContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, flexGrow: 1 },
 
   loadEarlierBtn: { flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 6, backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 10 },
   loadEarlierText: { fontSize: 12.5, fontWeight: "700", color: COLORS.primary },
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 },
-  emptyChatIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: GREEN_LIGHT, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  emptyChatTitle: { fontSize: 17, fontFamily: FONTS.heading, color: "#333", marginBottom: 6 },
-  emptyChatSub: { fontSize: 13, color: "#999" },
+  emptyChatIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
+  emptyChatTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
+  emptyChatSub: { fontSize: 13, color: COLORS.textMuted },
 
   dateDivider: { flexDirection: "row", alignItems: "center", marginVertical: 16, gap: 10 },
   dateDividerLine: { flex: 1, height: 1, backgroundColor: COLORS.border },
@@ -601,10 +601,10 @@ const styles = StyleSheet.create({
   msgVideoBox: { width: 210, height: 130, borderRadius: 14, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
   msgVideoPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 6 },
   msgVideoText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
-  inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 10, paddingTop: 10, backgroundColor: COLORS.white, borderTopWidth: 1, borderTopColor: COLORS.border },
+  inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 10, paddingTop: 10, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
   mediaBtn: { width: 42, height: 42, alignItems: "center", justifyContent: "center", marginRight: 4 },
-  textInput: { flex: 1, minHeight: 42, maxHeight: 120, backgroundColor: COLORS.white, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
-  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginLeft: 8 },
+  textInput: { flex: 1, minHeight: 42, maxHeight: 120, backgroundColor: COLORS.surface, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 10, fontSize: 15, color: COLORS.textPrimary, borderWidth: 1, borderColor: COLORS.border },
+  sendBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", marginLeft: 8 },
   sendBtnDisabled: { backgroundColor: COLORS.borderStrong },
   viewerOverlay: { flex: 1, backgroundColor: "#000", alignItems: "center", justifyContent: "center" },
   viewerTopBar: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUSBAR_TOP + 10, paddingBottom: 12, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.4)" },
@@ -616,35 +616,35 @@ const styles = StyleSheet.create({
   viewerVideoBox: { alignItems: "center", paddingHorizontal: 40 },
 
   // Reply preview inside a bubble
-  replyPreview: { borderLeftWidth: 3, borderLeftColor: GREEN, backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 6 },
+  replyPreview: { borderLeftWidth: 3, borderLeftColor: COLORS.primary, backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 6 },
   replyPreviewMe: { borderLeftColor: "rgba(255,255,255,0.7)", backgroundColor: "rgba(255,255,255,0.15)" },
-  replyName: { fontSize: 11, fontWeight: "700", color: GREEN, marginBottom: 1 },
-  replySnippet: { fontSize: 12, color: "#666" },
+  replyName: { fontSize: 11, fontWeight: "700", color: COLORS.primary, marginBottom: 1 },
+  replySnippet: { fontSize: 12, color: COLORS.textSecondary },
 
   // Reply bar above the input
-  replyBar: { flexDirection: "row", alignItems: "center", backgroundColor: "#fff", borderTopWidth: 1, borderTopColor: "#EAEAEA", paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
-  replyBarLine: { width: 3, height: 34, borderRadius: 2, backgroundColor: GREEN },
-  replyBarName: { fontSize: 12, fontWeight: "700", color: GREEN },
-  replyBarText: { fontSize: 12, color: "#888", marginTop: 1 },
+  replyBar: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border, paddingHorizontal: 14, paddingVertical: 10, gap: 10 },
+  replyBarLine: { width: 3, height: 34, borderRadius: 2, backgroundColor: COLORS.primary },
+  replyBarName: { fontSize: 12, fontWeight: "700", color: COLORS.primary },
+  replyBarText: { fontSize: 12, color: COLORS.textMuted, marginTop: 1 },
   replyBarClose: { padding: 4 },
 
   // Reaction chips under bubbles
   reactionRow: { flexDirection: "row", gap: 4, marginTop: -2, flexWrap: "wrap" },
-  reactionChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: "#fff", borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: "#E8EDE5", elevation: 1 },
-  reactionChipMine: { backgroundColor: GREEN_LIGHT, borderColor: GREEN },
+  reactionChip: { flexDirection: "row", alignItems: "center", gap: 3, backgroundColor: COLORS.surface, borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3, borderWidth: 1, borderColor: COLORS.border, elevation: 1 },
+  reactionChipMine: { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary },
   reactionEmoji: { fontSize: 13 },
-  reactionCount: { fontSize: 11, color: "#666", fontWeight: "600" },
+  reactionCount: { fontSize: 11, color: COLORS.textSecondary, fontWeight: "600" },
 
   // Long-press action sheet
   sheetOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: "#fff", borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingBottom: 26, paddingHorizontal: 16 },
+  sheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingBottom: 26, paddingHorizontal: 16 },
   emojiRow: { flexDirection: "row", justifyContent: "space-around", paddingBottom: 14 },
-  emojiBtn: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: "#F5F7F3" },
-  emojiBtnActive: { backgroundColor: GREEN_LIGHT, borderWidth: 2, borderColor: GREEN },
+  emojiBtn: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surfaceAlt },
+  emojiBtnActive: { backgroundColor: COLORS.primaryPale, borderWidth: 2, borderColor: COLORS.primary },
   emojiBtnText: { fontSize: 24 },
-  sheetDivider: { height: 1, backgroundColor: "#EEE", marginBottom: 6 },
+  sheetDivider: { height: 1, backgroundColor: COLORS.surfaceAlt, marginBottom: 6 },
   sheetItem: { flexDirection: "row", alignItems: "center", paddingVertical: 15, paddingHorizontal: 6 },
-  sheetItemText: { fontSize: 15, fontWeight: "600", color: "#222" },
-  sheetCancel: { marginTop: 8, height: 48, borderRadius: 14, backgroundColor: "#F5F5F5", alignItems: "center", justifyContent: "center" },
-  sheetCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
+  sheetItemText: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
+  sheetCancel: { marginTop: 8, height: 48, borderRadius: 14, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  sheetCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

@@ -8,7 +8,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow } from "../components/ProductCard";
-import { COLORS, SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
+import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
 import { useActiveListings } from "../utils/useListings";
 import { useSellerRatings } from "../utils/sellerRatings";
@@ -29,6 +30,7 @@ function toggleIn(list, value) {
 }
 
 function Checkbox({ checked, label, onPress }) {
+  const { styles } = useTheme(createStyles);
   return (
     <TouchableOpacity style={styles.checkRow} activeOpacity={0.7} onPress={onPress}>
       <View style={[styles.checkbox, checked && styles.checkboxOn]}>
@@ -40,6 +42,7 @@ function Checkbox({ checked, label, onPress }) {
 }
 
 function Radio({ selected, label, onPress }) {
+  const { styles } = useTheme(createStyles);
   return (
     <TouchableOpacity style={styles.checkRow} activeOpacity={0.7} onPress={onPress}>
       <View style={[styles.radio, selected && styles.radioOn]}>
@@ -51,6 +54,7 @@ function Radio({ selected, label, onPress }) {
 }
 
 export default function SearchScreen({ navigation, route }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const initialCategory = route?.params?.category || null;
   const [searchText, setSearchText]       = useState("");
@@ -253,7 +257,7 @@ export default function SearchScreen({ navigation, route }) {
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       {/* Header */}
       <View style={styles.header}>
@@ -469,19 +473,19 @@ export default function SearchScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
 
   // Header
   header: { flexDirection: "row", alignItems: "center", paddingHorizontal: SPACING.md, paddingVertical: SPACING.sm, gap: 6 },
   backBtn: { width: 40, height: 40, alignItems: "center", justifyContent: "center" },
-  searchBar: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.white, borderRadius: RADIUS.full, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: COLORS.border },
+  searchBar: { flex: 1, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.surface, borderRadius: RADIUS.full, paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: COLORS.border },
   searchInput: { flex: 1, fontSize: 15, color: COLORS.textPrimary, paddingVertical: 0 },
 
   // Segment
   segment: { flexDirection: "row", marginHorizontal: SPACING.lg, marginTop: 2, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3 },
   segmentItem: { flex: 1, paddingVertical: 7, alignItems: "center", borderRadius: RADIUS.full },
-  segmentItemOn: { backgroundColor: COLORS.white, elevation: 1, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
+  segmentItemOn: { backgroundColor: COLORS.surface, elevation: 1, shadowColor: "#000", shadowOpacity: 0.06, shadowRadius: 3, shadowOffset: { width: 0, height: 1 } },
   segmentText: { fontSize: 13, fontWeight: "600", color: COLORS.textMuted },
   segmentTextOn: { color: COLORS.primary, fontWeight: "700" },
 
@@ -497,7 +501,7 @@ const styles = StyleSheet.create({
   cartBtn: { alignSelf: "flex-start", padding: 4 },
 
   // Sellers
-  sellerCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  sellerCard: { flexDirection: "row", alignItems: "center", gap: 12, backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 12, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   sellerAvatar: { width: 50, height: 50, borderRadius: 25 },
   sellerAvatarFallback: { backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   sellerAvatarText: { fontSize: 20, fontFamily: FONTS.heading, color: "#fff" },
@@ -527,7 +531,7 @@ const styles = StyleSheet.create({
 
   // Sheet
   sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
-  sheet: { maxHeight: "88%", backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
+  sheet: { maxHeight: "88%", backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
   sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   sheetTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sheetSection: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginTop: 18, marginBottom: 6 },

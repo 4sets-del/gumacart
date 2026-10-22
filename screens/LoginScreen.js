@@ -6,17 +6,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
-import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import { RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 import StatusBarScrim from '../components/StatusBarScrim';
 
-const GREEN = COLORS.primary;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = Math.round(SCREEN_H * 0.44);
 // Campus photo is 1086x1448; anchor its bottom so the building and SLSU sign show.
 const PHOTO_HEIGHT = Math.round(SCREEN_W * (1448 / 1086));
 
 export default function LoginScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
 
@@ -178,7 +179,7 @@ export default function LoginScreen({ navigation }) {
             {!resetSent ? (
               <>
                 <View style={styles.resetIconCircle}>
-                  <Ionicons name="lock-open-outline" size={26} color={GREEN} />
+                  <Ionicons name="lock-open-outline" size={26} color={COLORS.primary} />
                 </View>
                 <Text style={styles.resetTitle}>Reset your password</Text>
                 <Text style={styles.resetSub}>
@@ -186,11 +187,11 @@ export default function LoginScreen({ navigation }) {
                 </Text>
 
                 <View style={styles.resetInputWrap}>
-                  <Ionicons name="mail-outline" size={19} color="#999" style={{ marginRight: 10 }} />
+                  <Ionicons name="mail-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
                   <TextInput
                     style={styles.resetInput}
                     placeholder="your.email@example.com"
-                    placeholderTextColor="#AAA"
+                    placeholderTextColor={COLORS.textMuted}
                     value={resetEmail}
                     onChangeText={setResetEmail}
                     keyboardType="email-address"
@@ -216,8 +217,8 @@ export default function LoginScreen({ navigation }) {
               </>
             ) : (
               <>
-                <View style={[styles.resetIconCircle, { backgroundColor: '#E8F4EC' }]}>
-                  <Ionicons name="mail-open-outline" size={26} color={GREEN} />
+                <View style={[styles.resetIconCircle, { backgroundColor: COLORS.primaryPale }]}>
+                  <Ionicons name="mail-open-outline" size={26} color={COLORS.primary} />
                 </View>
                 <Text style={styles.resetTitle}>Check your email</Text>
                 <Text style={styles.resetSub}>
@@ -242,12 +243,12 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   hero: { height: HERO_HEIGHT, backgroundColor: COLORS.primaryPale, overflow: 'hidden' },
   heroImage: { position: 'absolute', left: 0, right: 0, bottom: 0, width: SCREEN_W, height: Math.max(PHOTO_HEIGHT, HERO_HEIGHT) },
   backBtn: { position: 'absolute', left: 16, zIndex: 6, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
-  container: { flexGrow: 1, marginTop: -24, backgroundColor: COLORS.white, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingBottom: 32 },
+  container: { flexGrow: 1, marginTop: -24, backgroundColor: COLORS.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingHorizontal: 24, paddingBottom: 32 },
   logoSection: { alignItems: 'center', paddingTop: 22, paddingBottom: 4 },
   logo: { width: 60, height: 60, borderRadius: 16, marginBottom: 14 },
   title: { fontSize: 26, fontFamily: FONTS.heading, color: COLORS.primaryDark, letterSpacing: -0.5 },
@@ -265,17 +266,17 @@ const styles = StyleSheet.create({
   forgotBtn: { alignSelf: 'flex-end', paddingVertical: 10, paddingLeft: 8 },
   forgotText: { fontSize: 13.5, color: COLORS.primary, fontWeight: '600' },
   resetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  resetSheet: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 30, alignItems: 'center' },
-  resetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: '#DDD', marginBottom: 18 },
-  resetIconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: '#F6F8F6', alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  resetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: '#111', marginBottom: 6 },
-  resetSub: { fontSize: 13.5, color: '#777', textAlign: 'center', lineHeight: 20, marginBottom: 20 },
+  resetSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 30, alignItems: 'center' },
+  resetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 18 },
+  resetIconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  resetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
+  resetSub: { fontSize: 13.5, color: COLORS.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
   resetInputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, paddingHorizontal: 14, marginBottom: 16 },
-  resetInput: { flex: 1, fontSize: 15, color: '#111' },
-  resetBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: 'center', justifyContent: 'center' },
+  resetInput: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
+  resetBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
   resetBtnText: { fontSize: 15.5, fontFamily: FONTS.heading, color: '#fff' },
   resetCancel: { height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  resetCancelText: { fontSize: 15, fontWeight: '700', color: '#666' },
-  resetSpamNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF5E7', borderRadius: 12, padding: 12, marginBottom: 20, width: '100%' },
-  resetSpamText: { flex: 1, fontSize: 12.5, color: '#8a5a20', lineHeight: 18 },
+  resetCancelText: { fontSize: 15, fontWeight: '700', color: COLORS.textSecondary },
+  resetSpamNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warningLight, borderRadius: 12, padding: 12, marginBottom: 20, width: '100%' },
+  resetSpamText: { flex: 1, fontSize: 12.5, color: COLORS.warning, lineHeight: 18 },
 });

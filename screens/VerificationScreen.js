@@ -8,9 +8,9 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, FONTS } from "../constants/theme";
+import { RADIUS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
 
 const STEPS = [
   { id: 1, title: "School Email", icon: "mail" },
@@ -19,6 +19,7 @@ const STEPS = [
 ];
 
 export default function VerificationScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const [currentStep, setCurrentStep] = useState(1);
   const [schoolEmail, setSchoolEmail] = useState("");
   const [studentId, setStudentId] = useState("");
@@ -165,7 +166,7 @@ export default function VerificationScreen({ navigation }) {
                     {currentStep > step.id ? (
                       <Ionicons name="checkmark" size={18} color="#fff" />
                     ) : (
-                      <Ionicons name={step.icon} size={16} color={currentStep >= step.id ? GREEN : COLORS.textMuted} />
+                      <Ionicons name={step.icon} size={16} color={currentStep >= step.id ? COLORS.primary : COLORS.textMuted} />
                     )}
                   </View>
                   <Text style={[styles.stepLabel, currentStep >= step.id && styles.stepLabelActive]}>{step.title}</Text>
@@ -181,17 +182,17 @@ export default function VerificationScreen({ navigation }) {
           {currentStep === 1 && (
             <View style={styles.stepContent}>
               <View style={styles.stepIconCircle}>
-                <Ionicons name="mail" size={34} color={GREEN} />
+                <Ionicons name="mail" size={34} color={COLORS.primary} />
               </View>
               <Text style={styles.stepTitle}>School Email</Text>
               <Text style={styles.stepDesc}>Enter your official SLSU school email address to verify you're a student.</Text>
               <Text style={styles.inputLabel}>School Email</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={19} color="#888" style={{ marginRight: 10 }} />
-                <TextInput style={styles.input} placeholder="yourname@slsu.edu.ph" placeholderTextColor="#A0A0A0" value={schoolEmail} onChangeText={setSchoolEmail} autoCapitalize="none" keyboardType="email-address" />
+                <Ionicons name="mail-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
+                <TextInput style={styles.input} placeholder="yourname@slsu.edu.ph" placeholderTextColor={COLORS.textMuted} value={schoolEmail} onChangeText={setSchoolEmail} autoCapitalize="none" keyboardType="email-address" />
               </View>
               <View style={styles.infoBox}>
-                <Ionicons name="information-circle" size={17} color={GREEN} style={{ marginRight: 8 }} />
+                <Ionicons name="information-circle" size={17} color={COLORS.primary} style={{ marginRight: 8 }} />
                 <Text style={styles.infoText}>Only @slsu.edu.ph email addresses are accepted. Contact your registrar if you don't have one.</Text>
               </View>
             </View>
@@ -201,17 +202,17 @@ export default function VerificationScreen({ navigation }) {
           {currentStep === 2 && (
             <View style={styles.stepContent}>
               <View style={styles.stepIconCircle}>
-                <Ionicons name="card" size={34} color={GREEN} />
+                <Ionicons name="card" size={34} color={COLORS.primary} />
               </View>
               <Text style={styles.stepTitle}>Student ID Number</Text>
               <Text style={styles.stepDesc}>Enter your official SLSU Student ID number as shown on your ID card.</Text>
               <Text style={styles.inputLabel}>Student ID Number</Text>
               <View style={styles.inputWrapper}>
-                <Ionicons name="keypad-outline" size={19} color="#888" style={{ marginRight: 10 }} />
-                <TextInput style={styles.input} placeholder="e.g. 2021-00001" placeholderTextColor="#A0A0A0" value={studentId} onChangeText={setStudentId} keyboardType="default" />
+                <Ionicons name="keypad-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
+                <TextInput style={styles.input} placeholder="e.g. 2021-00001" placeholderTextColor={COLORS.textMuted} value={studentId} onChangeText={setStudentId} keyboardType="default" />
               </View>
               <View style={styles.infoBox}>
-                <Ionicons name="information-circle" size={17} color={GREEN} style={{ marginRight: 8 }} />
+                <Ionicons name="information-circle" size={17} color={COLORS.primary} style={{ marginRight: 8 }} />
                 <Text style={styles.infoText}>Your Student ID number can be found on your school ID card or COR.</Text>
               </View>
             </View>
@@ -221,7 +222,7 @@ export default function VerificationScreen({ navigation }) {
           {currentStep === 3 && (
             <View style={styles.stepContent}>
               <View style={styles.stepIconCircle}>
-                <Ionicons name="camera" size={34} color={GREEN} />
+                <Ionicons name="camera" size={34} color={COLORS.primary} />
               </View>
               <Text style={styles.stepTitle}>Upload Student ID Photo</Text>
               <Text style={styles.stepDesc}>Take a clear photo of your SLSU Student ID card. Make sure all details are visible.</Text>
@@ -237,7 +238,7 @@ export default function VerificationScreen({ navigation }) {
                   </>
                 ) : (
                   <View style={styles.photoPlaceholder}>
-                    <Ionicons name="card-outline" size={42} color={GREEN} style={{ marginBottom: 10 }} />
+                    <Ionicons name="card-outline" size={42} color={COLORS.primary} style={{ marginBottom: 10 }} />
                     <Text style={styles.photoPlaceholderText}>Tap to upload your Student ID</Text>
                     <Text style={styles.photoPlaceholderSub}>Camera or Gallery</Text>
                   </View>
@@ -262,7 +263,7 @@ export default function VerificationScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={styles.exampleCheck}>
-                  <Ionicons name="checkmark-circle" size={22} color={GREEN} />
+                  <Ionicons name="checkmark-circle" size={22} color={COLORS.primary} />
                 </View>
               </View>
 
@@ -284,26 +285,26 @@ export default function VerificationScreen({ navigation }) {
                 <Text style={styles.summaryTitle}>Verification Summary</Text>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryLabelRow}>
-                    <Ionicons name="mail-outline" size={14} color="#888" style={{ marginRight: 6 }} />
+                    <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.summaryLabel}>School Email</Text>
                   </View>
                   <Text style={styles.summaryValue}>{schoolEmail}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryLabelRow}>
-                    <Ionicons name="card-outline" size={14} color="#888" style={{ marginRight: 6 }} />
+                    <Ionicons name="card-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.summaryLabel}>Student ID</Text>
                   </View>
                   <Text style={styles.summaryValue}>{studentId}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryLabelRow}>
-                    <Ionicons name="camera-outline" size={14} color="#888" style={{ marginRight: 6 }} />
+                    <Ionicons name="camera-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.summaryLabel}>ID Photo</Text>
                   </View>
                   <View style={styles.summaryStatusRow}>
-                    <Ionicons name={idPhoto ? "checkmark-circle" : "close-circle"} size={15} color={idPhoto ? GREEN : "#e74c3c"} style={{ marginRight: 4 }} />
-                    <Text style={[styles.summaryValue, { flex: 0, color: idPhoto ? GREEN : "#e74c3c" }]}>{idPhoto ? "Uploaded" : "Not yet"}</Text>
+                    <Ionicons name={idPhoto ? "checkmark-circle" : "close-circle"} size={15} color={idPhoto ? COLORS.primary : "#e74c3c"} style={{ marginRight: 4 }} />
+                    <Text style={[styles.summaryValue, { flex: 0, color: idPhoto ? COLORS.primary : "#e74c3c" }]}>{idPhoto ? "Uploaded" : "Not yet"}</Text>
                   </View>
                 </View>
               </View>
@@ -314,7 +315,7 @@ export default function VerificationScreen({ navigation }) {
           <View style={styles.btnRow}>
             {currentStep > 1 && (
               <TouchableOpacity style={styles.backStepBtn} activeOpacity={0.8} onPress={() => setCurrentStep(currentStep - 1)}>
-                <Ionicons name="arrow-back" size={16} color={GREEN} style={{ marginRight: 4 }} />
+                <Ionicons name="arrow-back" size={16} color={COLORS.primary} style={{ marginRight: 4 }} />
                 <Text style={styles.backStepBtnText}>Back</Text>
               </TouchableOpacity>
             )}
@@ -335,31 +336,31 @@ export default function VerificationScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   container: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 40 },
 
   // Rejection banner
   rejectBanner: { flexDirection: "row", backgroundColor: COLORS.errorLight, borderRadius: RADIUS.lg, padding: 14, marginBottom: 20, gap: 12 },
-  rejectIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: "#fff", alignItems: "center", justifyContent: "center" },
-  rejectTitle: { fontSize: 14, fontFamily: FONTS.heading, color: "#c0392b", marginBottom: 3 },
-  rejectReason: { fontSize: 13, color: "#7b3029", lineHeight: 19, marginBottom: 4 },
-  rejectHint: { fontSize: 12, color: "#a05a52", fontStyle: "italic" },
+  rejectIconCircle: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.surface, alignItems: "center", justifyContent: "center" },
+  rejectTitle: { fontSize: 14, fontFamily: FONTS.heading, color: COLORS.error, marginBottom: 3 },
+  rejectReason: { fontSize: 13, color: COLORS.error, lineHeight: 19, marginBottom: 4 },
+  rejectHint: { fontSize: 12, color: COLORS.error, fontStyle: "italic" },
 
   // Pending banner
   pendingBanner: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 13, marginBottom: 20 },
-  pendingText: { flex: 1, fontSize: 12.5, color: "#8a5a20", lineHeight: 18 },
+  pendingText: { flex: 1, fontSize: 12.5, color: COLORS.warning, lineHeight: 18 },
   stepsRow: { flexDirection: "row", alignItems: "center", marginBottom: 32 },
   stepItem: { alignItems: "center", flex: 1 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginBottom: 6, borderWidth: 2, borderColor: COLORS.border },
-  stepCircleActive: { backgroundColor: COLORS.primaryPale, borderColor: GREEN },
-  stepCircleDone: { backgroundColor: GREEN, borderColor: GREEN },
+  stepCircleActive: { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary },
+  stepCircleDone: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   stepNum: { fontSize: 14, fontWeight: "700", color: COLORS.textMuted },
-  stepNumActive: { color: GREEN },
+  stepNumActive: { color: COLORS.primary },
   stepLabel: { fontSize: 10.5, color: COLORS.textMuted, textAlign: "center", fontWeight: "500" },
-  stepLabelActive: { color: GREEN, fontWeight: "700" },
+  stepLabelActive: { color: COLORS.primary, fontWeight: "700" },
   stepLine: { flex: 1, height: 2, backgroundColor: COLORS.border, marginBottom: 20 },
-  stepLineActive: { backgroundColor: GREEN },
+  stepLineActive: { backgroundColor: COLORS.primary },
   stepContent: { alignItems: "center", marginBottom: 24 },
   stepIconCircle: { width: 76, height: 76, borderRadius: 38, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
   stepTitle: { fontSize: 22, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8, textAlign: "center" },
@@ -372,8 +373,8 @@ const styles = StyleSheet.create({
   photoBox: { width: "100%", height: 200, borderRadius: RADIUS.lg, backgroundColor: COLORS.surfaceAlt, borderWidth: 2, borderColor: COLORS.borderStrong, borderStyle: "dashed", overflow: "hidden", marginBottom: 16 },
   idPhotoPreview: { width: "100%", height: "100%", resizeMode: "cover" },
   photoPlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
-  photoPlaceholderText: { fontSize: 14, fontWeight: "700", color: "#555" },
-  photoPlaceholderSub: { fontSize: 12, color: "#999", marginTop: 4 },
+  photoPlaceholderText: { fontSize: 14, fontWeight: "700", color: COLORS.textSecondary },
+  photoPlaceholderSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
   changePhotoBtn: { position: "absolute", bottom: 0, left: 0, right: 0, flexDirection: "row", backgroundColor: "rgba(0,0,0,0.55)", paddingVertical: 9, alignItems: "center", justifyContent: "center" },
   changePhotoText: { color: "#fff", fontSize: 13, fontWeight: "600" },
   tipsBox: { backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 14, marginBottom: 16, width: "100%", gap: 8 },
@@ -383,25 +384,25 @@ const styles = StyleSheet.create({
   progressText: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary },
   progressPct: { fontSize: 12.5, color: COLORS.textMuted },
   progressTrack: { height: 6, borderRadius: 3, backgroundColor: COLORS.surfaceAlt, overflow: "hidden", marginBottom: 20 },
-  progressFill: { height: "100%", borderRadius: 3, backgroundColor: GREEN },
+  progressFill: { height: "100%", borderRadius: 3, backgroundColor: COLORS.primary },
   exampleLabel: { alignSelf: "flex-start", fontSize: 13, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 8 },
-  exampleCard: { width: "100%", borderRadius: RADIUS.md, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, overflow: "hidden", marginBottom: 14 },
-  exampleHeader: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: GREEN, paddingHorizontal: 12, paddingVertical: 7 },
+  exampleCard: { width: "100%", borderRadius: RADIUS.md, backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border, overflow: "hidden", marginBottom: 14 },
+  exampleHeader: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: COLORS.primary, paddingHorizontal: 12, paddingVertical: 7 },
   exampleHeaderText: { color: "#fff", fontSize: 10.5, fontWeight: "800", letterSpacing: 0.4 },
   exampleBody: { flexDirection: "row", alignItems: "center", gap: 14, padding: 14 },
   examplePhoto: { width: 56, height: 68, borderRadius: 8, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
   exampleLine: { height: 8, borderRadius: 4, backgroundColor: COLORS.surfaceAlt },
   exampleCheck: { position: "absolute", top: 34, right: 10 },
-  summaryBox: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, width: "100%", borderWidth: 1, borderColor: COLORS.border },
-  summaryTitle: { fontSize: 15, fontFamily: FONTS.heading, color: "#111", marginBottom: 12 },
+  summaryBox: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 16, width: "100%", borderWidth: 1, borderColor: COLORS.border },
+  summaryTitle: { fontSize: 15, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 12 },
   summaryRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
   summaryLabelRow: { flexDirection: "row", alignItems: "center" },
-  summaryLabel: { fontSize: 13, color: "#888" },
-  summaryValue: { fontSize: 13, fontWeight: "600", color: "#111", flex: 1, textAlign: "right" },
+  summaryLabel: { fontSize: 13, color: COLORS.textMuted },
+  summaryValue: { fontSize: 13, fontWeight: "600", color: COLORS.textPrimary, flex: 1, textAlign: "right" },
   summaryStatusRow: { flexDirection: "row", alignItems: "center" },
   btnRow: { flexDirection: "row", gap: 12, marginTop: 8 },
-  backStepBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
-  backStepBtnText: { fontSize: 15, fontWeight: "700", color: GREEN },
-  nextBtn: { flex: 2, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  backStepBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  backStepBtnText: { fontSize: 15, fontWeight: "700", color: COLORS.primary },
+  nextBtn: { flex: 2, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   nextBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
 });

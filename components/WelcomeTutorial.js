@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import GradientButton from "./GradientButton";
-import { COLORS, FONTS, GRADIENTS } from "../constants/theme";
+import { FONTS, GRADIENTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
 const { width } = Dimensions.get("window");
 
@@ -45,6 +46,7 @@ const SLIDES = [
 ];
 
 export default function WelcomeTutorial({ visible, onClose }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const [page, setPage] = useState(0);
   const scrollRef = useRef(null);
@@ -65,7 +67,7 @@ export default function WelcomeTutorial({ visible, onClose }) {
   return (
     <Modal visible={visible} animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={COLORS.statusBar} />
 
         <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
           <Text style={styles.counter}>{page + 1} / {SLIDES.length}</Text>
@@ -121,8 +123,8 @@ export default function WelcomeTutorial({ visible, onClose }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: COLORS.surface },
   topBar: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 20 },
   counter: { fontSize: 13, fontWeight: "700", color: COLORS.textMuted },
   skipBtn: { paddingHorizontal: 12, paddingVertical: 8 },
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
   hero: { width: "100%", height: 230, borderRadius: 32, alignItems: "center", justifyContent: "center", overflow: "hidden", marginBottom: 36 },
   heroCircleBig: { position: "absolute", right: -50, top: -50, width: 190, height: 190, borderRadius: 95, backgroundColor: "rgba(255,255,255,0.14)" },
   heroCircleSmall: { position: "absolute", left: -30, bottom: -40, width: 120, height: 120, borderRadius: 60, backgroundColor: "rgba(255,255,255,0.10)" },
-  iconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: COLORS.white, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
+  iconCircle: { width: 120, height: 120, borderRadius: 60, backgroundColor: COLORS.surface, alignItems: "center", justifyContent: "center", elevation: 6, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
   title: { fontSize: 25, fontFamily: FONTS.heading, color: COLORS.textPrimary, textAlign: "center", marginBottom: 14, letterSpacing: -0.4 },
   text: { fontSize: 15.5, color: COLORS.textSecondary, textAlign: "center", lineHeight: 24 },
   dotsRow: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: 8, marginBottom: 20 },

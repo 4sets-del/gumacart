@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { COLORS, RADIUS } from '../constants/theme';
+import { RADIUS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // Grey placeholder shaped like a ProductCard, gently pulsing while
 // listings load, so the screen never shows a misleading "no listings".
 export default function SkeletonCard({ width }) {
+  const { styles } = useTheme(createStyles);
   const pulse = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
@@ -29,8 +31,8 @@ export default function SkeletonCard({ width }) {
   );
 }
 
-const styles = StyleSheet.create({
-  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
+const createStyles = (COLORS) => StyleSheet.create({
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border },
   image: { width: '100%', aspectRatio: 1.1, backgroundColor: COLORS.surfaceAlt },
   body: { padding: 10, gap: 8 },
   line: { height: 10, borderRadius: 5, backgroundColor: COLORS.surfaceAlt },

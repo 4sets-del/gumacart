@@ -18,11 +18,12 @@ import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
 
 export default function SettingsScreen({ navigation }) {
+  const { COLORS, styles, mode, setMode } = useTheme(createStyles);
   const user = auth.currentUser;
 
   const [showEditModal, setShowEditModal] = useState(false);
@@ -225,6 +226,31 @@ export default function SettingsScreen({ navigation }) {
           <SettingRow icon="lock-closed" iconColor="#7C3AED" label="Change Password" sub="Update your account password" onPress={() => setShowPasswordModal(true)} isLast />
         </View>
 
+        <Text style={styles.sectionLabel}>Appearance</Text>
+        <View style={[styles.card, styles.appearanceCard]}>
+          {[
+            { id: 'system', label: 'System', icon: 'phone-portrait-outline' },
+            { id: 'light', label: 'Light', icon: 'sunny-outline' },
+            { id: 'dark', label: 'Dark', icon: 'moon-outline' },
+          ].map((opt) => {
+            const active = mode === opt.id;
+            return (
+              <TouchableOpacity
+                key={opt.id}
+                style={[styles.appearanceOption, active && styles.appearanceOptionActive]}
+                activeOpacity={0.8}
+                onPress={() => setMode(opt.id)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: active }}
+              >
+                <Ionicons name={opt.icon} size={20} color={active ? '#fff' : COLORS.textSecondary} />
+                <Text style={[styles.appearanceText, active && styles.appearanceTextActive]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={styles.appearanceHint}>"System" follows your phone's light or dark setting.</Text>
+
         <Text style={styles.sectionLabel}>Notifications</Text>
         <View style={styles.card}>
           <ToggleRow icon="chatbubble-ellipses" iconColor="#2563EB" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} />
@@ -261,7 +287,7 @@ export default function SettingsScreen({ navigation }) {
 
             <TouchableOpacity style={styles.photoWrap} activeOpacity={0.85} onPress={changePhoto} disabled={uploadingPhoto} accessibilityRole="button" accessibilityLabel="Change profile photo">
               {uploadingPhoto ? (
-                <View style={[styles.photo, styles.photoFallback]}><ActivityIndicator color={GREEN} /></View>
+                <View style={[styles.photo, styles.photoFallback]}><ActivityIndicator color={COLORS.primary} /></View>
               ) : photoURL ? (
                 <Image source={{ uri: photoURL }} style={styles.photo} cachePolicy="memory-disk" />
               ) : (
@@ -368,10 +394,11 @@ export default function SettingsScreen({ navigation }) {
 }
 
 function SettingRow({ icon, label, sub, onPress, isLast, labelColor, iconColor, disabled }) {
+  const { COLORS, styles } = useTheme(createStyles);
   return (
     <TouchableOpacity style={[styles.settingRow, !isLast && styles.settingRowBorder]} onPress={onPress} disabled={disabled} activeOpacity={0.7}>
       <View style={[styles.settingIconBox, iconColor && { backgroundColor: iconColor + "1A" }]}>
-        <Ionicons name={icon} size={18} color={iconColor || GREEN} />
+        <Ionicons name={icon} size={18} color={iconColor || COLORS.primary} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[styles.settingLabel, labelColor && { color: labelColor }]}>{label}</Text>
@@ -382,7 +409,9 @@ function SettingRow({ icon, label, sub, onPress, isLast, labelColor, iconColor, 
   );
 }
 
-function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor = GREEN }) {
+function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor }) {
+  const { COLORS, styles } = useTheme(createStyles);
+  iconColor = iconColor || COLORS.primary;
   return (
     <View style={[styles.settingRow, !isLast && styles.settingRowBorder]}>
       <View style={[styles.settingIconBox, { backgroundColor: iconColor + "1A" }]}>
@@ -392,14 +421,14 @@ function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor = GREE
         <Text style={styles.settingLabel}>{label}</Text>
         {sub ? <Text style={styles.settingSub}>{sub}</Text> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ false: COLORS.border, true: COLORS.primaryLighter }} thumbColor={value ? GREEN : "#f4f3f4"} />
+      <Switch value={value} onValueChange={onChange} trackColor={{ false: COLORS.border, true: COLORS.primaryLighter }} thumbColor={value ? COLORS.primary : "#f4f3f4"} />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
-  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 28, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.error, backgroundColor: COLORS.white },
+  logoutBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, marginHorizontal: 16, marginTop: 28, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.error, backgroundColor: COLORS.surface },
   logoutText: { fontSize: 15.5, fontWeight: "700", color: COLORS.error },
   deleteLink: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 12 },
   deleteLinkText: { fontSize: 13.5, color: COLORS.textMuted, textDecorationLine: "underline" },
@@ -407,18 +436,24 @@ const styles = StyleSheet.create({
   photoWrap: { alignSelf: "center", marginTop: 12 },
   photo: { width: 88, height: 88, borderRadius: 44 },
   photoFallback: { backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
-  photoInitial: { fontSize: 34, fontFamily: FONTS.heading, color: GREEN },
-  photoBadge: { position: "absolute", right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: COLORS.white },
+  photoInitial: { fontSize: 34, fontFamily: FONTS.heading, color: COLORS.primary },
+  photoBadge: { position: "absolute", right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: COLORS.surface },
   photoHint: { textAlign: "center", fontSize: 12.5, color: COLORS.textMuted, marginTop: 6 },
+  appearanceCard: { flexDirection: "row", padding: 6, gap: 6 },
+  appearanceOption: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4, paddingVertical: 12, borderRadius: RADIUS.md },
+  appearanceOptionActive: { backgroundColor: COLORS.primary },
+  appearanceText: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
+  appearanceTextActive: { color: "#fff" },
+  appearanceHint: { fontSize: 12, color: COLORS.textMuted, marginHorizontal: 20, marginTop: 8 },
   sectionLabel: { fontSize: 12, fontWeight: "700", color: COLORS.textMuted, textTransform: "uppercase", letterSpacing: 0.6, marginHorizontal: 20, marginTop: 22, marginBottom: 8 },
-  card: { backgroundColor: COLORS.white, marginHorizontal: 16, borderRadius: 18, overflow: "hidden", ...SHADOWS.sm },
+  card: { backgroundColor: COLORS.surface, marginHorizontal: 16, borderRadius: 18, overflow: "hidden", ...SHADOWS.sm },
   settingRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14 },
   settingRowBorder: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
   settingIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 13 },
   settingLabel: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
   settingSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
   modalSubtitle: { fontSize: 13, color: COLORS.textMuted, marginBottom: 16 },
@@ -428,6 +463,6 @@ const styles = StyleSheet.create({
   modalActions: { flexDirection: "row", gap: 12, marginTop: 26 },
   cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   cancelBtnText: { fontSize: 15, color: COLORS.primary, fontWeight: "700" },
-  saveBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  saveBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   saveBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
 });

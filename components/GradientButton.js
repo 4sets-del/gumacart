@@ -3,9 +3,11 @@ import { Text, TouchableOpacity, StyleSheet, ActivityIndicator, View } from 'rea
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GRADIENTS, RADIUS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // Main call-to-action button with a left-to-right gradient fill.
 export default function GradientButton({ title, onPress, loading, disabled, icon, colors = GRADIENTS.primary, style, height = 52 }) {
+  const { styles } = useTheme(createStyles);
   return (
     <TouchableOpacity
       activeOpacity={0.88}
@@ -27,7 +29,7 @@ export default function GradientButton({ title, onPress, loading, disabled, icon
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (COLORS) => StyleSheet.create({
   shadow: { borderRadius: RADIUS.md, elevation: 3, shadowOpacity: 0.3, shadowRadius: 8, shadowOffset: { width: 0, height: 4 } },
   fill: { borderRadius: RADIUS.md, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },

@@ -9,6 +9,7 @@ import { Poppins_600SemiBold } from '@expo-google-fonts/poppins/600SemiBold';
 import { Poppins_700Bold } from '@expo-google-fonts/poppins/700Bold';
 import { Poppins_800ExtraBold } from '@expo-google-fonts/poppins/800ExtraBold';
 import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 import OfflineNotice from './components/OfflineNotice';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -30,16 +31,24 @@ export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider>
+      <ThemeProvider>
       <AuthProvider>
-        {/* Transparent status bar on every screen: each screen paints its own
-            color behind it and picks light or dark icons to match. */}
-        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" hidden={false} />
+        <RootStatusBar />
         <ErrorBoundary>
           <AppNavigator />
         </ErrorBoundary>
         <OfflineNotice />
       </AuthProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
     </GestureHandlerRootView>
   );
+}
+
+// Transparent status bar on every screen: each screen paints its own color
+// behind it and picks light or dark icons to match (dark icons by default in
+// light mode, light icons in dark mode).
+function RootStatusBar() {
+  const { COLORS } = useTheme();
+  return <StatusBar translucent backgroundColor="transparent" barStyle={COLORS.statusBar} hidden={false} />;
 }

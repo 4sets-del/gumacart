@@ -1,4 +1,6 @@
-export const COLORS = {
+// Light palette. Also exported as COLORS for module-level constants that
+// only use colors which are the same in both palettes (accents, badges).
+export const LIGHT_COLORS = {
   // Primary green palette
   primary: '#1B6B3A',
   primaryDark: '#145530',
@@ -53,7 +55,65 @@ export const COLORS = {
   // Overlay
   overlay: 'rgba(0,0,0,0.5)',
   overlayLight: 'rgba(0,0,0,0.08)',
+
+  // Status bar icons for screens with a plain (surface-colored) header
+  statusBar: 'dark-content',
+  isDark: false,
 };
+
+
+// Dark palette: green-tinted greys (not pure black) so it still feels like
+// GumaCart; a brighter green and softer text keep things readable.
+export const DARK_COLORS = {
+  ...LIGHT_COLORS,
+  primary: '#3BAF6A',
+  primaryDark: '#8FD8A8',      // used as a "brand" text color
+  primaryLight: '#4CC27C',
+  primaryLighter: '#2C5A3C',
+  primaryPale: '#1B3325',
+
+  accentLight: '#4A3A12',
+
+  background: '#0E1310',
+  surface: '#171D19',
+  surfaceAlt: '#222A25',
+
+  textPrimary: '#E7ECE8',
+  textSecondary: '#AAB5AD',
+  textMuted: '#76837A',
+
+  border: '#29322C',
+  borderStrong: '#3A453E',
+
+  success: '#3BAF6A',
+  errorLight: '#3A1F1F',
+  warningLight: '#3A2C15',
+  infoLight: '#172B40',
+
+  sell: '#3BAF6A',
+  sellBg: '#1B3325',
+  buyBg: '#172B40',
+  barterBg: '#3A2C15',
+  donateBg: '#3A1F1F',
+
+  bubbleSent: '#2E9A5A',
+  bubbleReceived: '#252E28',
+
+  overlay: 'rgba(0,0,0,0.65)',
+  overlayLight: 'rgba(255,255,255,0.06)',
+
+  statusBar: 'light-content',
+  isDark: true,
+};
+
+export const COLORS = LIGHT_COLORS;
+
+// The palette currently in use, for plain helper functions (not components)
+// that pick colors at call time. Kept up to date by ThemeProvider.
+export const ACTIVE_THEME = { colors: LIGHT_COLORS };
+
+// Dark green used behind the status bar on green headers (same in both modes).
+export const BRAND_DEEP = '#14532B';
 
 // Colorful two-stop gradients for headers, banners and main buttons.
 export const GRADIENTS = {

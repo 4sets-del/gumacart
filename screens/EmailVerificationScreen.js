@@ -8,12 +8,13 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { sendEmailVerification, reload } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { signOutUser } from '../utils/auth';
-import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import { RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-const GREEN = COLORS.primary;
 
 export default function EmailVerificationScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const [checking, setChecking] = useState(false);
   const [resending, setResending] = useState(false);
   const [cooldown, setCooldown] = useState(0);
@@ -110,11 +111,11 @@ export default function EmailVerificationScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <View style={styles.container}>
         <View style={styles.iconCircle}>
-          <Ionicons name="mail-unread-outline" size={56} color={GREEN} />
+          <Ionicons name="mail-unread-outline" size={56} color={COLORS.primary} />
         </View>
 
         <Text style={styles.title}>Verify Your Email</Text>
@@ -135,7 +136,7 @@ export default function EmailVerificationScreen({ navigation }) {
         </View>
 
         <View style={styles.statusRow}>
-          <ActivityIndicator size="small" color={GREEN} />
+          <ActivityIndicator size="small" color={COLORS.primary} />
           <Text style={styles.statusText}>Waiting for verification...</Text>
         </View>
 
@@ -174,8 +175,8 @@ export default function EmailVerificationScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white, paddingTop: STATUSBAR_TOP },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface, paddingTop: STATUSBAR_TOP },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 },
   iconCircle: { width: 104, height: 104, borderRadius: 52, backgroundColor: COLORS.primaryPale, alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
   title: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8, textAlign: 'center', letterSpacing: -0.4 },
@@ -183,7 +184,7 @@ const styles = StyleSheet.create({
   email: { fontSize: 15, fontWeight: '700', color: COLORS.textPrimary, marginTop: 4, marginBottom: 16 },
   instructions: { fontSize: 13.5, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 18 },
   spamNote: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 13, marginBottom: 24 },
-  spamNoteText: { flex: 1, fontSize: 12.5, color: '#7A5A2E', lineHeight: 18 },
+  spamNoteText: { flex: 1, fontSize: 12.5, color: COLORS.warning, lineHeight: 18 },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 24 },
   statusText: { fontSize: 13, color: COLORS.primary, fontWeight: '600' },
   openMailBtn: { flexDirection: 'row', gap: 8, backgroundColor: '#2563EB', borderRadius: RADIUS.md, height: 52, width: '100%', alignItems: 'center', justifyContent: 'center', marginBottom: 10 },

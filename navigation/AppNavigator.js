@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { View } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -10,7 +10,8 @@ import * as Haptics from 'expo-haptics';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '../context/AuthContext';
-import { COLORS, GRADIENTS } from '../constants/theme';
+import { GRADIENTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 // ── Built screens ──
 import HomeScreen from '../screens/HomeScreen';
@@ -43,15 +44,15 @@ import { auth, db } from '../firebaseConfig';
 
 const Stack = createStackNavigator();
 
-const tabStyles = {
+const makeTabStyles = (COLORS) => ({
   iconWrap: { width: 46, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   iconWrapActive: { backgroundColor: COLORS.primaryPale },
   sellBtn: {
     width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', marginTop: -22,
-    borderWidth: 4, borderColor: COLORS.white, elevation: 6,
+    borderWidth: 4, borderColor: COLORS.surface, elevation: 6,
     shadowColor: '#F97316', shadowOpacity: 0.35, shadowRadius: 8, shadowOffset: { width: 0, height: 4 },
   },
-};
+});
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS = {
@@ -84,6 +85,7 @@ function useUnreadConversationCount() {
 }
 
 function MainTabs() {
+  const { COLORS, styles: tabStyles } = useTheme(makeTabStyles);
   const unread = useUnreadConversationCount();
   // Room for icon + label, plus the phone's gesture/navigation bar.
   const insets = useSafeAreaInsets();
@@ -100,7 +102,7 @@ function MainTabs() {
         tabBarInactiveTintColor: COLORS.textMuted,
         tabBarStyle: {
           borderTopColor: COLORS.border,
-          backgroundColor: COLORS.white,
+          backgroundColor: COLORS.surface,
           height: 64 + bottomPad,
           paddingTop: 8,
           paddingBottom: bottomPad,
@@ -201,6 +203,25 @@ function BannedStack() {
 export default function AppNavigator() {
   const { user, loading, emailVerified, isBanned } = useAuth();
   const navigationRef = useRef(null);
+  const { COLORS, isDark } = useTheme();
+
+  // Background shown between and behind screens, so switching screens never
+  // flashes white in dark mode.
+  const navTheme = useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        primary: COLORS.primary,
+        background: COLORS.background,
+        card: COLORS.surface,
+        text: COLORS.textPrimary,
+        border: COLORS.border,
+        notification: COLORS.error,
+      },
+    };
+  }, [isDark, COLORS]);
 
   useEffect(() => {
     const unsubscribe = addNotificationResponseListener(async (data) => {
@@ -242,7 +263,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} theme={navTheme}>
       {!user
         ? <AuthStack />
         : !emailVerified

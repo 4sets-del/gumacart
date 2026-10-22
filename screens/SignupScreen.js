@@ -7,10 +7,12 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { createUserWithEmailAndPassword, updateProfile, sendEmailVerification } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-import { COLORS, RADIUS, FONTS } from '../constants/theme';
+import { RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 
 export default function SignupScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -83,7 +85,7 @@ export default function SignupScreen({ navigation }) {
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={COLORS.statusBar} />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -245,8 +247,8 @@ export default function SignupScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   backBtn: { width: 44, height: 44, justifyContent: 'center', marginTop: 4, marginLeft: -6 },
   container: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 32 },
   logoSection: { paddingTop: 12, paddingBottom: 4 },

@@ -9,24 +9,25 @@ import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
 import { CATEGORIES, normalizeCategory } from "../constants/listings";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, FONTS } from "../constants/theme";
+import { RADIUS, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import { ProductCard } from "../components/ProductCard";
 
-const GREEN = COLORS.primary;
 
-const LISTING_TYPES = [
+const LISTING_TYPES = (COLORS) => ([
   { id: 'sell',   label: 'For Sale',    icon: 'pricetag-outline',        color: COLORS.sell,   bg: COLORS.sellBg },
   { id: 'buy',    label: 'Looking For', icon: 'search-outline',          color: COLORS.buy,    bg: COLORS.buyBg },
   { id: 'barter', label: 'Barter',      icon: 'swap-horizontal-outline', color: COLORS.barter, bg: COLORS.barterBg },
   { id: 'donate', label: 'Donate',      icon: 'gift-outline',            color: COLORS.donate, bg: COLORS.donateBg },
-];
+]);
 
 
 const MAX_PHOTOS = 6;
 
 // Small red message shown under a field after a failed "Post" attempt.
 function FieldError({ msg }) {
+  const { COLORS, styles } = useTheme(createStyles);
   if (!msg) return null;
   return (
     <View style={styles.fieldError}>
@@ -44,6 +45,7 @@ const CAMPUS_LOCATIONS = [
 
 
 export default function CreateListingScreen({ navigation, route }) {
+  const { COLORS, styles } = useTheme(createStyles);
   // When an existing listing is passed in, the screen works in EDIT mode.
   const editListing = route?.params?.editListing || null;
   const isEditing = !!editListing;
@@ -60,7 +62,7 @@ export default function CreateListingScreen({ navigation, route }) {
   const [images, setImages]                 = useState(editListing?.images || (editListing?.image ? [editListing.image] : []));
   const [loading, setLoading]               = useState(false);
 
-  const activeType = LISTING_TYPES.find((t) => t.id === listingType);
+  const activeType = LISTING_TYPES(COLORS).find((t) => t.id === listingType);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -217,7 +219,7 @@ export default function CreateListingScreen({ navigation, route }) {
           {/* Listing Type */}
           <Text style={styles.sectionLabel}>Listing Type</Text>
           <View style={styles.typeRow}>
-            {LISTING_TYPES.map((type) => {
+            {LISTING_TYPES(COLORS).map((type) => {
               const isActive = listingType === type.id;
               return (
                 <TouchableOpacity
@@ -251,7 +253,7 @@ export default function CreateListingScreen({ navigation, route }) {
               </View>
             ))}
             <TouchableOpacity style={styles.addPhotoBtn} activeOpacity={0.7} onPress={showImageOptions}>
-              <Ionicons name="camera" size={26} color={GREEN} style={{ marginBottom: 4 }} />
+              <Ionicons name="camera" size={26} color={COLORS.primary} style={{ marginBottom: 4 }} />
               <Text style={styles.addPhotoText}>{images.length === 0 ? "Add Photos" : "Add More"}</Text>
               {images.length > 0 && <Text style={styles.addPhotoSub}>{images.length} added</Text>}
             </TouchableOpacity>
@@ -437,14 +439,14 @@ export default function CreateListingScreen({ navigation, route }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   container: { paddingHorizontal: 16, paddingTop: 6 },
   sectionLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 10 },
   sectionLabel: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 10, marginTop: 18 },
   required: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
   typeRow: { flexDirection: "row", gap: 8 },
-  typeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.white },
+  typeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface },
   typeBtnLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textSecondary },
   photosRow: { flexDirection: "row", marginBottom: 4 },
   photoThumb: { width: 96, height: 96, borderRadius: RADIUS.md, marginRight: 10, overflow: "hidden", position: "relative" },
@@ -453,7 +455,7 @@ const styles = StyleSheet.create({
   primaryBadgeText: { color: "#fff", fontSize: 10, fontWeight: "700" },
   removePhotoBtn: { position: "absolute", top: 5, right: 5, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.6)", alignItems: "center", justifyContent: "center" },
   addPhotoBtn: { width: 96, height: 96, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primaryLighter, borderStyle: "dashed", backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
-  addPhotoText: { fontSize: 11.5, fontWeight: "700", color: GREEN },
+  addPhotoText: { fontSize: 11.5, fontWeight: "700", color: COLORS.primary },
   addPhotoSub: { fontSize: 10, color: COLORS.textMuted, marginTop: 2 },
   inputWrapper: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, minHeight: 52 },
   input: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
@@ -461,13 +463,13 @@ const styles = StyleSheet.create({
   charCount: { fontSize: 11, color: COLORS.textMuted, textAlign: "right", marginTop: 4 },
   chipGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt },
-  chipActive: { backgroundColor: GREEN },
+  chipActive: { backgroundColor: COLORS.primary },
   chipIcon: { fontSize: 14, marginRight: 5 },
   chipLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   chipLabelActive: { color: "#fff", fontWeight: "700" },
   conditionRow: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   conditionBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt },
-  conditionBtnActive: { backgroundColor: GREEN },
+  conditionBtnActive: { backgroundColor: COLORS.primary },
   conditionLabel: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600" },
   conditionLabelActive: { color: "#fff", fontWeight: "700" },
   previewRow: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
@@ -477,7 +479,7 @@ const styles = StyleSheet.create({
   previewHint: { flexDirection: "row", alignItems: "center", marginTop: 24, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14 },
   previewDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
   previewHintText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
-  submitBtn: { borderRadius: RADIUS.md, height: 52, alignItems: "center", justifyContent: "center", marginTop: 14, backgroundColor: GREEN },
+  submitBtn: { borderRadius: RADIUS.md, height: 52, alignItems: "center", justifyContent: "center", marginTop: 14, backgroundColor: COLORS.primary },
   submitLoading: { flexDirection: "row", alignItems: "center" },
   submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

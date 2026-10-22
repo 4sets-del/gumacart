@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, Dimens
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { COLORS, SPACING, RADIUS, FONTS } from '../constants/theme';
-import { CATEGORIES, normalizeCategory } from '../constants/listings';
+import { SPACING, RADIUS, FONTS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
+import { CATEGORIES, normalizeCategory, categoryTint } from '../constants/listings';
 import { useActiveListings } from '../utils/useListings';
 
 const { width: SCREEN_W } = Dimensions.get('window');
@@ -12,6 +13,7 @@ const GAP = 14;
 const CARD_W = (SCREEN_W - SPACING.lg * 2 - GAP) / 2;
 
 export default function CategoriesScreen({ navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
   const { listings } = useActiveListings({ includeOwn: true });
@@ -24,7 +26,7 @@ export default function CategoriesScreen({ navigation }) {
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
-      {isFocused && <StatusBar barStyle="dark-content" />}
+      {isFocused && <StatusBar barStyle={COLORS.statusBar} />}
 
       <View style={styles.header}>
         <View>
@@ -42,7 +44,7 @@ export default function CategoriesScreen({ navigation }) {
           return (
             <TouchableOpacity
               key={cat.name}
-              style={[styles.card, { backgroundColor: cat.tint, borderColor: cat.color + '33' }]}
+              style={[styles.card, { backgroundColor: categoryTint(cat), borderColor: cat.color + '33' }]}
               activeOpacity={0.85}
               onPress={() => navigation.navigate('Search', { category: cat.name })}
             >
@@ -62,8 +64,8 @@ export default function CategoriesScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: SPACING.lg, paddingVertical: SPACING.md },
   headerTitle: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.4 },
   iconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
@@ -71,7 +73,7 @@ const styles = StyleSheet.create({
   headerSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 2 },
   card: { width: CARD_W, alignItems: 'center', paddingVertical: 20, borderRadius: 20, borderWidth: 1, overflow: 'hidden' },
   cardGlow: { position: 'absolute', right: -30, top: -30, width: 100, height: 100, borderRadius: 50 },
-  iconTile: { width: 64, height: 64, borderRadius: 20, backgroundColor: COLORS.white, alignItems: 'center', justifyContent: 'center', marginBottom: 12, elevation: 3, shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
+  iconTile: { width: 64, height: 64, borderRadius: 20, backgroundColor: COLORS.surface, alignItems: 'center', justifyContent: 'center', marginBottom: 12, elevation: 3, shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } },
   emoji: { fontSize: 32 },
   name: { fontSize: 14, fontWeight: '700', color: COLORS.textPrimary },
   countPill: { marginTop: 8, borderRadius: RADIUS.full, paddingHorizontal: 10, paddingVertical: 3 },

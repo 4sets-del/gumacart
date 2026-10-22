@@ -12,17 +12,17 @@ import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
-import { COLORS, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS } from "../constants/theme";
+import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 
-const GREEN = COLORS.primary;
-const GOLD = COLORS.star;
 
 function StarRating({ rating, size = 20, onPress }) {
+  const { COLORS } = useTheme();
   return (
     <View style={{ flexDirection: "row", gap: 4 }}>
       {[1, 2, 3, 4, 5].map((star) => (
         <TouchableOpacity accessibilityRole="button" accessibilityLabel={`${star} star${star > 1 ? "s" : ""}`} key={star} onPress={() => onPress?.(star)} disabled={!onPress} activeOpacity={0.6}>
-          <Ionicons name={star <= rating ? "star" : "star-outline"} size={size} color={star <= rating ? GOLD : "#D5D5D5"} />
+          <Ionicons name={star <= rating ? "star" : "star-outline"} size={size} color={star <= rating ? COLORS.star : "#D5D5D5"} />
         </TouchableOpacity>
       ))}
     </View>
@@ -30,6 +30,7 @@ function StarRating({ rating, size = 20, onPress }) {
 }
 
 export default function SellerProfileScreen({ route, navigation }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const { sellerId, sellerName } = route.params;
   const [seller, setSeller] = useState(null);
@@ -245,7 +246,7 @@ export default function SellerProfileScreen({ route, navigation }) {
   if (loading) {
     return (
       <View style={[styles.safe, { justifyContent: "center", alignItems: "center" }]}>
-        <ActivityIndicator color={GREEN} size="large" />
+        <ActivityIndicator color={COLORS.primary} size="large" />
         <Text style={styles.loadingText}>Loading profile...</Text>
       </View>
     );
@@ -257,7 +258,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       {/* Keeps the area behind the status bar green even after the header scrolls away */}
       <View pointerEvents="none" style={[styles.statusBacking, { height: insets.top }]} />
 
-      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[GREEN]} />}>
+      <ScrollView showsVerticalScrollIndicator={false} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}>
         <LinearGradient colors={GRADIENTS.primaryDeep} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.hero, { paddingTop: insets.top + 8 }]}>
           <View style={styles.heroCircle} />
           <View style={styles.heroCircleSmall} />
@@ -291,14 +292,14 @@ export default function SellerProfileScreen({ route, navigation }) {
               <View style={styles.heroMetaRow}>
                 {seller?.verificationStatus === "verified" && (
                   <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={13} color={GREEN} />
+                    <Ionicons name="checkmark-circle" size={13} color={COLORS.primary} />
                     <Text style={styles.verifiedText}>Verified SLSU Student</Text>
                   </View>
                 )}
                 {seller?.role === "faculty" && (
                   <View style={[styles.verifiedBadge, { backgroundColor: COLORS.accentLight }]}>
-                    <Ionicons name="briefcase" size={12} color="#8A5A00" />
-                    <Text style={[styles.verifiedText, { color: "#8A5A00" }]}>Faculty</Text>
+                    <Ionicons name="briefcase" size={12} color={COLORS.warning} />
+                    <Text style={[styles.verifiedText, { color: COLORS.warning }]}>Faculty</Text>
                   </View>
                 )}
               </View>
@@ -328,10 +329,10 @@ export default function SellerProfileScreen({ route, navigation }) {
                 disabled={followLoading}
               >
                 {followLoading ? (
-                  <ActivityIndicator color={isFollowing ? GREEN : "#fff"} size="small" />
+                  <ActivityIndicator color={isFollowing ? COLORS.primary : "#fff"} size="small" />
                 ) : (
                   <>
-                    <Ionicons name={isFollowing ? "checkmark" : "add"} size={18} color={isFollowing ? GREEN : "#fff"} style={{ marginRight: 4 }} />
+                    <Ionicons name={isFollowing ? "checkmark" : "add"} size={18} color={isFollowing ? COLORS.primary : "#fff"} style={{ marginRight: 4 }} />
                     <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
                       {isFollowing ? "Following" : "Follow"}
                     </Text>
@@ -339,7 +340,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 )}
               </TouchableOpacity>
               <TouchableOpacity style={styles.messageBtn} activeOpacity={0.8} onPress={() => handleMessage()}>
-                <Ionicons name="chatbubble-ellipses-outline" size={17} color={GREEN} style={{ marginRight: 6 }} />
+                <Ionicons name="chatbubble-ellipses-outline" size={17} color={COLORS.primary} style={{ marginRight: 6 }} />
                 <Text style={styles.messageBtnText}>Message</Text>
               </TouchableOpacity>
               <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={styles.rateBtn} activeOpacity={0.85} onPress={() => setShowRatingModal(true)}>
@@ -371,7 +372,7 @@ export default function SellerProfileScreen({ route, navigation }) {
           {reviews.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
-                <Ionicons name="star-outline" size={32} color={GREEN} />
+                <Ionicons name="star-outline" size={32} color={COLORS.primary} />
               </View>
               <Text style={styles.emptyText}>No reviews yet</Text>
               {!isOwnProfile && (
@@ -397,7 +398,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 {review.reviewerId === currentUser?.uid && (
                   <View style={styles.reviewActions}>
                     <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7} onPress={() => handleEditReview(review)}>
-                      <Ionicons name="create-outline" size={14} color={GREEN} />
+                      <Ionicons name="create-outline" size={14} color={COLORS.primary} />
                       <Text style={styles.reviewActionText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7} onPress={() => handleDeleteReview(review)}>
@@ -425,7 +426,7 @@ export default function SellerProfileScreen({ route, navigation }) {
           {displayedListings.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
-                <Ionicons name={activeTab === "active" ? "bag-outline" : "checkmark-done"} size={32} color={GREEN} />
+                <Ionicons name={activeTab === "active" ? "bag-outline" : "checkmark-done"} size={32} color={COLORS.primary} />
               </View>
               <Text style={styles.emptyText}>{activeTab === "active" ? "No active listings" : "No completed listings yet"}</Text>
             </View>
@@ -481,7 +482,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                   <TextInput
                     style={styles.reviewInput}
                     placeholder="Share your experience with this seller..."
-                    placeholderTextColor="#B0B0B0"
+                    placeholderTextColor={COLORS.textMuted}
                     value={myReview}
                     onChangeText={setMyReview}
                     multiline
@@ -520,9 +521,9 @@ export default function SellerProfileScreen({ route, navigation }) {
               <>
                 {REPORT_REASONS.map((reason) => (
                   <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="flag-outline" size={18} color="#666" style={{ marginRight: 12 }} />
+                    <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
                     <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color="#CCC" />
+                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={closeReport}>
@@ -542,7 +543,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                     <TextInput
                       style={styles.otherInput}
                       placeholder="Tell us what's wrong…"
-                      placeholderTextColor="#B0B0B0"
+                      placeholderTextColor={COLORS.textMuted}
                       value={customReason}
                       onChangeText={setCustomReason}
                       multiline
@@ -562,7 +563,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                   </View>
                 ) : (
                   <TouchableOpacity style={styles.proofAddBtn} activeOpacity={0.8} onPress={pickProofImage}>
-                    <Ionicons name="camera-outline" size={20} color={GREEN} style={{ marginRight: 8 }} />
+                    <Ionicons name="camera-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
                     <Text style={styles.proofAddText}>Add a screenshot or photo</Text>
                   </TouchableOpacity>
                 )}
@@ -582,8 +583,8 @@ export default function SellerProfileScreen({ route, navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  statusBacking: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: COLORS.primaryDark },
+const createStyles = (COLORS) => StyleSheet.create({
+  statusBacking: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, backgroundColor: BRAND_DEEP },
   safe: { flex: 1, backgroundColor: COLORS.background },
   loadingText: { marginTop: 14, fontSize: 13, color: COLORS.textMuted, fontWeight: "500" },
 
@@ -594,16 +595,16 @@ const styles = StyleSheet.create({
   heroBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center" },
   heroTitle: { fontSize: 18, fontFamily: FONTS.heading, color: "#fff" },
 
-  profileCard: { marginHorizontal: 16, marginTop: -44, backgroundColor: COLORS.white, borderRadius: 20, padding: 16, ...SHADOWS.md },
+  profileCard: { marginHorizontal: 16, marginTop: -44, backgroundColor: COLORS.surface, borderRadius: 20, padding: 16, ...SHADOWS.md },
   identityRow: { flexDirection: "row", alignItems: "center", gap: 14 },
   avatarCircle: { width: 72, height: 72, borderRadius: 36, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
   avatarImage: { width: 72, height: 72, borderRadius: 36 },
-  avatarText: { fontSize: 30, fontFamily: FONTS.heading, color: GREEN },
+  avatarText: { fontSize: 30, fontFamily: FONTS.heading, color: COLORS.primary },
   sellerName: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   sellerEmail: { fontSize: 13, color: COLORS.textSecondary, marginTop: 2 },
   heroMetaRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginTop: 8 },
   verifiedBadge: { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
-  verifiedText: { fontSize: 11, color: GREEN, fontWeight: "700" },
+  verifiedText: { fontSize: 11, color: COLORS.primary, fontWeight: "700" },
 
   statsRow: { flexDirection: "row", marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: COLORS.border },
   statItem: { flex: 1, alignItems: "center" },
@@ -612,20 +613,20 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
 
   actionBtns: { flexDirection: "row", gap: 10, marginTop: 16 },
-  followBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 46, borderRadius: RADIUS.md, backgroundColor: GREEN },
+  followBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.primary },
   followingBtn: { backgroundColor: COLORS.primaryPale },
   followBtnText: { fontSize: 14.5, fontWeight: "700", color: "#fff" },
-  followingBtnText: { color: GREEN },
-  messageBtn: { flex: 1, flexDirection: "row", height: 46, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
-  messageBtnText: { fontSize: 14.5, fontWeight: "700", color: GREEN },
+  followingBtnText: { color: COLORS.primary },
+  messageBtn: { flex: 1, flexDirection: "row", height: 46, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  messageBtnText: { fontSize: 14.5, fontWeight: "700", color: COLORS.primary },
   rateBtn: { width: 46, height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
 
   section: { paddingHorizontal: 16, marginTop: 22 },
   sectionTitle: { fontSize: 17, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 12 },
-  card: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1, borderColor: COLORS.border },
+  card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 16, borderWidth: 1, borderColor: COLORS.border },
   tabRow: { flexDirection: "row", marginBottom: 14, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3 },
   tab: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: RADIUS.full },
-  tabActive: { backgroundColor: GREEN },
+  tabActive: { backgroundColor: COLORS.primary },
   tabText: { fontSize: 13, color: COLORS.textSecondary, fontWeight: "600" },
   tabTextActive: { color: "#fff", fontWeight: "700" },
   breakdownRow: { flexDirection: "row", alignItems: "center", marginBottom: 9 },
@@ -633,9 +634,9 @@ const styles = StyleSheet.create({
   breakdownBar: { flex: 1, height: 7, backgroundColor: COLORS.surfaceAlt, borderRadius: 4, marginHorizontal: 10, overflow: "hidden" },
   breakdownFill: { height: "100%", backgroundColor: COLORS.star, borderRadius: 4 },
   breakdownCount: { fontSize: 11, color: COLORS.textMuted, width: 18, textAlign: "right" },
-  reviewCard: { backgroundColor: COLORS.white, borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
+  reviewCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
-  reviewAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: GREEN, alignItems: "center", justifyContent: "center", marginRight: 10 },
+  reviewAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", marginRight: 10 },
   reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
   reviewInfo: { flex: 1 },
   reviewerName: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 3 },
@@ -643,18 +644,18 @@ const styles = StyleSheet.create({
   reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
   reviewActions: { flexDirection: "row", gap: 18, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
   reviewActionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
-  reviewActionText: { fontSize: 12, color: GREEN, fontWeight: "700" },
+  reviewActionText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
   soldPill: { alignSelf: "flex-start", backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
   soldPillText: { fontSize: 10.5, fontWeight: "700", color: COLORS.textSecondary },
   askBtn: { backgroundColor: COLORS.primaryPale, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, alignSelf: "flex-start", marginTop: 2 },
-  askBtnText: { fontSize: 11.5, color: GREEN, fontWeight: "700" },
+  askBtnText: { fontSize: 11.5, color: COLORS.primary, fontWeight: "700" },
   emptyState: { alignItems: "center", paddingVertical: 30 },
   emptyIconBox: { width: 68, height: 68, borderRadius: 34, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   emptyText: { fontSize: 14, color: COLORS.textMuted, marginBottom: 14 },
-  emptyBtn: { backgroundColor: GREEN, borderRadius: RADIUS.md, paddingHorizontal: 20, paddingVertical: 11 },
+  emptyBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 20, paddingVertical: 11 },
   emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 30, maxHeight: "88%" },
+  modalSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 30, maxHeight: "88%" },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 18 },
   modalTitle: { fontSize: 21, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4, letterSpacing: -0.3 },
   modalSubtitle: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 22 },
@@ -667,29 +668,29 @@ const styles = StyleSheet.create({
   reviewInput: { fontSize: 15, color: COLORS.textPrimary, minHeight: 120, maxHeight: 180, padding: 14, lineHeight: 21 },
   charCount: { fontSize: 11.5, color: COLORS.textMuted, textAlign: "right", marginTop: 6, marginBottom: 20 },
   modalActions: { flexDirection: "row", gap: 12 },
-  cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: GREEN, alignItems: "center", justifyContent: "center" },
-  cancelBtnText: { fontSize: 15, color: GREEN, fontWeight: "700" },
-  submitBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: GREEN, alignItems: "center", justifyContent: "center" },
+  cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
+  cancelBtnText: { fontSize: 15, color: COLORS.primary, fontWeight: "700" },
+  submitBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   submitBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
 
   reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: "#fff", borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#DDD", marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: "#111", marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: "#777", marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#F2F2F2" },
-  reasonText: { flex: 1, fontSize: 15, color: "#222", fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: "#FDECEA", borderRadius: 12, padding: 14, marginBottom: 14 },
-  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: "#c0392b" },
-  fieldLabel: { fontSize: 13, fontWeight: "700", color: "#444", marginBottom: 8 },
-  otherInput: { backgroundColor: "#F7F9F5", borderRadius: 12, borderWidth: 1.5, borderColor: "#E4EBDE", padding: 12, fontSize: 14, color: "#222", minHeight: 70, marginBottom: 16 },
-  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: GREEN, borderStyle: "dashed", marginBottom: 16 },
-  proofAddText: { fontSize: 14, color: GREEN, fontWeight: "700" },
+  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
+  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
+  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
+  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
+  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  reasonText: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
+  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 14 },
+  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: COLORS.error },
+  fieldLabel: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary, marginBottom: 8 },
+  otherInput: { backgroundColor: COLORS.surfaceAlt, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, padding: 12, fontSize: 14, color: COLORS.textPrimary, minHeight: 70, marginBottom: 16 },
+  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: "dashed", marginBottom: 16 },
+  proofAddText: { fontSize: 14, color: COLORS.primary, fontWeight: "700" },
   proofPreviewWrap: { position: "relative", marginBottom: 16, alignSelf: "flex-start" },
-  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: "#EAEAEA" },
-  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: "#fff", borderRadius: 13 },
+  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
+  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: COLORS.surface, borderRadius: 13 },
   reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
   reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
   reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: "#666" },
+  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

@@ -7,14 +7,15 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, doc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import ScreenHeader from "../components/ScreenHeader";
-import { COLORS, RADIUS, colorForName, FONTS } from "../constants/theme";
+import { RADIUS, colorForName, FONTS } from "../constants/theme";
+import { useTheme } from '../context/ThemeContext';
 import { getUserBasics } from "../utils/userCache";
 
-const GREEN = COLORS.primary;
 
 // Followers / Following lists for the signed-in user. Opened from Profile
 // (`initialTab: "followers"` from the Followers stat, "following" otherwise).
 export default function FollowingScreen({ navigation, route }) {
+  const { COLORS, styles } = useTheme(createStyles);
   const [tab, setTab] = useState(route?.params?.initialTab === "followers" ? "followers" : "following");
   const [following, setFollowing] = useState([]);
   const [followers, setFollowers] = useState([]);
@@ -109,7 +110,7 @@ export default function FollowingScreen({ navigation, route }) {
         <View style={styles.info}>
           <View style={styles.nameRow}>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
-            {item.verificationStatus === "verified" && <Ionicons name="checkmark-circle" size={14} color={GREEN} />}
+            {item.verificationStatus === "verified" && <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />}
           </View>
           {item.avgRating > 0 ? (
             <View style={styles.ratingRow}>
@@ -119,7 +120,7 @@ export default function FollowingScreen({ navigation, route }) {
           ) : item.email ? <Text style={styles.email} numberOfLines={1}>{item.email}</Text> : null}
         </View>
         {busy ? (
-          <ActivityIndicator color={GREEN} style={{ width: 92 }} />
+          <ActivityIndicator color={COLORS.primary} style={{ width: 92 }} />
         ) : iFollow ? (
           <TouchableOpacity style={styles.unfollowBtn} activeOpacity={0.8} onPress={() => unfollow(item)}>
             <Text style={styles.unfollowText}>Following</Text>
@@ -152,11 +153,11 @@ export default function FollowingScreen({ navigation, route }) {
       </View>
 
       {loading ? (
-        <View style={styles.loadingWrap}><ActivityIndicator color={GREEN} size="large" /></View>
+        <View style={styles.loadingWrap}><ActivityIndicator color={COLORS.primary} size="large" /></View>
       ) : list.length === 0 ? (
         <View style={styles.emptyState}>
           <View style={styles.emptyIconBox}>
-            <Ionicons name={tab === "following" ? "people-outline" : "heart-outline"} size={42} color={GREEN} />
+            <Ionicons name={tab === "following" ? "people-outline" : "heart-outline"} size={42} color={COLORS.primary} />
           </View>
           <Text style={styles.emptyTitle}>{tab === "following" ? "Not following anyone yet" : "No followers yet"}</Text>
           <Text style={styles.emptySub}>
@@ -178,19 +179,19 @@ export default function FollowingScreen({ navigation, route }) {
           renderItem={renderPerson}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[GREEN]} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(); }} colors={[COLORS.primary]} />}
         />
       )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: COLORS.white },
+const createStyles = (COLORS) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: COLORS.surface },
 
   segment: { flexDirection: "row", marginHorizontal: 16, marginBottom: 6, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.full, padding: 3 },
   segmentItem: { flex: 1, paddingVertical: 9, alignItems: "center", borderRadius: RADIUS.full },
-  segmentItemOn: { backgroundColor: GREEN },
+  segmentItemOn: { backgroundColor: COLORS.primary },
   segmentText: { fontSize: 13.5, fontWeight: "600", color: COLORS.textSecondary },
   segmentTextOn: { color: "#fff", fontWeight: "700" },
 
@@ -210,13 +211,13 @@ const styles = StyleSheet.create({
 
   unfollowBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, borderColor: COLORS.borderStrong },
   unfollowText: { fontSize: 12.5, fontWeight: "700", color: COLORS.textSecondary },
-  followBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: GREEN },
+  followBtn: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderRadius: RADIUS.full, backgroundColor: COLORS.primary },
   followText: { fontSize: 12.5, fontWeight: "700", color: "#fff" },
 
   emptyState: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 40 },
   emptyIconBox: { width: 96, height: 96, borderRadius: 48, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 20 },
   emptyTitle: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 8, textAlign: "center" },
   emptySub: { fontSize: 14, color: COLORS.textMuted, textAlign: "center", lineHeight: 20, marginBottom: 24 },
-  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: GREEN, borderRadius: RADIUS.md, paddingHorizontal: 26, paddingVertical: 14 },
+  browseBtn: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 26, paddingVertical: 14 },
   browseBtnText: { color: "#fff", fontWeight: "700", fontSize: 15 },
 });
