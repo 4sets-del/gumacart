@@ -278,6 +278,12 @@ exports.onUserDocUpdate = functions
     return null;
   });
 
+// Ids of people interested in a listing (see listings/{id}/interested).
+async function interestedIds(listingId) {
+  const snap = await db.collection("listings").doc(listingId).collection("interested").get();
+  return snap.docs.map((d) => d.id);
+}
+
 exports.onListingStatusChange = functions
   .region("asia-southeast1")
   .firestore
@@ -285,42 +291,134 @@ exports.onListingStatusChange = functions
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
-    if (before.status === after.status) return null;
-
+    const listingId = context.params.listingId;
     const sellerId = after.sellerId;
     if (!sellerId) return null;
-    const itemName = after.name || after.title || "your listing";
 
-    if (before.status === "pending" && after.status === "active") {
+    const statusChanged = before.status !== after.status;
+    const wasReserved = before.reserved === true;
+    const isReserved = after.reserved === true;
+    const becameReserved = isReserved && !wasReserved;
+    const reassigned = isReserved && wasReserved && before.reservedFor !== after.reservedFor;
+    const released = wasReserved && !isReserved && after.status === "active";
+    const newSale = !!after.lastSaleAt && !(before.lastSaleAt && before.lastSaleAt.isEqual(after.lastSaleAt));
+    // Most updates (e.g. view counts) change none of these; stop early.
+    if (!statusChanged && !becameReserved && !reassigned && !released && !newSale) return null;
+
+    const itemName = after.name || after.title || "your listing";
+    const sellerName = after.sellerName || "the seller";
+    const listingLink = { nav: "listing", listingId };
+    const notifyListing = (uid, title, body) => notifyUser(uid, {
+      storeType: "listing_update", styleKey: "system", title, body, data: listingLink,
+    });
+    const ratePrompt = (uid) => notifyUser(uid, {
+      storeType: "rate_prompt",
+      styleKey: "review",
+      title: "How was your purchase?",
+      body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
+      data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
+    });
+
+    if (statusChanged && before.status === "pending" && after.status === "active") {
       await notifyUser(sellerId, {
         storeType: "sold",
         styleKey: "verified",
         title: "Listing approved",
         body: `"${itemName}" is now live on the marketplace.`,
-        data: { nav: "listing", listingId: context.params.listingId },
+        data: listingLink,
       });
     }
 
-    // Seller marked it sold and picked the buyer: invite them to rate.
-    if (after.status === "sold" && after.soldTo && after.soldTo !== sellerId) {
-      const sellerName = after.sellerName || "the seller";
-      await notifyUser(after.soldTo, {
-        storeType: "rate_prompt",
-        styleKey: "review",
-        title: "How was your purchase?",
-        body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
-        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
-      });
-    }
-
-    if (after.status === "rejected") {
+    if (statusChanged && after.status === "rejected") {
       await notifyUser(sellerId, {
         storeType: "system",
         styleKey: "rejected",
         title: "Listing not approved",
         body: `"${itemName}" was not approved. Tap to edit and re-submit.`,
-        data: { nav: "listing", listingId: context.params.listingId, edit: "1" },
+        data: { ...listingLink, edit: "1" },
       });
+    }
+
+    // One unit of a multi-quantity listing sold: invite that buyer to rate.
+    if (newSale && after.lastSaleTo && after.lastSaleTo !== sellerId) {
+      await ratePrompt(after.lastSaleTo);
+    }
+
+    if (statusChanged && after.status === "sold") {
+      // The buyer rates the seller; everyone else who was interested is told
+      // it's gone, and it's removed from their cart.
+      if (after.soldTo && after.soldTo !== sellerId) await ratePrompt(after.soldTo);
+      const others = (await interestedIds(listingId)).filter((uid) => uid !== after.soldTo && uid !== sellerId);
+      await Promise.all(others.map(async (uid) => {
+        await notifyListing(uid, "Item sold", `Sorry, "${itemName}" has been sold.`);
+        await db.collection("users").doc(uid).collection("cart").doc(listingId).delete().catch(() => {});
+      }));
+      return null;
+    }
+
+    if (becameReserved || reassigned) {
+      const buyer = after.reservedFor;
+      if (buyer && buyer !== sellerId) {
+        await notifyListing(buyer, "Reserved for you", `${sellerName} reserved "${itemName}" for you. Message them to arrange the meet-up.`);
+      }
+      if (becameReserved) {
+        const others = (await interestedIds(listingId)).filter((uid) => uid !== buyer && uid !== sellerId);
+        await Promise.all(others.map((uid) => notifyListing(uid, "Item reserved",
+          `"${itemName}" was reserved by another buyer. We'll let you know if it becomes available again.`)));
+      }
+    }
+
+    if (released) {
+      const everyone = (await interestedIds(listingId)).filter((uid) => uid !== sellerId);
+      await Promise.all(everyone.map((uid) => notifyListing(uid, "Available again",
+        `Good news! "${itemName}" is available again.`)));
+    }
+    return null;
+  });
+
+// A deleted listing's interested-buyer entries go with it.
+exports.onListingDeleted = functions
+  .region("asia-southeast1")
+  .firestore
+  .document("listings/{listingId}")
+  .onDelete(async (snap) => {
+    await db.recursiveDelete(snap.ref.collection("interested"));
+    return null;
+  });
+
+// Reservations shouldn't hang forever: after 48h remind the seller, after
+// 96h release it automatically (onListingStatusChange then tells the
+// interested buyers it's available again).
+const HOUR = 60 * 60 * 1000;
+exports.checkReservations = functions
+  .region("asia-southeast1")
+  .pubsub.schedule("every 6 hours")
+  .timeZone("Asia/Manila")
+  .onRun(async () => {
+    const snap = await db.collection("listings").where("reserved", "==", true).get();
+    const now = Date.now();
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      const at = d.reservedAt?.toMillis?.();
+      if (d.status !== "active" || !at || !d.sellerId) continue;
+      const itemName = d.name || d.title || "your listing";
+      const link = { nav: "listing", listingId: doc.id };
+      const age = now - at;
+      if (age >= 96 * HOUR) {
+        await doc.ref.update({ reserved: false, reservedFor: null, reservedAt: null });
+        await notifyUser(d.sellerId, {
+          storeType: "listing_update", styleKey: "system", data: link,
+          title: "Reservation released",
+          body: `"${itemName}" was reserved for 4 days, so it's available again. Interested buyers were notified.`,
+        });
+      } else if (age >= 48 * HOUR && !d.reserveReminderSent) {
+        await doc.ref.update({ reserveReminderSent: true });
+        await notifyUser(d.sellerId, {
+          storeType: "listing_update", styleKey: "system", data: link,
+          title: "Still reserved?",
+          body: `"${itemName}" has been reserved for 2 days. Mark it sold or release it; otherwise it's released automatically in 2 days.`,
+        });
+      }
     }
     return null;
   });

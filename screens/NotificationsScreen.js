@@ -19,6 +19,7 @@ const NOTIF_ICONS = (COLORS) => ({
   follow:      { icon: 'person-add',          color: '#7C3AED' },
   review:      { icon: 'star',                color: '#F59E0B' },
   rate_prompt: { icon: 'star-half',           color: '#F59E0B' },
+  listing_update: { icon: 'pricetags',        color: '#EA580C' },
   offer:       { icon: 'pricetag',            color: COLORS.primary },
   sold:        { icon: 'checkmark-circle',    color: COLORS.primary },
   new_listing: { icon: 'bag-handle',          color: '#EA580C' },
