@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, ActivityIndicator, Keyboard,
 } from "react-native";
 import { Alert } from '../components/AppAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,6 +26,14 @@ function timeLabel(date) {
   if (!date) return "";
   const d = date?.toDate ? date.toDate() : new Date(date);
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// Most photos/videos that can be picked from the gallery at once.
+const MAX_MEDIA = 10;
+
+// A photo or video with nothing else in its bubble (no reply preview).
+function isBareMedia(msg) {
+  return (msg.type === "image" || msg.type === "video") && msg.mediaUrl && !msg.replyTo;
 }
 
 export default function ChatScreen({ route, navigation }) {
@@ -82,6 +90,21 @@ export default function ChatScreen({ route, navigation }) {
   const [messageLimit, setMessageLimit] = useState(PAGE);
   const [hasEarlier, setHasEarlier] = useState(false);
   const loadingEarlierRef = useRef(false);
+  // Whether the user is looking at the newest messages (not scrolled up).
+  const atBottomRef = useRef(true);
+
+  // Like Messenger: when the keyboard opens, keep the latest message in view
+  // just above it, unless the user had scrolled up to read older messages.
+  useEffect(() => {
+    const sub = Keyboard.addListener(Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow", () => {
+      if (atBottomRef.current) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 50);
+    });
+    return () => sub.remove();
+  }, []);
+
+  const trackBottom = ({ nativeEvent: { contentOffset, contentSize, layoutMeasurement } }) => {
+    atBottomRef.current = contentOffset.y + layoutMeasurement.height >= contentSize.height - 80;
+  };
 
   const loadEarlier = () => {
     loadingEarlierRef.current = true; // keep the scroll position instead of jumping to the end
@@ -154,14 +177,14 @@ export default function ChatScreen({ route, navigation }) {
     }
   }, [viewerVisible]);
 
-  const sendMessage = async (msgData) => {
+  const sendMessage = async (msgData, { withReply = true } = {}) => {
     if (!msgData.text?.trim() && !msgData.mediaUrl) return;
     setSending(true);
     try {
       const convoRef = doc(db, "conversations", conversationId);
 
       // Attach reply context if the user is replying
-      const replyPayload = replyTo ? {
+      const replyPayload = replyTo && withReply ? {
         replyTo: {
           id: replyTo.id,
           text: replyTo.text || (replyTo.type === "image" ? "📷 Photo" : replyTo.type === "video" ? "🎥 Video" : ""),
@@ -228,28 +251,37 @@ export default function ChatScreen({ route, navigation }) {
 
     const result = type === "camera"
       ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images", "videos"], quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images", "videos"], quality: 0.7 });
-    if (result.canceled) return;
+      : await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ["images", "videos"], quality: 0.7,
+          allowsMultipleSelection: true, selectionLimit: MAX_MEDIA, orderedSelection: true,
+        });
+    if (result.canceled || !result.assets?.length) return;
 
-    const asset = result.assets[0];
-    const isVideo = asset.type === "video";
-    setUploadingMedia(true);
-    try {
-      const filename = `chats/${conversationId}/${Date.now()}.${isVideo ? "mp4" : "jpg"}`;
-      // Photos are compressed before upload; videos are sent as recorded.
-      const mediaUrl = await uploadFile(asset.uri, filename, { compress: !isVideo });
-      await sendMessage({ text: "", type: isVideo ? "video" : "image", mediaUrl });
-    } catch (e) {
-      Alert.alert("Error", "Failed to upload media.");
-    } finally {
-      setUploadingMedia(false);
+    const assets = result.assets.slice(0, MAX_MEDIA);
+    let failed = 0;
+    setUploadingMedia({ done: 0, total: assets.length });
+    // Sent one by one so they arrive in the order they were picked.
+    for (let i = 0; i < assets.length; i++) {
+      const asset = assets[i];
+      const isVideo = asset.type === "video";
+      try {
+        const filename = `chats/${conversationId}/${Date.now()}_${i}.${isVideo ? "mp4" : "jpg"}`;
+        // Photos are compressed before upload; videos are sent as recorded.
+        const mediaUrl = await uploadFile(asset.uri, filename, { compress: !isVideo });
+        await sendMessage({ text: "", type: isVideo ? "video" : "image", mediaUrl }, { withReply: i === 0 });
+      } catch (e) {
+        failed++;
+      }
+      setUploadingMedia({ done: i + 1, total: assets.length });
     }
+    setUploadingMedia(false);
+    if (failed) Alert.alert("Upload failed", failed === assets.length ? "Failed to upload media." : `${failed} of ${assets.length} couldn't be sent.`);
   };
 
   const showMediaOptions = () => {
     Alert.alert("Send Media", "Choose an option", [
       { text: "Take Photo/Video", icon: "camera", onPress: () => pickMedia("camera") },
-      { text: "Choose from Gallery", icon: "images", onPress: () => pickMedia("gallery") },
+      { text: `Choose from Gallery (up to ${MAX_MEDIA})`, icon: "images", onPress: () => pickMedia("gallery") },
       { text: "Cancel", style: "cancel" },
     ]);
   };
@@ -316,7 +348,12 @@ export default function ChatScreen({ route, navigation }) {
           style={[styles.msgRow, isMe && styles.msgRowMe]}
         >
           {!isMe && renderAvatar(true)}
-          <View style={[styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleThem]}>
+          <View style={[
+            styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleThem,
+            // Photos and videos show on their own, without a colored frame.
+            isBareMedia(msg) && styles.msgBubbleBare,
+            msg.type === "listing" && styles.msgBubbleCard,
+          ]}>
 
             {/* Reply preview inside the bubble */}
             {msg.replyTo ? (
@@ -330,18 +367,40 @@ export default function ChatScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            {msg.type === "image" && msg.mediaUrl ? (
+            {msg.type === "listing" ? (
+              <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ProductDetail", { id: msg.listingId })}>
+                {msg.listingImage ? (
+                  <CachedImage source={{ uri: msg.listingImage }} style={styles.cardImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
+                ) : (
+                  <View style={[styles.cardImage, styles.cardImageEmpty]}><Ionicons name="image-outline" size={32} color={COLORS.textMuted} /></View>
+                )}
+                <View style={styles.cardBody}>
+                  <Text style={styles.cardName} numberOfLines={2}>{msg.listingName}</Text>
+                  {msg.listingPrice ? <Text style={styles.cardPrice}>{msg.listingPrice}</Text> : null}
+                  <View style={styles.cardLink}>
+                    <Text style={styles.cardLinkText}>View listing</Text>
+                    <Ionicons name="chevron-forward" size={14} color={COLORS.primary} />
+                  </View>
+                </View>
+                <View style={[styles.cardMessage, isMe ? styles.msgBubbleMe : styles.msgBubbleThem]}>
+                  <Text style={[styles.msgText, isMe && styles.msgTextMe]}>{msg.text}</Text>
+                  <Text style={[styles.msgTime, isMe ? styles.msgTimeMe : styles.msgTimeThem]}>{timeLabel(msg.createdAt)}</Text>
+                </View>
+              </TouchableOpacity>
+            ) : msg.type === "image" && msg.mediaUrl ? (
               <TouchableOpacity onPress={() => { setViewerMedia(msg.mediaUrl); setViewerType("image"); setViewerVisible(true); }}>
                 <CachedImage source={{ uri: msg.mediaUrl }} style={styles.msgImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
-                <Text style={[styles.msgTime, isMe ? styles.msgTimeMe : styles.msgTimeThem, { marginTop: 6 }]}>
-                  {timeLabel(msg.createdAt)}
-                </Text>
+                <View style={styles.mediaTime}>
+                  <Text style={styles.mediaTimeText}>{timeLabel(msg.createdAt)}</Text>
+                </View>
               </TouchableOpacity>
             ) : msg.type === "video" && msg.mediaUrl ? (
               <TouchableOpacity style={styles.msgVideoBox} onPress={() => { setViewerMedia(msg.mediaUrl); setViewerType("video"); setViewerVisible(true); }}>
                 <View style={styles.msgVideoPlay}><Ionicons name="play" size={22} color="#fff" /></View>
                 <Text style={styles.msgVideoText}>Tap to play video</Text>
-                <Text style={[styles.msgTime, { color: "rgba(255,255,255,0.6)", marginTop: 4 }]}>{timeLabel(msg.createdAt)}</Text>
+                <View style={styles.mediaTime}>
+                  <Text style={styles.mediaTimeText}>{timeLabel(msg.createdAt)}</Text>
+                </View>
               </TouchableOpacity>
             ) : (
               <>
@@ -420,6 +479,13 @@ export default function ChatScreen({ route, navigation }) {
           ref={scrollRef}
           style={styles.messagesList}
           contentContainerStyle={styles.messagesContent}
+          // The list gets shorter when the keyboard opens; stay pinned to the end.
+          onLayout={() => { if (atBottomRef.current) scrollRef.current?.scrollToEnd({ animated: false }); }}
+          // Only the user's own scrolling decides this, so the list shrinking
+          // under the keyboard doesn't count as "scrolled up".
+          onScrollEndDrag={trackBottom}
+          onMomentumScrollEnd={trackBottom}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => {
             // After loading earlier messages, stay where the user is reading.
             if (loadingEarlierRef.current) { loadingEarlierRef.current = false; return; }
@@ -458,7 +524,9 @@ export default function ChatScreen({ route, navigation }) {
             <View style={[styles.msgRow, styles.msgRowMe]}>
               <View style={[styles.msgBubble, styles.msgBubbleMe, { flexDirection: "row", alignItems: "center", gap: 8 }]}>
                 <ActivityIndicator color="#fff" size="small" />
-                <Text style={{ color: "#fff", fontSize: 13 }}>Uploading...</Text>
+                <Text style={{ color: "#fff", fontSize: 13 }}>
+                  {uploadingMedia.total > 1 ? `Sending ${Math.min(uploadingMedia.done + 1, uploadingMedia.total)} of ${uploadingMedia.total}...` : "Uploading..."}
+                </Text>
               </View>
             </View>
           )}
@@ -635,8 +703,23 @@ const createStyles = (COLORS) => StyleSheet.create({
   msgTime: { fontSize: 10, marginTop: 3, alignSelf: "flex-end" },
   msgTimeMe: { color: "rgba(255,255,255,0.7)" },
   msgTimeThem: { color: COLORS.textMuted },
-  msgImage: { width: 210, height: 160, borderRadius: 14 },
-  msgVideoBox: { width: 210, height: 130, borderRadius: 14, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
+  msgBubbleBare: { backgroundColor: "transparent", paddingHorizontal: 0, paddingVertical: 0 },
+  msgBubbleCard: {
+    width: 240, paddingHorizontal: 0, paddingVertical: 0, overflow: "hidden",
+    backgroundColor: COLORS.surface, borderWidth: 1, borderColor: COLORS.border,
+  },
+  msgImage: { width: 230, height: 230, borderRadius: 18, backgroundColor: COLORS.surfaceAlt },
+  msgVideoBox: { width: 230, height: 150, borderRadius: 18, backgroundColor: "#1a1a1a", alignItems: "center", justifyContent: "center" },
+  mediaTime: { position: "absolute", right: 8, bottom: 8, backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 999, paddingHorizontal: 7, paddingVertical: 2 },
+  mediaTimeText: { color: "#fff", fontSize: 10, fontWeight: "600" },
+  cardImage: { width: "100%", height: 150, backgroundColor: COLORS.surfaceAlt },
+  cardImageEmpty: { alignItems: "center", justifyContent: "center" },
+  cardBody: { paddingHorizontal: 12, paddingTop: 10, paddingBottom: 10 },
+  cardName: { fontFamily: FONTS.heading, fontSize: 15, color: COLORS.textPrimary },
+  cardPrice: { fontSize: 15, fontWeight: "800", color: COLORS.primary, marginTop: 2 },
+  cardLink: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 6 },
+  cardLinkText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
+  cardMessage: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 0 },
   msgVideoPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 6 },
   msgVideoText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
   inputBar: { flexDirection: "row", alignItems: "flex-end", paddingHorizontal: 10, paddingTop: 10, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },

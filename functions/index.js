@@ -143,7 +143,12 @@ exports.onNewMessage = functions
     if (!recipientId) return null;
 
     const senderName = message.senderName || "Someone";
-    const preview = (message.text || "Sent you a message").slice(0, 100);
+    const preview = (
+      message.type === "listing" ? `🛍️ Interested in "${message.listingName || "your listing"}"`
+      : message.type === "image" ? "📷 Sent a photo"
+      : message.type === "video" ? "🎥 Sent a video"
+      : message.text || "Sent you a message"
+    ).slice(0, 100);
 
     await notifyUser(recipientId, {
       storeType: "message",

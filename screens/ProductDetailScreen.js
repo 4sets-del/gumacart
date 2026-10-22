@@ -22,7 +22,7 @@ import { recordView } from "../utils/views";
 import * as Linking from "expo-linking";
 import { getUserBasics } from "../utils/userCache";
 import { markInterested, getInterested } from "../utils/interest";
-import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
+import { normalizeCategory, priceLabel, typeMeta, listingImage } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 import { addToCart, removeFromCart } from "../utils/cart";
 
@@ -32,6 +32,14 @@ const SCREEN_HEIGHT = Dimensions.get("window").height;
 const IMAGE_HEIGHT = Math.round(SCREEN_HEIGHT * 0.42);
 
 const TYPE_LABELS = { sell: "For Sale", buy: "Looking For", barter: "For Barter", donate: "Free" };
+
+// First line of the product card sent when a buyer taps "Message seller".
+const INQUIRY_TEXT = {
+  sell: "Hi! Is this still available?",
+  donate: "Hi! Is this still available? I'd love to have it.",
+  barter: "Hi! I'd like to trade for this. Is it still available?",
+  buy: "Hi! I have what you're looking for.",
+};
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
@@ -203,12 +211,22 @@ export default function ProductDetailScreen({ route, navigation }) {
         await setDoc(convoRef, { participants: [currentUser.uid, product.sellerId], lastMessage: "", lastMessageTime: serverTimestamp(), unreadCount: { [currentUser.uid]: 0, [product.sellerId]: 0 }, createdAt: serverTimestamp() });
       }
       const msgsRef = collection(db, "conversations", conversationId, "messages");
-      const inquiryText = `🛍️ Hi! I'm interested in your listing: "${product.name}"`;
-      const existingSnap = await getDocs(query(msgsRef, where("senderId", "==", currentUser.uid), where("text", "==", inquiryText)));
+      // One product card per listing (not repeated if they tap again later).
+      const existingSnap = await getDocs(query(msgsRef, where("senderId", "==", currentUser.uid), where("listingId", "==", product.id), limit(1)));
       if (existingSnap.empty) {
-        await addDoc(msgsRef, { senderId: currentUser.uid, senderName: currentUser.displayName, text: inquiryText, type: "text", createdAt: serverTimestamp() });
-        if (product.image) await addDoc(msgsRef, { senderId: currentUser.uid, senderName: currentUser.displayName, text: "", type: "image", mediaUrl: product.image, createdAt: serverTimestamp() });
-        await updateDoc(convoRef, { lastMessage: inquiryText, lastMessageTime: serverTimestamp(), [`unreadCount.${product.sellerId}`]: increment(1) });
+        await addDoc(msgsRef, {
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName,
+          type: "listing",
+          text: INQUIRY_TEXT[product.type] || INQUIRY_TEXT.sell,
+          listingId: product.id,
+          listingName: product.name || "",
+          listingPrice: priceLabel(product).text,
+          listingImage: listingImage(product),
+          listingType: product.type || "sell",
+          createdAt: serverTimestamp(),
+        });
+        await updateDoc(convoRef, { lastMessage: `🛍️ Interested in "${product.name}"`, lastMessageTime: serverTimestamp(), [`unreadCount.${product.sellerId}`]: increment(1) });
       }
       navigation.navigate("Chat", { conversationId, otherUserId: product.sellerId, otherUserName: product.sellerName, listingName: null });
     } catch (e) { Alert.alert("Error", "Could not start conversation."); }
@@ -500,8 +518,8 @@ export default function ProductDetailScreen({ route, navigation }) {
                   <Text style={{ fontSize: 20, fontFamily: FONTS.heading, color: "#fff" }}>{product.sellerName?.[0]?.toUpperCase() || "?"}</Text>
                 </View>
               )}
-              <View>
-                <Text style={styles.sellerName}>{product.sellerName || "Anonymous"}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.sellerName} numberOfLines={1}>{product.sellerName || "Anonymous"}</Text>
                 <Text style={styles.sellerSub}>SLSU Student</Text>
               </View>
             </View>
@@ -765,7 +783,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   detailLabel: { fontSize: 13, color: COLORS.textMuted, width: 80 },
   detailValue: { fontSize: 13, color: COLORS.textPrimary, fontWeight: "600", flex: 1 },
   sellerCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14, marginTop: 14, borderWidth: 1, borderColor: COLORS.border, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flexShrink: 1 },
+  sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 0, marginRight: 10 },
   sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
   sellerSub: { fontSize: 12, color: COLORS.primary, fontWeight: "500" },
