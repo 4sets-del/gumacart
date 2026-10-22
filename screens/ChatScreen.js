@@ -118,6 +118,34 @@ export default function ChatScreen({ route, navigation }) {
     return unsubscribe;
   }, [conversationId, messageLimit]);
 
+  // "Seen": when the other person last read this chat (live).
+  const [otherReadMs, setOtherReadMs] = useState(0);
+  useEffect(() => {
+    if (!conversationId || !otherUserId) return;
+    return onSnapshot(
+      doc(db, "conversations", conversationId),
+      (snap) => setOtherReadMs(snap.data()?.lastReadAt?.[otherUserId]?.toMillis?.() || 0),
+      () => {},
+    );
+  }, [conversationId, otherUserId]);
+
+  // Record that I've read up to the newest message from the other person.
+  // Only written when a new incoming message appears, not on every render.
+  const lastMarkedRef = useRef(null);
+  const newestIncoming = [...messages].reverse().find((m) => m.senderId !== user.uid);
+  useEffect(() => {
+    if (!conversationId || !newestIncoming || lastMarkedRef.current === newestIncoming.id) return;
+    lastMarkedRef.current = newestIncoming.id;
+    updateDoc(doc(db, "conversations", conversationId), {
+      [`lastReadAt.${user.uid}`]: serverTimestamp(),
+      [`unreadCount.${user.uid}`]: 0,
+    }).catch(() => {});
+  }, [conversationId, newestIncoming?.id, user.uid]);
+
+  // Under my latest message: "Seen" once the other person has read it.
+  const myLatest = [...messages].reverse().find((m) => m.senderId === user.uid);
+  const myLatestSeen = !!myLatest?.createdAt?.toMillis && otherReadMs >= myLatest.createdAt.toMillis();
+
   // Safety net: whenever the viewer is hidden, make sure playback stops.
   useEffect(() => {
     if (!viewerVisible && videoPlayer) {
@@ -324,6 +352,13 @@ export default function ChatScreen({ route, navigation }) {
             )}
           </View>
         </TouchableOpacity>
+
+        {msg.id === myLatest?.id && (
+          <View style={styles.seenRow}>
+            <Ionicons name={myLatestSeen ? "checkmark-done" : "checkmark"} size={14} color={myLatestSeen ? COLORS.primary : COLORS.textMuted} />
+            <Text style={[styles.seenText, myLatestSeen && { color: COLORS.primary }]}>{myLatestSeen ? "Seen" : "Sent"}</Text>
+          </View>
+        )}
 
         {/* Reaction chips under the bubble */}
         {reactionEntries.length > 0 && (
@@ -577,6 +612,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   messagesList: { flex: 1, backgroundColor: COLORS.surface },
   messagesContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, flexGrow: 1 },
 
+  seenRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 3, marginTop: 2, marginRight: 4 },
+  seenText: { fontSize: 11, fontWeight: "600", color: COLORS.textMuted },
   loadEarlierBtn: { flexDirection: "row", alignItems: "center", alignSelf: "center", gap: 6, backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7, marginBottom: 10 },
   loadEarlierText: { fontSize: 12.5, fontWeight: "700", color: COLORS.primary },
   emptyChat: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 80 },
