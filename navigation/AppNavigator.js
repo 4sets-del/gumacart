@@ -44,6 +44,11 @@ import { auth, db } from '../firebaseConfig';
 
 const Stack = createStackNavigator();
 
+// Keep the previous screen rendered underneath the current one. Otherwise
+// Android hides it to save memory and, on going back, shows the empty window
+// for a frame before it reappears (a brief white flash).
+const STACK_OPTIONS = { headerShown: false, detachPreviousScreen: false };
+
 const makeTabStyles = (COLORS) => ({
   iconWrap: { width: 46, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   iconWrapActive: { backgroundColor: COLORS.primaryPale },
@@ -150,7 +155,7 @@ function MainTabs() {
 
 function AppStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name="Main"          component={MainTabs} />
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Chat"          component={ChatScreen} />
@@ -173,7 +178,7 @@ function AppStack() {
 
 function AuthStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name="Welcome"      component={WelcomeScreen} />
       <Stack.Screen name="Login"        component={LoginScreen} />
       <Stack.Screen name="Signup"       component={SignupScreen} />
@@ -186,7 +191,7 @@ function AuthStack() {
 
 function EmailVerifyStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name="EmailVerification" component={EmailVerificationScreen} />
     </Stack.Navigator>
   );
@@ -194,7 +199,7 @@ function EmailVerifyStack() {
 
 function BannedStack() {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={STACK_OPTIONS}>
       <Stack.Screen name="Banned" component={BannedScreen} />
     </Stack.Navigator>
   );

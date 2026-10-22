@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SystemUI from 'expo-system-ui';
 import { LIGHT_COLORS, DARK_COLORS, ACTIVE_THEME } from '../constants/theme';
 
 // Light / dark theme for the whole app. The user picks System, Light or Dark
@@ -35,6 +36,12 @@ export function ThemeProvider({ children }) {
   // before children render, so it's updated here rather than in an effect.
   // eslint-disable-next-line react-hooks/immutability
   ACTIVE_THEME.colors = colors;
+
+  // Paint the native window behind all screens in the theme's background, so
+  // any gap during screen transitions matches the app instead of flashing white.
+  useEffect(() => {
+    SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+  }, [colors.background]);
 
   const value = useMemo(() => ({ mode, setMode, isDark, colors }), [mode, isDark, colors]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
