@@ -7,7 +7,8 @@ const viewedThisSession = new Set();
 
 export function recordView(listing) {
   const uid = auth.currentUser?.uid;
-  if (!uid || !listing?.id || listing.sellerId === uid) return; // sellers don't count their own views
+  // Sellers don't count their own views; wait until we know who the seller is.
+  if (!uid || !listing?.id || !listing.sellerId || listing.sellerId === uid) return;
   if (viewedThisSession.has(listing.id)) return;
   viewedThisSession.add(listing.id);
   updateDoc(doc(db, 'listings', listing.id), { viewCount: increment(1) }).catch(() => {

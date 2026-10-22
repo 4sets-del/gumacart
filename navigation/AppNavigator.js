@@ -7,6 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
+import * as Linking from 'expo-linking';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '../context/AuthContext';
@@ -43,6 +44,17 @@ import { addNotificationResponseListener } from '../utils/notifications';
 import { auth, db } from '../firebaseConfig';
 
 const Stack = createStackNavigator();
+
+// Shared links open the listing directly, e.g. gumacart://listing/abc123
+// (in Expo Go the link uses Expo's own exp:// prefix instead).
+const LINKING = {
+  prefixes: [Linking.createURL('/'), 'gumacart://'],
+  config: {
+    screens: {
+      ProductDetail: 'listing/:id',
+    },
+  },
+};
 
 // Keep the previous screen rendered underneath the current one. Otherwise
 // Android hides it to save memory and, on going back, shows the empty window
@@ -268,7 +280,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef} theme={navTheme}>
+    <NavigationContainer ref={navigationRef} theme={navTheme} linking={LINKING}>
       {!user
         ? <AuthStack />
         : !emailVerified

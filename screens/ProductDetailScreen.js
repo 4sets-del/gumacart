@@ -18,6 +18,7 @@ import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
+import * as Linking from "expo-linking";
 import { getUserBasics } from "../utils/userCache";
 import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
@@ -34,7 +35,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
   // Start from the listing passed in, then stay live: price, photos and
   // status update while the page is open, and removal is detected.
-  const { product: initialProduct } = route.params;
+  // Opened from a shared link, only the id is known; the rest loads below.
+  const initialProduct = route.params?.product || { id: route.params?.id };
   const [product, setProduct] = useState(initialProduct);
   const [removed, setRemoved] = useState(false);
   useEffect(() => onSnapshot(
@@ -75,7 +77,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     galleryRef.current?.scrollToIndex({ index, animated: true });
   };
 
-  useEffect(() => { recordView(product); }, [product.id]);
+  useEffect(() => { recordView(product); }, [product.id, product.sellerId]);
 
   useEffect(() => {
     const checkCart = async () => {
@@ -172,9 +174,14 @@ export default function ProductDetailScreen({ route, navigation }) {
     }
   };
 
+  // Shares a link that opens this listing in the app, instead of the
+  // seller's phone number.
   const handleShare = async () => {
     try {
-      await Share.share({ message: `Check out this listing on SLSU-GumaCart!\n\n${product.name}\n${product.type === "donate" ? "FREE" : product.type === "barter" ? "For Barter" : "₱" + product.price?.toLocaleString()}\nContact: ${product.contactNumber}` });
+      const url = Linking.createURL(`listing/${product.id}`);
+      await Share.share({
+        message: `Check out "${product.name}" on SLSU-GumaCart (${priceLabel(product).text})\n${url}`,
+      });
     } catch (e) {}
   };
 
@@ -269,6 +276,14 @@ export default function ProductDetailScreen({ route, navigation }) {
       }},
     ]);
   };
+
+  if (!product.sellerId && !removed) {
+    return (
+      <View style={[styles.safe, { alignItems: "center", justifyContent: "center" }]}>
+        <ActivityIndicator color={COLORS.primary} size="large" />
+      </View>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
