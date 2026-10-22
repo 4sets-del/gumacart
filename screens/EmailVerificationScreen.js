@@ -21,25 +21,6 @@ export default function EmailVerificationScreen({ navigation }) {
   const user = auth.currentUser;
   const appState = useRef(AppState.currentState);
 
-  // Auto-check verification status every few seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      checkVerified(true);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Also check when app comes back to foreground (user returns from email app)
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (appState.current.match(/inactive|background/) && nextState === 'active') {
-        checkVerified(true);
-      }
-      appState.current = nextState;
-    });
-    return () => subscription.remove();
-  }, []);
-
   // Cooldown timer for resend button
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -63,6 +44,25 @@ export default function EmailVerificationScreen({ navigation }) {
       if (!silent) setChecking(false);
     }
   };
+
+  // Auto-check verification status every few seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      checkVerified(true);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Also check when app comes back to foreground (user returns from email app)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') {
+        checkVerified(true);
+      }
+      appState.current = nextState;
+    });
+    return () => subscription.remove();
+  }, []);
 
   const handleResend = async () => {
     if (cooldown > 0) return;

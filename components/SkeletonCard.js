@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import { RADIUS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
@@ -7,7 +7,7 @@ import { useTheme } from '../context/ThemeContext';
 // listings load, so the screen never shows a misleading "no listings".
 export default function SkeletonCard({ width }) {
   const { styles } = useTheme(createStyles);
-  const pulse = useRef(new Animated.Value(0.5)).current;
+  const [pulse] = useState(() => new Animated.Value(0.5));
 
   useEffect(() => {
     const loop = Animated.loop(

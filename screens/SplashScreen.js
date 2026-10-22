@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, StatusBar, ActivityIndicator, Dimensions,
 } from 'react-native';
@@ -33,9 +33,9 @@ function CampusSilhouette() {
 }
 
 export default function SplashScreen() {
-  const logoScale = useRef(new Animated.Value(0.6)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const textOpacity = useRef(new Animated.Value(0)).current;
+  const [logoScale] = useState(() => new Animated.Value(0.6));
+  const [logoOpacity] = useState(() => new Animated.Value(0));
+  const [textOpacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.sequence([
@@ -45,7 +45,7 @@ export default function SplashScreen() {
       ]),
       Animated.timing(textOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
     ]).start();
-  }, []);
+  }, [logoScale, logoOpacity, textOpacity]);
 
   return (
     <View style={styles.container}>

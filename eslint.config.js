@@ -9,6 +9,11 @@ module.exports = defineConfig([
     ignores: ["dist/*", "functions/*"],
   },
   {
+    // Node.js scripts (e.g. npm run privacy)
+    files: ["scripts/**/*.js"],
+    languageOptions: { globals: { __dirname: "readonly", require: "readonly", module: "readonly", process: "readonly" } },
+  },
+  {
     rules: {
       // Errors are reserved for real bugs (undefined variables, bad imports,
       // broken hook calls). The rest are shown as warnings.

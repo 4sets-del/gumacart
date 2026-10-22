@@ -7,12 +7,10 @@ import { db } from '../firebaseConfig';
 const isExpoGo = Constants.appOwnership === 'expo';
 
 let Notifications = null;
-let Device = null;
 
 if (!isExpoGo) {
   try {
     Notifications = require('expo-notifications');
-    Device = require('expo-device');
 
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
@@ -24,7 +22,6 @@ if (!isExpoGo) {
     });
   } catch (e) {
     Notifications = null;
-    Device = null;
   }
 }
 

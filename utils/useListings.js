@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useSyncExternalStore } from 'react';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,12 @@ import { auth, db } from '../firebaseConfig';
 
 let cache = null;          // latest sorted array of active listings
 let loaded = false;
+// Snapshot handed to React; replaced (never mutated) whenever data changes.
+let snapshot = { cache: null, loaded: false };
+const notify = () => {
+  snapshot = { cache, loaded };
+  subscribers.forEach((fn) => fn());
+};
 let unsubscribe = null;
 let stopTimer = null;
 const subscribers = new Set();
@@ -40,7 +46,7 @@ async function restoreFromPhone() {
     // Only fill in if Firestore hasn't already answered.
     if (raw && !cache) {
       cache = JSON.parse(raw);
-      subscribers.forEach((fn) => fn());
+      notify();
     }
   } catch (e) {}
 }
@@ -56,14 +62,14 @@ function start() {
         .sort((a, b) => millis(b) - millis(a));
       loaded = true;
       saveToPhone(cache);
-      subscribers.forEach((fn) => fn());
+      notify();
     },
     (e) => {
       console.log('Listings error:', e.message);
       // A failed listener is already closed; allow the next subscriber to retry.
       unsubscribe = null;
       loaded = true;
-      subscribers.forEach((fn) => fn());
+      notify();
     },
   );
 }
@@ -73,6 +79,7 @@ function stop() {
   unsubscribe = null;
   cache = null;
   loaded = false;
+  snapshot = { cache: null, loaded: false };
 }
 
 // Signing out ends access to listings, so drop the listener and cached data.
@@ -98,16 +105,16 @@ function subscribe(fn) {
 
 // Live list of active marketplace listings, newest first. The current user's
 // own listings are excluded unless `includeOwn` is set.
-export function useActiveListings({ includeOwn = false } = {}) {
-  const [version, setVersion] = useState(0);
+const getSnapshot = () => snapshot;
 
-  useEffect(() => subscribe(() => setVersion((v) => v + 1)), []);
+export function useActiveListings({ includeOwn = false } = {}) {
+  const state = useSyncExternalStore(subscribe, getSnapshot);
 
   // Same array between updates, so screens can memoize work based on it.
   const uid = auth.currentUser?.uid;
   const listings = useMemo(() => {
-    const all = cache || [];
+    const all = state.cache || [];
     return includeOwn ? all : all.filter((item) => item.sellerId !== uid);
-  }, [version, includeOwn, uid]);
-  return { listings, loading: !loaded };
+  }, [state.cache, includeOwn, uid]);
+  return { listings, loading: !state.loaded };
 }

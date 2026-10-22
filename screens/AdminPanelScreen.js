@@ -77,8 +77,6 @@ export default function AdminPanelScreen({ navigation }) {
   const [banReason, setBanReason]       = useState(null);
   const [banDuration, setBanDuration]   = useState(null);
 
-  useEffect(() => { checkAdminAndLoad(); }, []);
-
   const checkAdminAndLoad = async () => {
     try {
       const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
@@ -493,6 +491,9 @@ export default function AdminPanelScreen({ navigation }) {
       ]
     );
   };
+
+  // Runs after all the loaders above are defined.
+  useEffect(() => { checkAdminAndLoad(); }, []);
 
   const pendingCount = verifications.filter((v) => v.verificationStatus === "pending").length;
   const facultyPendingCount = facultyRequests.length;
