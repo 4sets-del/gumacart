@@ -82,7 +82,11 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   const tokens = Array.isArray(userData.pushTokens) ? userData.pushTokens : [];
   if (!tokens.length) return;
 
+  // Settings → Notifications. Muted types are still saved to the in-app list
+  // above; only the phone push is skipped.
   const prefs = userData.notifPrefs || {};
+  if (prefs.muteAll === true) return;
+  if (data?.nav === "listing" && prefs.listings === false) return;
   if (storeType === "message" && prefs.messages === false) return;
   if (storeType === "follow" && prefs.followers === false) return;
   if (storeType === "review" && prefs.reviews === false) return;

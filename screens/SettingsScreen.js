@@ -46,6 +46,8 @@ export default function SettingsScreen({ navigation }) {
   const [notifMessages, setNotifMessages] = useState(true);
   const [notifFollowers, setNotifFollowers] = useState(true);
   const [notifReviews, setNotifReviews] = useState(true);
+  const [notifListings, setNotifListings] = useState(true);
+  const [muteAll, setMuteAll] = useState(false);
 
   const [verificationStatus, setVerificationStatus] = useState(null);
   const insets = useSafeAreaInsets();
@@ -61,6 +63,8 @@ export default function SettingsScreen({ navigation }) {
         setNotifMessages(data?.notifPrefs?.messages !== false);
         setNotifFollowers(data?.notifPrefs?.followers !== false);
         setNotifReviews(data?.notifPrefs?.reviews !== false);
+        setNotifListings(data?.notifPrefs?.listings !== false);
+        setMuteAll(data?.notifPrefs?.muteAll === true);
       } catch (e) {}
     };
     loadVerificationStatus();
@@ -253,9 +257,11 @@ export default function SettingsScreen({ navigation }) {
 
         <Text style={styles.sectionLabel}>Notifications</Text>
         <View style={styles.card}>
-          <ToggleRow icon="chatbubble-ellipses" iconColor="#2563EB" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} />
-          <ToggleRow icon="person-add" iconColor="#7C3AED" label="New Followers" sub="When someone follows you" value={notifFollowers} onChange={(v) => handleNotifToggle("followers", v, setNotifFollowers)} />
-          <ToggleRow icon="star" iconColor="#F59E0B" label="Reviews" sub="When you get a new rating or review" value={notifReviews} onChange={(v) => handleNotifToggle("reviews", v, setNotifReviews)} isLast />
+          <ToggleRow icon="notifications-off" iconColor={COLORS.error} label="Mute all" sub="Pause every push notification. They still appear in the app." value={muteAll} onChange={(v) => handleNotifToggle("muteAll", v, setMuteAll)} />
+          <ToggleRow icon="chatbubble-ellipses" iconColor="#2563EB" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} disabled={muteAll} />
+          <ToggleRow icon="person-add" iconColor="#7C3AED" label="New Followers" sub="When someone follows you" value={notifFollowers} onChange={(v) => handleNotifToggle("followers", v, setNotifFollowers)} disabled={muteAll} />
+          <ToggleRow icon="star" iconColor="#F59E0B" label="Reviews" sub="When you get a new rating or review" value={notifReviews} onChange={(v) => handleNotifToggle("reviews", v, setNotifReviews)} disabled={muteAll} />
+          <ToggleRow icon="pricetags" iconColor="#16A34A" label="Listing updates" sub="When a listing is approved or needs changes" value={notifListings} onChange={(v) => handleNotifToggle("listings", v, setNotifListings)} disabled={muteAll} isLast />
         </View>
 
         <Text style={styles.sectionLabel}>About</Text>
@@ -409,11 +415,11 @@ function SettingRow({ icon, label, sub, onPress, isLast, labelColor, iconColor, 
   );
 }
 
-function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor }) {
+function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor, disabled }) {
   const { COLORS, styles } = useTheme(createStyles);
   iconColor = iconColor || COLORS.primary;
   return (
-    <View style={[styles.settingRow, !isLast && styles.settingRowBorder]}>
+    <View style={[styles.settingRow, !isLast && styles.settingRowBorder, disabled && { opacity: 0.45 }]}>
       <View style={[styles.settingIconBox, { backgroundColor: iconColor + "1A" }]}>
         <Ionicons name={icon} size={18} color={iconColor} />
       </View>
@@ -421,7 +427,7 @@ function ToggleRow({ icon, label, sub, value, onChange, isLast, iconColor }) {
         <Text style={styles.settingLabel}>{label}</Text>
         {sub ? <Text style={styles.settingSub}>{sub}</Text> : null}
       </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ false: COLORS.border, true: COLORS.primaryLighter }} thumbColor={value ? COLORS.primary : "#f4f3f4"} />
+      <Switch value={value} onValueChange={onChange} disabled={disabled} trackColor={{ false: COLORS.border, true: COLORS.primaryLighter }} thumbColor={value ? COLORS.primary : "#f4f3f4"} />
     </View>
   );
 }
