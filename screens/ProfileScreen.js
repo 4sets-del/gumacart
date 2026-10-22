@@ -13,6 +13,7 @@ import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
 import { SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { academicLabel } from "../constants/school";
 import { useTheme } from '../context/ThemeContext';
 
 function StarRating({ rating, size = 14 }) {
@@ -226,6 +227,17 @@ export default function ProfileScreen({ navigation }) {
               <Text style={styles.userName} numberOfLines={1}>{user?.displayName || "Student"}</Text>
               <Text style={styles.userEmail} numberOfLines={1}>{user?.email}</Text>
               <View style={styles.badgesRow}>
+                {userData?.course || userData?.yearLevel ? (
+                  <View style={[styles.verifiedBadge, { backgroundColor: COLORS.infoLight }]}>
+                    <Ionicons name="school" size={12} color={COLORS.info} />
+                    <Text style={[styles.verifiedText, { color: COLORS.info }]}>{academicLabel(userData)}</Text>
+                  </View>
+                ) : userData && userData.role !== "admin" ? (
+                  <TouchableOpacity style={[styles.verifiedBadge, { backgroundColor: COLORS.surfaceAlt }]} activeOpacity={0.8} onPress={() => navigation.navigate("Settings")}>
+                    <Ionicons name="add-circle" size={13} color={COLORS.textSecondary} />
+                    <Text style={[styles.verifiedText, { color: COLORS.textSecondary }]}>Add course & year</Text>
+                  </TouchableOpacity>
+                ) : null}
                 {isVerified && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={13} color={COLORS.primary} />

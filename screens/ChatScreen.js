@@ -15,6 +15,7 @@ import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
 import { colorForName, FONTS } from "../constants/theme";
+import { academicLabel } from "../constants/school";
 import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
@@ -44,6 +45,7 @@ export default function ChatScreen({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [otherUserPhoto, setOtherUserPhoto] = useState(null);
+  const [otherUserLabel, setOtherUserLabel] = useState("SLSU Student");
   const scrollRef = useRef(null);
   const user = auth.currentUser;
 
@@ -78,7 +80,10 @@ export default function ChatScreen({ route, navigation }) {
     const fetchOtherUserPhoto = async () => {
       try {
         const otherUserDoc = await getDoc(doc(db, "users", otherUserId));
-        if (otherUserDoc.exists()) setOtherUserPhoto(otherUserDoc.data()?.photoURL || null);
+        if (otherUserDoc.exists()) {
+          setOtherUserPhoto(otherUserDoc.data()?.photoURL || null);
+          setOtherUserLabel(academicLabel(otherUserDoc.data()));
+        }
       } catch (e) {}
     };
     if (otherUserId) fetchOtherUserPhoto();
@@ -461,7 +466,7 @@ export default function ChatScreen({ route, navigation }) {
             {listingName ? (
               <Text style={styles.headerListing} numberOfLines={1}>{listingName}</Text>
             ) : (
-              <Text style={styles.headerOnline}>SLSU Student</Text>
+              <Text style={styles.headerOnline} numberOfLines={1}>{otherUserLabel}</Text>
             )}
           </View>
         </TouchableOpacity>

@@ -21,6 +21,7 @@ import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
 import * as Linking from "expo-linking";
 import { getUserBasics } from "../utils/userCache";
+import { academicLabel } from "../constants/school";
 import { markInterested, getInterested } from "../utils/interest";
 import { normalizeCategory, priceLabel, typeMeta, listingImage } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
@@ -84,6 +85,15 @@ export default function ProductDetailScreen({ route, navigation }) {
   const images = product.images?.length > 0 ? product.images : product.image ? [product.image] : [];
   const galleryRef = useRef(null);
   const sellerRating = useSellerRatings([product])[product.sellerId];
+
+  // Seller's course and year for the seller card (cached per user).
+  const [sellerLabel, setSellerLabel] = useState("SLSU Student");
+  useEffect(() => {
+    if (!product.sellerId) return;
+    let alive = true;
+    getUserBasics(product.sellerId).then((basics) => { if (alive) setSellerLabel(academicLabel(basics)); });
+    return () => { alive = false; };
+  }, [product.sellerId]);
   const price = priceLabel(product);
   const type = typeMeta(product.type);
 
@@ -520,7 +530,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               )}
               <View style={{ flex: 1 }}>
                 <Text style={styles.sellerName} numberOfLines={1}>{product.sellerName || "Anonymous"}</Text>
-                <Text style={styles.sellerSub}>SLSU Student</Text>
+                <Text style={styles.sellerSub} numberOfLines={1}>{sellerLabel}</Text>
               </View>
             </View>
             <View style={styles.viewProfileBtn}>

@@ -17,6 +17,7 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
+import AcademicFields from "../components/AcademicFields";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, SHADOWS, FONTS } from "../constants/theme";
@@ -51,6 +52,9 @@ export default function SettingsScreen({ navigation }) {
   const [muteAll, setMuteAll] = useState(false);
 
   const [verificationStatus, setVerificationStatus] = useState(null);
+  const [course, setCourse] = useState(null);
+  const [yearLevel, setYearLevel] = useState(null);
+  const [isFaculty, setIsFaculty] = useState(false);
   const insets = useSafeAreaInsets();
   const appVersion = Constants.expoConfig?.version || "1.0.0";
 
@@ -78,6 +82,9 @@ export default function SettingsScreen({ navigation }) {
       setName(data?.name || user?.displayName || "");
       setAddress(data?.address || "");
       setAge(data?.age ? String(data.age) : "");
+      setCourse(data?.course || null);
+      setYearLevel(data?.yearLevel || null);
+      setIsFaculty(data?.role === "faculty");
       setPhotoURL(data?.photoURL || user?.photoURL || null);
       setNotifMessages(data?.notifPrefs?.messages !== false);
       setNotifFollowers(data?.notifPrefs?.followers !== false);
@@ -120,8 +127,8 @@ export default function SettingsScreen({ navigation }) {
 
   const changePhoto = () => {
     Alert.alert("Profile Photo", "Choose an option", [
-      { text: "Take Photo", onPress: () => pickPhoto("camera") },
-      { text: "Choose from Gallery", onPress: () => pickPhoto("gallery") },
+      { text: "Take Photo", icon: "camera", onPress: () => pickPhoto("camera") },
+      { text: "Choose from Gallery", icon: "images", onPress: () => pickPhoto("gallery") },
       photoURL ? { text: "Remove Photo", icon: "trash", style: "destructive", onPress: () => savePhoto(null).catch(() => {}) } : null,
       { text: "Cancel", style: "cancel" },
     ].filter(Boolean));
@@ -134,6 +141,8 @@ export default function SettingsScreen({ navigation }) {
       await updateProfile(user, { displayName: name.trim() });
       await updateDoc(doc(db, "users", user.uid), {
         name: name.trim(), address: address.trim(), age: age ? Number(age) : null,
+        course: course || null,
+        yearLevel: isFaculty ? null : yearLevel || null,
       });
       Alert.alert("Updated", "Your profile has been saved.");
       setShowEditModal(false);
@@ -218,7 +227,7 @@ export default function SettingsScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
-          <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, address, age" onPress={openEditModal} />
+          <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, course, year, address" onPress={openEditModal} />
           {verificationStatus !== "verified" && (
             <SettingRow
               icon="school"
@@ -308,6 +317,7 @@ export default function SettingsScreen({ navigation }) {
             </TouchableOpacity>
             <Text style={styles.photoHint}>{uploadingPhoto ? "Uploading..." : "Tap to change photo"}</Text>
 
+            <ScrollView style={styles.editFields} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
             <Text style={styles.inputLabel}>Name</Text>
             <View style={styles.inputWrapper}>
               <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your full name" placeholderTextColor={COLORS.textMuted} />
@@ -322,6 +332,16 @@ export default function SettingsScreen({ navigation }) {
             <View style={styles.inputWrapper}>
               <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" maxLength={3} />
             </View>
+
+            <AcademicFields
+              course={course}
+              onCourse={setCourse}
+              yearLevel={yearLevel}
+              onYearLevel={setYearLevel}
+              showYear={!isFaculty}
+              labelStyle={styles.inputLabel}
+            />
+            </ScrollView>
 
             <View style={styles.modalActions}>
               <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowEditModal(false)}>
@@ -460,6 +480,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   settingLabel: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
   settingSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
+  editFields: { maxHeight: 380 },
   modalSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
   modalTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },

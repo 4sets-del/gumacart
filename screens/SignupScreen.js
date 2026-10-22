@@ -12,6 +12,7 @@ import { RADIUS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 import { SCHOOL_DOMAIN, isSchoolEmail } from '../constants/school';
+import AcademicFields from '../components/AcademicFields';
 
 export default function SignupScreen({ navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
@@ -24,6 +25,8 @@ export default function SignupScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState('student'); // 'student' | 'faculty'
+  const [course, setCourse] = useState(null);
+  const [yearLevel, setYearLevel] = useState(null);
 
   // Shown in red once they've typed a full email that isn't an SLSU one.
   const emailWrong = email.includes('@') && !isSchoolEmail(email);
@@ -36,6 +39,14 @@ export default function SignupScreen({ navigation }) {
   const handleSignup = async () => {
     if (!name || !address || !age || !email || !password) {
       Alert.alert('Missing fields', 'Please fill in all fields.');
+      return;
+    }
+    if (!course) {
+      Alert.alert('Course', 'Please choose your course.');
+      return;
+    }
+    if (role === 'student' && !yearLevel) {
+      Alert.alert('Year level', 'Please choose your year level.');
       return;
     }
     if (isNaN(age) || Number(age) < 12 || Number(age) > 100) {
@@ -78,6 +89,8 @@ export default function SignupScreen({ navigation }) {
         createdAt: serverTimestamp(),
         role: 'student',
         facultyRequest: isFacultyRequest ? 'pending' : 'none',
+        course,
+        yearLevel: isFacultyRequest ? null : yearLevel,
       });
       await sendEmailVerification(user);
       // No popup needed — the EmailVerification screen already explains this
@@ -144,6 +157,15 @@ export default function SignupScreen({ navigation }) {
                 </Text>
               </TouchableOpacity>
             </View>
+
+            <AcademicFields
+              course={course}
+              onCourse={setCourse}
+              yearLevel={yearLevel}
+              onYearLevel={setYearLevel}
+              showYear={role === 'student'}
+              labelStyle={styles.fieldLabel}
+            />
 
             <Text style={styles.fieldLabel}>Name</Text>
             <View style={styles.inputBox}>

@@ -14,6 +14,7 @@ import { uploadFile } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { academicLabel } from "../constants/school";
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -297,6 +298,12 @@ export default function SellerProfileScreen({ route, navigation }) {
               <Text style={styles.sellerName} numberOfLines={1}>{sellerName}</Text>
               <Text style={styles.sellerEmail} numberOfLines={1}>{seller?.email}</Text>
               <View style={styles.heroMetaRow}>
+                {(seller?.course || seller?.yearLevel) && (
+                  <View style={[styles.verifiedBadge, { backgroundColor: COLORS.infoLight }]}>
+                    <Ionicons name="school" size={12} color={COLORS.info} />
+                    <Text style={[styles.verifiedText, { color: COLORS.info }]}>{academicLabel(seller)}</Text>
+                  </View>
+                )}
                 {seller?.verificationStatus === "verified" && (
                   <View style={styles.verifiedBadge}>
                     <Ionicons name="checkmark-circle" size={13} color={COLORS.primary} />

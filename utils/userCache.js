@@ -5,7 +5,7 @@ import { db } from '../firebaseConfig';
 // Messages inbox or Following don't re-download every profile each time.
 const TTL_MS = 5 * 60 * 1000;
 const cache = new Map(); // uid -> { at, promise }
-const EMPTY = { name: 'Unknown', photoURL: null, email: '', avgRating: 0, verificationStatus: null };
+const EMPTY = { name: 'Unknown', photoURL: null, email: '', avgRating: 0, verificationStatus: null, role: null, course: null, yearLevel: null };
 
 export function getUserBasics(uid) {
   if (!uid) return Promise.resolve(EMPTY);
@@ -21,6 +21,9 @@ export function getUserBasics(uid) {
         email: data.email || '',
         avgRating: data.avgRating || 0,
         verificationStatus: data.verificationStatus || null,
+        role: data.role || null,
+        course: data.course || null,
+        yearLevel: data.yearLevel || null,
       };
     })
     .catch(() => {
