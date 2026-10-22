@@ -118,7 +118,7 @@ export default function VerificationScreen({ navigation }) {
           {verifStatus === "rejected" && (
             <View style={styles.rejectBanner}>
               <View style={styles.rejectIconCircle}>
-                <Ionicons name="alert-circle" size={22} color="#e74c3c" />
+                <Ionicons name="alert-circle" size={22} color={COLORS.error} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rejectTitle}>Verification Not Approved</Text>
@@ -135,7 +135,7 @@ export default function VerificationScreen({ navigation }) {
           {/* Pending notice */}
           {verifStatus === "pending" && (
             <View style={styles.pendingBanner}>
-              <Ionicons name="hourglass-outline" size={20} color="#e67e22" style={{ marginRight: 10 }} />
+              <Ionicons name="hourglass-outline" size={20} color={COLORS.warning} style={{ marginRight: 10 }} />
               <Text style={styles.pendingText}>
                 Your verification is under review. You'll be notified once an admin has checked it.
               </Text>
@@ -287,8 +287,8 @@ export default function VerificationScreen({ navigation }) {
                     <Text style={styles.summaryLabel}>ID Photo</Text>
                   </View>
                   <View style={styles.summaryStatusRow}>
-                    <Ionicons name={idPhoto ? "checkmark-circle" : "close-circle"} size={15} color={idPhoto ? COLORS.primary : "#e74c3c"} style={{ marginRight: 4 }} />
-                    <Text style={[styles.summaryValue, { flex: 0, color: idPhoto ? COLORS.primary : "#e74c3c" }]}>{idPhoto ? "Uploaded" : "Not yet"}</Text>
+                    <Ionicons name={idPhoto ? "checkmark-circle" : "close-circle"} size={15} color={idPhoto ? COLORS.primary : COLORS.error} style={{ marginRight: 4 }} />
+                    <Text style={[styles.summaryValue, { flex: 0, color: idPhoto ? COLORS.primary : COLORS.error }]}>{idPhoto ? "Uploaded" : "Not yet"}</Text>
                   </View>
                 </View>
               </View>

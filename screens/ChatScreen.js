@@ -16,6 +16,7 @@ import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
 import { colorForName, FONTS } from "../constants/theme";
 import { academicLabel } from "../constants/school";
+import Sheet, { SheetOption } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
@@ -623,54 +624,35 @@ export default function ChatScreen({ route, navigation }) {
       </Modal>
 
       {/* Long-press action sheet: react / reply / delete */}
-      <Modal statusBarTranslucent visible={!!actionMsg} transparent animationType="fade" onRequestClose={() => setActionMsg(null)}>
-        <TouchableOpacity style={styles.sheetOverlay} activeOpacity={1} onPress={() => setActionMsg(null)}>
-          <View style={styles.sheet}>
-            {/* Emoji reaction row */}
-            <View style={styles.emojiRow}>
-              {REACTIONS.map((emoji) => {
-                const mine = actionMsg?.reactions?.[emoji]?.includes(user.uid);
-                return (
-                  <TouchableOpacity
-                    key={emoji}
-                    style={[styles.emojiBtn, mine && styles.emojiBtnActive]}
-                    activeOpacity={0.7}
-                    onPress={() => toggleReaction(actionMsg, emoji)}
-                  >
-                    <Text style={styles.emojiBtnText}>{emoji}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <View style={styles.sheetDivider} />
-
-            <TouchableOpacity
-              style={styles.sheetItem}
-              activeOpacity={0.7}
-              onPress={() => { setReplyTo(actionMsg); setActionMsg(null); }}
-            >
-              <Ionicons name="arrow-undo-outline" size={20} color={COLORS.textPrimary} style={{ marginRight: 14 }} />
-              <Text style={styles.sheetItemText}>Reply</Text>
-            </TouchableOpacity>
-
-            {actionMsg?.senderId === user.uid && (
+      <Sheet
+        visible={!!actionMsg}
+        onClose={() => setActionMsg(null)}
+        title="Message"
+        subtitle={actionMsg ? (actionMsg.type === "image" ? "📷 Photo" : actionMsg.type === "video" ? "🎥 Video" : actionMsg.type === "listing" ? `🛍️ ${actionMsg.listingName}` : actionMsg.text) : ""}
+        icon="chatbubble-ellipses"
+        footer={null}
+      >
+        {/* Emoji reaction row */}
+        <View style={styles.emojiRow}>
+          {REACTIONS.map((emoji) => {
+            const mine = actionMsg?.reactions?.[emoji]?.includes(user.uid);
+            return (
               <TouchableOpacity
-                style={styles.sheetItem}
+                key={emoji}
+                style={[styles.emojiBtn, mine && styles.emojiBtnActive]}
                 activeOpacity={0.7}
-                onPress={() => deleteMessage(actionMsg)}
+                onPress={() => toggleReaction(actionMsg, emoji)}
               >
-                <Ionicons name="trash-outline" size={20} color="#e74c3c" style={{ marginRight: 14 }} />
-                <Text style={[styles.sheetItemText, { color: "#e74c3c" }]}>Delete for everyone</Text>
+                <Text style={styles.emojiBtnText}>{emoji}</Text>
               </TouchableOpacity>
-            )}
-
-            <TouchableOpacity style={styles.sheetCancel} activeOpacity={0.7} onPress={() => setActionMsg(null)}>
-              <Text style={styles.sheetCancelText}>Cancel</Text>
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-      </Modal>
+            );
+          })}
+        </View>
+        <SheetOption icon="arrow-undo" label="Reply" onPress={() => { setReplyTo(actionMsg); setActionMsg(null); }} />
+        {actionMsg?.senderId === user.uid && (
+          <SheetOption icon="trash" tone="danger" label="Delete for everyone" onPress={() => deleteMessage(actionMsg)} />
+        )}
+      </Sheet>
     </SafeAreaView>
   );
 }
@@ -736,10 +718,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   viewerTopBar: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUSBAR_TOP + 10, paddingBottom: 12, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.4)" },
   viewerBackBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   viewerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  viewerCloseBtn: { position: "absolute", top: 52, right: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center", zIndex: 10 },
   viewerImage: { width: "100%", height: "100%" },
   viewerVideo: { width: "100%", height: "100%", backgroundColor: "#000" },
-  viewerVideoBox: { alignItems: "center", paddingHorizontal: 40 },
 
   // Reply preview inside a bubble
   replyPreview: { borderLeftWidth: 3, borderLeftColor: COLORS.primary, backgroundColor: "rgba(0,0,0,0.05)", borderRadius: 8, paddingHorizontal: 8, paddingVertical: 5, marginBottom: 6 },
@@ -762,15 +742,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   reactionCount: { fontSize: 11, color: COLORS.textSecondary, fontWeight: "600" },
 
   // Long-press action sheet
-  sheetOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
-  sheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 16, paddingBottom: 26, paddingHorizontal: 16 },
-  emojiRow: { flexDirection: "row", justifyContent: "space-around", paddingBottom: 14 },
+  emojiRow: { flexDirection: "row", justifyContent: "space-around", paddingVertical: 14 },
   emojiBtn: { width: 46, height: 46, borderRadius: 23, alignItems: "center", justifyContent: "center", backgroundColor: COLORS.surfaceAlt },
   emojiBtnActive: { backgroundColor: COLORS.primaryPale, borderWidth: 2, borderColor: COLORS.primary },
   emojiBtnText: { fontSize: 24 },
-  sheetDivider: { height: 1, backgroundColor: COLORS.surfaceAlt, marginBottom: 6 },
-  sheetItem: { flexDirection: "row", alignItems: "center", paddingVertical: 15, paddingHorizontal: 6 },
-  sheetItemText: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
-  sheetCancel: { marginTop: 8, height: 48, borderRadius: 14, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
-  sheetCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

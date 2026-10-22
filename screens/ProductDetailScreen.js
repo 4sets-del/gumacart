@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Image, Share, Dimensions, Modal, FlatList, Platform, TextInput, ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Share, Dimensions, Modal, FlatList, Platform, ActivityIndicator,
 } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +14,9 @@ import * as ImagePicker from "expo-image-picker";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
-import { RADIUS, FONTS } from "../constants/theme";
+import { RADIUS, FONTS, colorForName } from "../constants/theme";
+import ReportSheet from "../components/ReportSheet";
+import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
@@ -634,109 +636,64 @@ export default function ProductDetailScreen({ route, navigation }) {
       )}
 
       {/* Mark as sold → who bought it? */}
-      <Modal statusBarTranslucent visible={buyerPickerVisible} transparent animationType="fade" onRequestClose={() => setBuyerPickerVisible(false)}>
-        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => setBuyerPickerVisible(false)}>
-          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
-            <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>{pickerMode === "reserve" ? "Reserve for whom?" : "Who bought it?"}</Text>
-            <Text style={styles.reportSub}>
-              {pickerMode === "reserve"
-                ? "They'll see it's reserved for them. Others who were interested are told it's reserved."
-                : "We'll invite them to rate you, and let others who were interested know it's sold."}
-            </Text>
-            <ScrollView style={{ maxHeight: 320 }}>
-              {buyerOptions.map((person) => (
-                <TouchableOpacity key={person.uid} style={styles.reasonRow} activeOpacity={0.7} onPress={() => chooseBuyer(person.uid)}>
-                  <Ionicons name="person-circle-outline" size={24} color={COLORS.primary} style={{ marginRight: 12 }} />
-                  <Text style={styles.reasonText} numberOfLines={1}>{person.name}</Text>
-                  {person.interested && <Text style={styles.interestedTag}>Interested</Text>}
-                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              ))}
-              {buyerOptions.length === 0 && (
-                <Text style={[styles.reportSub, { marginTop: 4 }]}>No recent chats found.</Text>
-              )}
-            </ScrollView>
-            <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => chooseBuyer(null)}>
-              <Text style={styles.reportCancelText}>
-                {pickerMode === "reserve" ? "Someone not on this list" : "Skip — sold to someone else"}
+      <Sheet
+        visible={buyerPickerVisible}
+        onClose={() => setBuyerPickerVisible(false)}
+        title={pickerMode === "reserve" ? "Reserve for whom?" : "Who bought it?"}
+        subtitle={pickerMode === "reserve"
+          ? "They'll see it's reserved for them. Others who were interested are told it's reserved."
+          : "We'll invite them to rate you, and let others who were interested know it's sold."}
+        icon={pickerMode === "reserve" ? "bookmark" : "bag-check"}
+        footer={
+          <View style={styles.pickerFooter}>
+            <TouchableOpacity style={styles.pickerSkip} activeOpacity={0.8} onPress={() => chooseBuyer(null)}>
+              <Text style={styles.pickerSkipText}>
+                {pickerMode === "reserve" ? "Someone not on this list" : "Skip, sold to someone else"}
               </Text>
             </TouchableOpacity>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      <Modal statusBarTranslucent visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
-        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={closeReport}>
-          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
-            <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>Report Listing</Text>
-            <Text style={styles.reportSub}>
-              {pendingReason ? "Add details and proof, then submit." : "Why are you reporting this listing?"}
-            </Text>
-
-            {!pendingReason ? (
-              <>
-                {REPORT_REASONS.map((reason) => (
-                  <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
-                    <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={closeReport}>
-                  <Text style={styles.reportCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.reasonSelected}>
-                  <Ionicons name="flag" size={18} color="#e74c3c" style={{ marginRight: 10 }} />
-                  <Text style={styles.reasonSelectedText}>{pendingReason}</Text>
+          </View>
+        }
+      >
+        <View style={styles.pickerList}>
+          {buyerOptions.map((person) => (
+            <TouchableOpacity key={person.uid} style={styles.pickerRow} activeOpacity={0.75} onPress={() => chooseBuyer(person.uid)}>
+              {person.photoURL ? (
+                <CachedImage source={{ uri: person.photoURL }} style={styles.pickerAvatar} cachePolicy="memory-disk" />
+              ) : (
+                <View style={[styles.pickerAvatar, { backgroundColor: colorForName(person.name) }]}>
+                  <Text style={styles.pickerInitial}>{person.name?.[0]?.toUpperCase() || "?"}</Text>
                 </View>
+              )}
+              <Text style={styles.pickerName} numberOfLines={1}>{person.name}</Text>
+              {person.interested && <Text style={styles.interestedTag}>Interested</Text>}
+              <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          ))}
+          {buyerOptions.length === 0 && (
+            <View style={styles.pickerEmpty}>
+              <Ionicons name="chatbubbles-outline" size={28} color={COLORS.textMuted} />
+              <Text style={styles.pickerEmptyText}>No recent chats found.</Text>
+            </View>
+          )}
+        </View>
+      </Sheet>
 
-                {pendingReason === "Other" && (
-                  <>
-                    <Text style={styles.fieldLabel}>Describe the issue</Text>
-                    <TextInput
-                      style={styles.otherInput}
-                      placeholder="Tell us what's wrong…"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={customReason}
-                      onChangeText={setCustomReason}
-                      multiline
-                      maxLength={200}
-                      textAlignVertical="top"
-                    />
-                  </>
-                )}
-
-                <Text style={styles.fieldLabel}>Attach proof (optional)</Text>
-                {proofImage ? (
-                  <View style={styles.proofPreviewWrap}>
-                    <Image source={{ uri: proofImage }} style={styles.proofPreview} resizeMode="cover" />
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove proof photo" style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
-                      <Ionicons name="close-circle" size={26} color="#e74c3c" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.proofAddBtn} activeOpacity={0.8} onPress={pickProofImage}>
-                    <Ionicons name="camera-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-                    <Text style={styles.proofAddText}>Add a screenshot or photo</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity style={[styles.reportSubmit, uploadingReport && { opacity: 0.7 }]} activeOpacity={0.85} onPress={submitReport} disabled={uploadingReport}>
-                  {uploadingReport ? <ActivityIndicator color="#fff" /> : <Text style={styles.reportSubmitText}>Submit Report</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => { setPendingReason(null); setProofImage(null); setCustomReason(""); }} disabled={uploadingReport}>
-                  <Text style={styles.reportCancelText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <ReportSheet
+        visible={reportVisible}
+        onClose={closeReport}
+        title="Report Listing"
+        question={"Why are you reporting this listing?"}
+        reasons={REPORT_REASONS}
+        reason={pendingReason}
+        onReason={(r) => { setPendingReason(r); if (!r) { setProofImage(null); setCustomReason(""); } }}
+        details={customReason}
+        onDetails={setCustomReason}
+        proof={proofImage}
+        onPickProof={pickProofImage}
+        onRemoveProof={() => setProofImage(null)}
+        onSubmit={submitReport}
+        submitting={uploadingReport}
+      />
     </SafeAreaView>
   );
 }
@@ -802,6 +759,16 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   unavailableBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
   unavailableText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.error },
+  pickerList: { marginTop: 10, gap: 8 },
+  pickerRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt },
+  pickerAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  pickerInitial: { color: "#fff", fontSize: 16, fontFamily: FONTS.heading },
+  pickerName: { flex: 1, fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
+  pickerEmpty: { alignItems: "center", gap: 6, paddingVertical: 24 },
+  pickerEmptyText: { fontSize: 13.5, color: COLORS.textMuted },
+  pickerFooter: { paddingHorizontal: 20, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
+  pickerSkip: { height: 50, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center" },
+  pickerSkipText: { fontSize: 14.5, fontWeight: "700", color: COLORS.textSecondary },
   interestedTag: { fontSize: 11, fontWeight: "700", color: COLORS.primary, backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, marginRight: 6, overflow: "hidden" },
   reserveBtn: { width: 64, height: 52, gap: 1, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.warning, alignItems: "center", justifyContent: "center" },
   reserveBtnOn: { backgroundColor: COLORS.warning },
@@ -817,24 +784,4 @@ const createStyles = (COLORS) => StyleSheet.create({
   markActiveBtn: { backgroundColor: COLORS.info },
   deleteIconBtn: { width: 52, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.errorLight, alignItems: "center", justifyContent: "center" },
 
-  reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  reasonText: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 14 },
-  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: COLORS.error },
-  fieldLabel: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary, marginBottom: 8 },
-  otherInput: { backgroundColor: COLORS.surfaceAlt, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, padding: 12, fontSize: 14, color: COLORS.textPrimary, minHeight: 70, marginBottom: 16 },
-  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: "dashed", marginBottom: 16 },
-  proofAddText: { fontSize: 14, color: COLORS.primary, fontWeight: "700" },
-  proofPreviewWrap: { position: "relative", marginBottom: 16, alignSelf: "flex-start" },
-  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
-  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: COLORS.surface, borderRadius: 13 },
-  reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
-  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
-  reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

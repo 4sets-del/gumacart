@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, FlatList, ScrollView, Image,
-  ActivityIndicator, Modal, 
+  ActivityIndicator,
 } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
+import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
 import { useActiveListings } from "../utils/useListings";
@@ -30,26 +31,19 @@ function toggleIn(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 }
 
-function Checkbox({ checked, label, onPress }) {
+// Selectable pill used for sort, category and type filters.
+function Chip({ selected, label, emoji, onPress }) {
   const { styles } = useTheme(createStyles);
   return (
-    <TouchableOpacity style={styles.checkRow} activeOpacity={0.7} onPress={onPress}>
-      <View style={[styles.checkbox, checked && styles.checkboxOn]}>
-        {checked && <Ionicons name="checkmark" size={14} color="#fff" />}
-      </View>
-      <Text style={styles.checkLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
-
-function Radio({ selected, label, onPress }) {
-  const { styles } = useTheme(createStyles);
-  return (
-    <TouchableOpacity style={styles.checkRow} activeOpacity={0.7} onPress={onPress}>
-      <View style={[styles.radio, selected && styles.radioOn]}>
-        {selected && <View style={styles.radioDot} />}
-      </View>
-      <Text style={styles.checkLabel}>{label}</Text>
+    <TouchableOpacity
+      style={[styles.fChip, selected && styles.fChipOn]}
+      activeOpacity={0.8}
+      onPress={onPress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked: selected }}
+    >
+      {emoji ? <Text style={styles.fChipEmoji}>{emoji}</Text> : null}
+      <Text style={[styles.fChipText, selected && styles.fChipTextOn]}>{label}</Text>
     </TouchableOpacity>
   );
 }
@@ -396,80 +390,69 @@ export default function SearchScreen({ navigation, route }) {
       )}
 
       {/* ── SORT & FILTER SHEET ── */}
-      <Modal statusBarTranslucent visible={sheetVisible} transparent animationType="slide" onRequestClose={() => setSheetVisible(false)}>
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setSheetVisible(false)} />
-          <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Sort & Filter</Text>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Close filters" onPress={() => setSheetVisible(false)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                <Ionicons name="close" size={24} color={COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-              <Text style={styles.sheetSection}>Sort By</Text>
-              {SORT_OPTIONS.map((opt) => (
-                <Radio key={opt.id} label={opt.label} selected={draftSort === opt.id} onPress={() => setDraftSort(opt.id)} />
-              ))}
-
-              <Text style={styles.sheetSection}>Price Range</Text>
-              <View style={styles.priceRow}>
-                {[["minPrice", "Min", "0"], ["maxPrice", "Max", "Any"]].map(([key, label, placeholder]) => (
-                  <View key={key} style={{ flex: 1 }}>
-                    <Text style={styles.priceLabel}>{label}</Text>
-                    <View style={styles.priceInputWrap}>
-                      <Text style={styles.peso}>₱</Text>
-                      <TextInput
-                        style={styles.priceInput}
-                        keyboardType="numeric"
-                        placeholder={placeholder}
-                        placeholderTextColor={COLORS.textMuted}
-                        value={draftFilters[key]}
-                        onChangeText={(v) => setDraftFilters((f) => ({ ...f, [key]: v.replace(/[^0-9.]/g, "") }))}
-                      />
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <Text style={styles.sheetSection}>Categories</Text>
-              <Checkbox
-                label="All Categories"
-                checked={draftFilters.categories.length === 0}
-                onPress={() => setDraftFilters((f) => ({ ...f, categories: [] }))}
-              />
-              {CATEGORIES.map((c) => (
-                <Checkbox
-                  key={c.name}
-                  label={c.name}
-                  checked={draftFilters.categories.includes(c.name)}
-                  onPress={() => setDraftFilters((f) => ({ ...f, categories: toggleIn(f.categories, c.name) }))}
-                />
-              ))}
-
-              <Text style={styles.sheetSection}>Listing Type</Text>
-              {Object.entries(LISTING_TYPES).map(([id, t]) => (
-                <Checkbox
-                  key={id}
-                  label={t.label}
-                  checked={draftFilters.types.includes(id)}
-                  onPress={() => setDraftFilters((f) => ({ ...f, types: toggleIn(f.types, id) }))}
-                />
-              ))}
-            </ScrollView>
-
-            <View style={styles.sheetActions}>
-              <TouchableOpacity style={styles.resetBtn} activeOpacity={0.8} onPress={() => { setDraftSort("relevant"); setDraftFilters(EMPTY_FILTERS); }}>
-                <Text style={styles.resetText}>Reset</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.applyBtn} activeOpacity={0.85} onPress={applySheet}>
-                <Text style={styles.applyText}>Apply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+      <Sheet
+        visible={sheetVisible}
+        onClose={() => setSheetVisible(false)}
+        title="Sort & Filter"
+        subtitle="Narrow down what you're looking for"
+        icon="options"
+        cancelText="Reset"
+        onCancel={() => { setDraftSort("relevant"); setDraftFilters(EMPTY_FILTERS); }}
+        action={{ title: "Apply", icon: "checkmark", onPress: applySheet }}
+      >
+        <SheetSection title="Sort by" />
+        <View style={styles.chipWrap}>
+          {SORT_OPTIONS.map((opt) => (
+            <Chip key={opt.id} label={opt.label} selected={draftSort === opt.id} onPress={() => setDraftSort(opt.id)} />
+          ))}
         </View>
-      </Modal>
+
+        <SheetSection title="Price range" />
+        <View style={styles.priceRow}>
+          {[["minPrice", "Min", "0"], ["maxPrice", "Max", "Any"]].map(([key, label, placeholder]) => (
+            <FormField
+              key={key}
+              style={{ flex: 1 }}
+              label={label}
+              icon="cash-outline"
+              keyboardType="numeric"
+              placeholder={`₱ ${placeholder}`}
+              value={draftFilters[key]}
+              onChangeText={(v) => setDraftFilters((f) => ({ ...f, [key]: v.replace(/[^0-9.]/g, "") }))}
+            />
+          ))}
+        </View>
+
+        <SheetSection title="Categories" />
+        <View style={styles.chipWrap}>
+          <Chip
+            label="All"
+            selected={draftFilters.categories.length === 0}
+            onPress={() => setDraftFilters((f) => ({ ...f, categories: [] }))}
+          />
+          {CATEGORIES.map((c) => (
+            <Chip
+              key={c.name}
+              label={c.name}
+              emoji={c.emoji}
+              selected={draftFilters.categories.includes(c.name)}
+              onPress={() => setDraftFilters((f) => ({ ...f, categories: toggleIn(f.categories, c.name) }))}
+            />
+          ))}
+        </View>
+
+        <SheetSection title="Listing type" />
+        <View style={styles.chipWrap}>
+          {Object.entries(LISTING_TYPES).map(([id, t]) => (
+            <Chip
+              key={id}
+              label={t.label}
+              selected={draftFilters.types.includes(id)}
+              onPress={() => setDraftFilters((f) => ({ ...f, types: toggleIn(f.types, id) }))}
+            />
+          ))}
+        </View>
+      </Sheet>
     </View>
   );
 }
@@ -531,26 +514,11 @@ const createStyles = (COLORS) => StyleSheet.create({
   historyChipX: { paddingRight: 10, paddingLeft: 2, paddingVertical: 7 },
 
   // Sheet
-  sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
-  sheet: { maxHeight: "88%", backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
-  sheetHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  sheetTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary },
-  sheetSection: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginTop: 18, marginBottom: 6 },
-  checkRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 },
-  checkLabel: { fontSize: 14, color: COLORS.textPrimary },
-  checkbox: { width: 20, height: 20, borderRadius: 5, borderWidth: 1.5, borderColor: COLORS.borderStrong, alignItems: "center", justifyContent: "center" },
-  checkboxOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, borderColor: COLORS.borderStrong, alignItems: "center", justifyContent: "center" },
-  radioOn: { borderColor: COLORS.primary },
-  radioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: COLORS.primary },
-  priceRow: { flexDirection: "row", gap: 14 },
-  priceLabel: { fontSize: 12, color: COLORS.textMuted, marginBottom: 6 },
-  priceInputWrap: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: COLORS.border, borderRadius: RADIUS.md, paddingHorizontal: 12, height: 44 },
-  peso: { fontSize: 14, color: COLORS.textSecondary, marginRight: 4 },
-  priceInput: { flex: 1, fontSize: 14, color: COLORS.textPrimary, paddingVertical: 0 },
-  sheetActions: { flexDirection: "row", gap: 12, paddingTop: SPACING.lg },
-  resetBtn: { flex: 1, height: 50, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  resetText: { fontSize: 15, fontWeight: "700", color: COLORS.primary },
-  applyBtn: { flex: 1, height: 50, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  applyText: { fontSize: 15, fontWeight: "700", color: "#fff" },
+  priceRow: { flexDirection: "row", gap: 10 },
+  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
+  fChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 13, height: 36, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.border },
+  fChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  fChipEmoji: { fontSize: 14 },
+  fChipText: { fontSize: 13.5, fontWeight: "600", color: COLORS.textSecondary },
+  fChipTextOn: { color: "#fff" },
 });

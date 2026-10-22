@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Switch, Modal, KeyboardAvoidingView, Platform,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Switch,
 } from 'react-native';
+import { LinearGradient } from "expo-linear-gradient";
 import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
@@ -18,9 +19,10 @@ import * as ImagePicker from "expo-image-picker";
 import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
 import AcademicFields from "../components/AcademicFields";
+import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
-import { RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import { RADIUS, SHADOWS, FONTS, GRADIENTS } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -294,128 +296,89 @@ export default function SettingsScreen({ navigation }) {
         <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
 
-      <Modal statusBarTranslucent visible={showEditModal} transparent animationType="slide" onRequestClose={() => setShowEditModal(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowEditModal(false)} />
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Edit Profile</Text>
-
-            <TouchableOpacity style={styles.photoWrap} activeOpacity={0.85} onPress={changePhoto} disabled={uploadingPhoto} accessibilityRole="button" accessibilityLabel="Change profile photo">
-              {uploadingPhoto ? (
-                <View style={[styles.photo, styles.photoFallback]}><ActivityIndicator color={COLORS.primary} /></View>
-              ) : photoURL ? (
-                <Image source={{ uri: photoURL }} style={styles.photo} cachePolicy="memory-disk" />
-              ) : (
-                <View style={[styles.photo, styles.photoFallback]}>
-                  <Text style={styles.photoInitial}>{(name || user?.displayName || "?")[0].toUpperCase()}</Text>
-                </View>
-              )}
-              <View style={styles.photoBadge}>
-                <Ionicons name="camera" size={14} color="#fff" />
+      <Sheet
+        visible={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Profile"
+        subtitle="How other students see you"
+        icon="person"
+        busy={savingProfile}
+        action={{ title: "Save Changes", icon: "checkmark", onPress: handleSaveProfile, loading: savingProfile }}
+      >
+        <TouchableOpacity style={styles.photoWrap} activeOpacity={0.85} onPress={changePhoto} disabled={uploadingPhoto} accessibilityRole="button" accessibilityLabel="Change profile photo">
+          <LinearGradient colors={GRADIENTS.primary} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.photoRing}>
+            {uploadingPhoto ? (
+              <View style={[styles.photo, styles.photoFallback]}><ActivityIndicator color={COLORS.primary} /></View>
+            ) : photoURL ? (
+              <Image source={{ uri: photoURL }} style={styles.photo} cachePolicy="memory-disk" />
+            ) : (
+              <View style={[styles.photo, styles.photoFallback]}>
+                <Text style={styles.photoInitial}>{(name || user?.displayName || "?")[0].toUpperCase()}</Text>
               </View>
-            </TouchableOpacity>
-            <Text style={styles.photoHint}>{uploadingPhoto ? "Uploading..." : "Tap to change photo"}</Text>
-
-            <ScrollView style={styles.editFields} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.inputLabel}>Name</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="Your full name" placeholderTextColor={COLORS.textMuted} />
-            </View>
-
-            <Text style={styles.inputLabel}>Address</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={address} onChangeText={setAddress} placeholder="Your address" placeholderTextColor={COLORS.textMuted} />
-            </View>
-
-            <Text style={styles.inputLabel}>Age</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={age} onChangeText={setAge} placeholder="Your age" placeholderTextColor={COLORS.textMuted} keyboardType="numeric" maxLength={3} />
-            </View>
-
-            <AcademicFields
-              course={course}
-              onCourse={setCourse}
-              yearLevel={yearLevel}
-              onYearLevel={setYearLevel}
-              showYear={!isFaculty}
-              labelStyle={styles.inputLabel}
-            />
-            </ScrollView>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowEditModal(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, savingProfile && { opacity: 0.7 }]} onPress={handleSaveProfile} disabled={savingProfile}>
-                {savingProfile ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Save Changes</Text>}
-              </TouchableOpacity>
-            </View>
+            )}
+          </LinearGradient>
+          <View style={styles.photoBadge}>
+            <Ionicons name="camera" size={14} color="#fff" />
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        </TouchableOpacity>
+        <Text style={styles.photoHint}>{uploadingPhoto ? "Uploading..." : "Tap to change photo"}</Text>
 
-      <Modal statusBarTranslucent visible={showDeleteModal} transparent animationType="slide" onRequestClose={() => !deleting && setShowDeleteModal(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => !deleting && setShowDeleteModal(false)} />
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <Text style={[styles.modalTitle, { color: COLORS.error }]}>Delete Account</Text>
-            <Text style={styles.modalSubtitle}>
-              This permanently deletes your account, listings, photos, reviews and follows. Conversations stay visible to the people you chatted with. This cannot be undone.
-            </Text>
+        <SheetSection title="Personal info" />
+        <FormField label="Name" icon="person-outline" value={name} onChangeText={setName} placeholder="Your full name" />
+        <View style={styles.fieldRow}>
+          <FormField style={{ flex: 2 }} label="Address" icon="location-outline" value={address} onChangeText={setAddress} placeholder="Your address" />
+          <FormField style={{ flex: 1 }} label="Age" icon="calendar-outline" value={age} onChangeText={setAge} placeholder="Age" keyboardType="numeric" maxLength={3} />
+        </View>
 
-            <Text style={styles.inputLabel}>Password</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={deletePassword} onChangeText={setDeletePassword} placeholder="Enter your password" placeholderTextColor={COLORS.textMuted} secureTextEntry editable={!deleting} />
-            </View>
+        <SheetSection title="School" />
+        <AcademicFields
+          course={course}
+          onCourse={setCourse}
+          yearLevel={yearLevel}
+          onYearLevel={setYearLevel}
+          showYear={!isFaculty}
+          labelStyle={styles.inputLabel}
+        />
+      </Sheet>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowDeleteModal(false)} disabled={deleting}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, { backgroundColor: COLORS.error }, deleting && { opacity: 0.7 }]} onPress={handleConfirmDelete} disabled={deleting}>
-                {deleting ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Delete Forever</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <Sheet
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Account"
+        subtitle="This cannot be undone"
+        icon="trash"
+        tone="danger"
+        busy={deleting}
+        action={{ title: "Delete Forever", icon: "trash-outline", onPress: handleConfirmDelete, loading: deleting, danger: true }}
+      >
+        <View style={styles.dangerNote}>
+          <Ionicons name="warning" size={18} color={COLORS.error} />
+          <Text style={styles.dangerNoteText}>
+            This permanently deletes your account, listings, photos, reviews and follows. Conversations stay visible to the people you chatted with.
+          </Text>
+        </View>
+        <FormField label="Password" icon="lock-closed-outline" secure value={deletePassword} onChangeText={setDeletePassword} placeholder="Enter your password to confirm" editable={!deleting} />
+      </Sheet>
 
-      <Modal statusBarTranslucent visible={showPasswordModal} transparent animationType="slide" onRequestClose={() => setShowPasswordModal(false)}>
-        <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setShowPasswordModal(false)} />
-          <View style={styles.modalSheet}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Change Password</Text>
-            <Text style={styles.modalSubtitle}>Enter your current password to confirm it's you</Text>
-
-            <Text style={styles.inputLabel}>Current Password</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" placeholderTextColor={COLORS.textMuted} secureTextEntry />
-            </View>
-
-            <Text style={styles.inputLabel}>New Password</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} placeholder="At least 6 characters" placeholderTextColor={COLORS.textMuted} secureTextEntry />
-            </View>
-
-            <Text style={styles.inputLabel}>Confirm New Password</Text>
-            <View style={styles.inputWrapper}>
-              <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password" placeholderTextColor={COLORS.textMuted} secureTextEntry />
-            </View>
-
-            <View style={styles.modalActions}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={() => setShowPasswordModal(false)}>
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[styles.saveBtn, changingPassword && { opacity: 0.7 }]} onPress={handleChangePassword} disabled={changingPassword}>
-                {changingPassword ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveBtnText}>Update Password</Text>}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      <Sheet
+        visible={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        title="Change Password"
+        subtitle="Enter your current password to confirm it's you"
+        icon="lock-closed"
+        busy={changingPassword}
+        action={{ title: "Update Password", icon: "checkmark", onPress: handleChangePassword, loading: changingPassword }}
+      >
+        <FormField label="Current Password" icon="lock-closed-outline" secure value={currentPassword} onChangeText={setCurrentPassword} placeholder="Enter current password" />
+        <FormField
+          label="New Password" icon="key-outline" secure value={newPassword} onChangeText={setNewPassword} placeholder="At least 6 characters"
+          error={newPassword && newPassword.length < 6 ? "Must be at least 6 characters" : null}
+        />
+        <FormField
+          label="Confirm New Password" icon="key-outline" secure value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Re-enter new password"
+          error={confirmPassword && confirmPassword !== newPassword ? "Passwords don't match" : null}
+        />
+      </Sheet>
     </View>
   );
 }
@@ -460,8 +423,9 @@ const createStyles = (COLORS) => StyleSheet.create({
   deleteLink: { alignSelf: "center", paddingVertical: 14, paddingHorizontal: 12 },
   deleteLinkText: { fontSize: 13.5, color: COLORS.textMuted, textDecorationLine: "underline" },
   versionText: { textAlign: "center", fontSize: 12, color: COLORS.textMuted, marginTop: 4 },
-  photoWrap: { alignSelf: "center", marginTop: 12 },
-  photo: { width: 88, height: 88, borderRadius: 44 },
+  photoWrap: { alignSelf: "center", marginTop: 16 },
+  photoRing: { width: 100, height: 100, borderRadius: 50, alignItems: "center", justifyContent: "center" },
+  photo: { width: 92, height: 92, borderRadius: 46, borderWidth: 3, borderColor: COLORS.surface },
   photoFallback: { backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center" },
   photoInitial: { fontSize: 34, fontFamily: FONTS.heading, color: COLORS.primary },
   photoBadge: { position: "absolute", right: 0, bottom: 0, width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", borderWidth: 3, borderColor: COLORS.surface },
@@ -479,18 +443,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   settingIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginRight: 13 },
   settingLabel: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
   settingSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
-  modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
-  editFields: { maxHeight: 380 },
-  modalSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
-  modalSubtitle: { fontSize: 13, color: COLORS.textMuted, marginBottom: 16 },
   inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, marginTop: 14, marginBottom: 7 },
-  inputWrapper: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, justifyContent: "center" },
-  input: { fontSize: 15, color: COLORS.textPrimary },
-  modalActions: { flexDirection: "row", gap: 12, marginTop: 26 },
-  cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  cancelBtnText: { fontSize: 15, color: COLORS.primary, fontWeight: "700" },
-  saveBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  saveBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
+  fieldRow: { flexDirection: "row", gap: 10 },
+  dangerNote: { flexDirection: "row", gap: 10, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginTop: 14 },
+  dangerNoteText: { flex: 1, fontSize: 13, lineHeight: 19, color: COLORS.error },
 });

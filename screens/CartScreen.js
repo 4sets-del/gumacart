@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Modal,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,7 +8,8 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
-import { SPACING, RADIUS, FONTS } from "../constants/theme";
+import { SPACING, RADIUS, FONTS, colorForName } from "../constants/theme";
+import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import { listingImage, priceLabel } from "../constants/listings";
@@ -238,28 +239,30 @@ export default function CartScreen({ navigation }) {
       )}
 
       {/* Cart has items from more than one seller: pick who to contact */}
-      <Modal statusBarTranslucent visible={sellerPickerVisible} transparent animationType="slide" onRequestClose={() => setSellerPickerVisible(false)}>
-        <View style={styles.sheetOverlay}>
-          <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={() => setSellerPickerVisible(false)} />
-          <View style={[styles.sheet, { paddingBottom: 20 + insets.bottom }]}>
-            <Text style={styles.sheetTitle}>Choose a seller</Text>
-            <Text style={styles.sheetSub}>Your cart has items from {sellers.length} sellers. Check out with one at a time.</Text>
-            {sellers.map((s) => {
-              const total = s.items.filter(isPriced).reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
-              return (
-                <TouchableOpacity key={s.sellerId} style={styles.sellerRow} activeOpacity={0.8} onPress={() => checkoutWith(s)}>
-                  <View style={styles.sellerAvatar}><Text style={styles.sellerAvatarText}>{s.sellerName?.[0]?.toUpperCase() || "?"}</Text></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.sellerName}>{s.sellerName}</Text>
-                    <Text style={styles.sellerMeta}>{s.items.length} item{s.items.length !== 1 ? "s" : ""}{total > 0 ? ` · ${peso(total)}` : ""}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+      <Sheet
+        visible={sellerPickerVisible}
+        onClose={() => setSellerPickerVisible(false)}
+        title="Choose a seller"
+        subtitle={`Your cart has items from ${sellers.length} sellers. Check out with one at a time.`}
+        icon="storefront"
+        footer={null}
+      >
+        <View style={styles.sellerList}>
+          {sellers.map((s) => {
+            const total = s.items.filter(isPriced).reduce((sum, i) => sum + i.price * (i.quantity || 1), 0);
+            return (
+              <TouchableOpacity key={s.sellerId} style={styles.sellerRow} activeOpacity={0.8} onPress={() => checkoutWith(s)}>
+                <View style={[styles.sellerAvatar, { backgroundColor: colorForName(s.sellerName) }]}><Text style={styles.sellerAvatarText}>{s.sellerName?.[0]?.toUpperCase() || "?"}</Text></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.sellerName} numberOfLines={1}>{s.sellerName}</Text>
+                  <Text style={styles.sellerMeta}>{s.items.length} item{s.items.length !== 1 ? "s" : ""}{total > 0 ? ` · ${peso(total)}` : ""}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            );
+          })}
         </View>
-      </Modal>
+      </Sheet>
     </View>
   );
 }
@@ -293,15 +296,10 @@ const createStyles = (COLORS) => StyleSheet.create({
   subtotalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
   subtotalLabel: { fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
   subtotalValue: { fontSize: 18, color: COLORS.textPrimary, fontFamily: FONTS.heading },
-  checkoutBtn: { height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  checkoutText: { color: "#fff", fontSize: 15.5, fontWeight: "700" },
   footerHint: { fontSize: 11.5, color: COLORS.textMuted, textAlign: "center", marginTop: 8 },
 
-  sheetOverlay: { flex: 1, backgroundColor: COLORS.overlay },
-  sheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: SPACING.xl, paddingTop: SPACING.xl },
-  sheetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary },
-  sheetSub: { fontSize: 13, color: COLORS.textMuted, marginTop: 4, marginBottom: 10 },
-  sellerRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  sellerList: { marginTop: 10, gap: 8 },
+  sellerRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt },
   sellerAvatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   sellerAvatarText: { color: "#fff", fontFamily: FONTS.heading, fontSize: 16 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary },

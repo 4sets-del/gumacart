@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, TextInput, Modal, Image, Platform, KeyboardAvoidingView,
-} from 'react-native';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Image, } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -15,6 +14,8 @@ import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
 import { academicLabel } from "../constants/school";
+import ReportSheet from "../components/ReportSheet";
+import Sheet, { FormField } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -416,8 +417,8 @@ export default function SellerProfileScreen({ route, navigation }) {
                       <Text style={styles.reviewActionText}>Edit</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7} onPress={() => handleDeleteReview(review)}>
-                      <Ionicons name="trash-outline" size={14} color="#e74c3c" />
-                      <Text style={[styles.reviewActionText, { color: "#e74c3c" }]}>Delete</Text>
+                      <Ionicons name="trash-outline" size={14} color={COLORS.error} />
+                      <Text style={[styles.reviewActionText, { color: COLORS.error }]}>Delete</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -468,131 +469,49 @@ export default function SellerProfileScreen({ route, navigation }) {
         <View style={{ height: 40 }} />
       </ScrollView>
 
-      <Modal statusBarTranslucent visible={showRatingModal} transparent animationType="slide" onRequestClose={() => { setShowRatingModal(false); setEditingReviewId(null); }}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-        >
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => { setShowRatingModal(false); setEditingReviewId(null); }}>
-            <TouchableOpacity activeOpacity={1} style={styles.modalSheet} onPress={() => {}}>
-              <View style={styles.modalHandle} />
+      <Sheet
+        visible={showRatingModal}
+        onClose={() => { setShowRatingModal(false); setEditingReviewId(null); }}
+        title={editingReviewId ? "Edit your review" : `Rate ${sellerName}`}
+        subtitle="How was your experience with this seller?"
+        icon="star"
+        busy={submittingReview}
+        action={{ title: editingReviewId ? "Update Review" : "Submit Review", icon: "send", onPress: handleSubmitReview, loading: submittingReview }}
+      >
+        <View style={styles.starSelector}>
+          <StarRating rating={myRating} size={40} onPress={setMyRating} />
+        </View>
+        <Text style={styles.ratingLabel}>
+          {["Tap a star to rate", "😞 Poor", "😕 Fair", "😐 Good", "😊 Very Good", "🤩 Excellent!"][myRating] || "Tap a star to rate"}
+        </Text>
+        <FormField
+          label="Write a review (optional)"
+          icon="chatbox-ellipses-outline"
+          placeholder="Share your experience with this seller..."
+          value={myReview}
+          onChangeText={setMyReview}
+          multiline
+          maxLength={300}
+          hint={`${myReview.length}/300`}
+        />
+      </Sheet>
 
-              <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} bounces={false}>
-                <Text style={styles.modalTitle}>{editingReviewId ? "Edit your review" : `Rate ${sellerName}`}</Text>
-                <Text style={styles.modalSubtitle}>How was your experience with this seller?</Text>
-
-                <View style={styles.starSelector}>
-                  <StarRating rating={myRating} size={40} onPress={setMyRating} />
-                </View>
-                <Text style={styles.ratingLabel}>
-                  {myRating === 1 ? "😞 Poor" : myRating === 2 ? "😕 Fair" : myRating === 3 ? "😐 Good" : myRating === 4 ? "😊 Very Good" : myRating === 5 ? "🤩 Excellent!" : "Tap a star to rate"}
-                </Text>
-
-                <View style={styles.inputLabelRow}>
-                  <Text style={styles.inputLabel}>Write a review</Text>
-                  <Text style={styles.inputOptional}>optional</Text>
-                </View>
-                <View style={styles.reviewInputWrap}>
-                  <TextInput
-                    style={styles.reviewInput}
-                    placeholder="Share your experience with this seller..."
-                    placeholderTextColor={COLORS.textMuted}
-                    value={myReview}
-                    onChangeText={setMyReview}
-                    multiline
-                    maxLength={300}
-                    textAlignVertical="top"
-                    returnKeyType="done"
-                    blurOnSubmit
-                  />
-                </View>
-                <Text style={styles.charCount}>{myReview.length}/300</Text>
-
-                <View style={styles.modalActions}>
-                  <TouchableOpacity style={styles.cancelBtn} activeOpacity={0.7} onPress={() => { setShowRatingModal(false); setEditingReviewId(null); }}>
-                    <Text style={styles.cancelBtnText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.submitBtn, submittingReview && { opacity: 0.7 }]} activeOpacity={0.85} onPress={handleSubmitReview} disabled={submittingReview}>
-                    {submittingReview ? <ActivityIndicator color="#fff" /> : <Text style={styles.submitBtnText}>{editingReviewId ? "Update Review" : "Submit Review"}</Text>}
-                  </TouchableOpacity>
-                </View>
-              </ScrollView>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      <Modal statusBarTranslucent visible={reportVisible} transparent animationType="fade" onRequestClose={closeReport}>
-        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={closeReport}>
-          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
-            <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>Report User</Text>
-            <Text style={styles.reportSub}>
-              {pendingReason ? "Add details and proof, then submit." : `Why are you reporting ${sellerName}?`}
-            </Text>
-
-            {!pendingReason ? (
-              <>
-                {REPORT_REASONS.map((reason) => (
-                  <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="flag-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
-                    <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={closeReport}>
-                  <Text style={styles.reportCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.reasonSelected}>
-                  <Ionicons name="flag" size={18} color="#e74c3c" style={{ marginRight: 10 }} />
-                  <Text style={styles.reasonSelectedText}>{pendingReason}</Text>
-                </View>
-
-                {pendingReason === "Other" && (
-                  <>
-                    <Text style={styles.fieldLabel}>Describe the issue</Text>
-                    <TextInput
-                      style={styles.otherInput}
-                      placeholder="Tell us what's wrong…"
-                      placeholderTextColor={COLORS.textMuted}
-                      value={customReason}
-                      onChangeText={setCustomReason}
-                      multiline
-                      maxLength={200}
-                      textAlignVertical="top"
-                    />
-                  </>
-                )}
-
-                <Text style={styles.fieldLabel}>Attach proof (optional)</Text>
-                {proofImage ? (
-                  <View style={styles.proofPreviewWrap}>
-                    <Image source={{ uri: proofImage }} style={styles.proofPreview} resizeMode="cover" />
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove proof photo" style={styles.proofRemove} activeOpacity={0.8} onPress={() => setProofImage(null)}>
-                      <Ionicons name="close-circle" size={26} color="#e74c3c" />
-                    </TouchableOpacity>
-                  </View>
-                ) : (
-                  <TouchableOpacity style={styles.proofAddBtn} activeOpacity={0.8} onPress={pickProofImage}>
-                    <Ionicons name="camera-outline" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-                    <Text style={styles.proofAddText}>Add a screenshot or photo</Text>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity style={[styles.reportSubmit, uploadingReport && { opacity: 0.7 }]} activeOpacity={0.85} onPress={submitReport} disabled={uploadingReport}>
-                  {uploadingReport ? <ActivityIndicator color="#fff" /> : <Text style={styles.reportSubmitText}>Submit Report</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => { setPendingReason(null); setProofImage(null); setCustomReason(""); }} disabled={uploadingReport}>
-                  <Text style={styles.reportCancelText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <ReportSheet
+        visible={reportVisible}
+        onClose={closeReport}
+        title="Report User"
+        question={`Why are you reporting ${sellerName}?`}
+        reasons={REPORT_REASONS}
+        reason={pendingReason}
+        onReason={(r) => { setPendingReason(r); if (!r) { setProofImage(null); setCustomReason(""); } }}
+        details={customReason}
+        onDetails={setCustomReason}
+        proof={proofImage}
+        onPickProof={pickProofImage}
+        onRemoveProof={() => setProofImage(null)}
+        onSubmit={submitReport}
+        submitting={uploadingReport}
+      />
     </View>
   );
 }
@@ -668,43 +587,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   emptyText: { fontSize: 14, color: COLORS.textMuted, marginBottom: 14 },
   emptyBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 20, paddingVertical: 11 },
   emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
-  modalOverlay: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: "flex-end" },
-  modalSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 24, paddingTop: 12, paddingBottom: 30, maxHeight: "88%" },
-  modalHandle: { width: 40, height: 4, backgroundColor: COLORS.border, borderRadius: 2, alignSelf: "center", marginBottom: 18 },
-  modalTitle: { fontSize: 21, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4, letterSpacing: -0.3 },
-  modalSubtitle: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 22 },
   starSelector: { alignItems: "center", marginBottom: 12 },
   ratingLabel: { fontSize: 16, color: COLORS.textPrimary, textAlign: "center", marginBottom: 24, fontWeight: "700" },
-  inputLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
-  inputLabel: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary },
-  inputOptional: { fontSize: 12, color: COLORS.textMuted, fontWeight: "600" },
-  reviewInputWrap: { backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 4, paddingVertical: 2 },
-  reviewInput: { fontSize: 15, color: COLORS.textPrimary, minHeight: 120, maxHeight: 180, padding: 14, lineHeight: 21 },
-  charCount: { fontSize: 11.5, color: COLORS.textMuted, textAlign: "right", marginTop: 6, marginBottom: 20 },
-  modalActions: { flexDirection: "row", gap: 12 },
-  cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  cancelBtnText: { fontSize: 15, color: COLORS.primary, fontWeight: "700" },
-  submitBtn: { flex: 2, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  submitBtnText: { fontSize: 15, color: "#fff", fontWeight: "700" },
 
-  reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  reasonText: { flex: 1, fontSize: 15, color: COLORS.textPrimary, fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 14 },
-  reasonSelectedText: { flex: 1, fontSize: 14.5, fontWeight: "700", color: COLORS.error },
-  fieldLabel: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary, marginBottom: 8 },
-  otherInput: { backgroundColor: COLORS.surfaceAlt, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.border, padding: 12, fontSize: 14, color: COLORS.textPrimary, minHeight: 70, marginBottom: 16 },
-  proofAddBtn: { flexDirection: "row", alignItems: "center", justifyContent: "center", height: 52, borderRadius: 12, borderWidth: 1.5, borderColor: COLORS.primary, borderStyle: "dashed", marginBottom: 16 },
-  proofAddText: { fontSize: 14, color: COLORS.primary, fontWeight: "700" },
-  proofPreviewWrap: { position: "relative", marginBottom: 16, alignSelf: "flex-start" },
-  proofPreview: { width: 120, height: 120, borderRadius: 12, borderWidth: 1, borderColor: COLORS.border },
-  proofRemove: { position: "absolute", top: -8, right: -8, backgroundColor: COLORS.surface, borderRadius: 13 },
-  reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center" },
-  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
-  reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 });

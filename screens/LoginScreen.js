@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, ActivityIndicator, Modal, Image, Dimensions,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image, Dimensions,
 } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,6 +8,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../firebaseConfig';
 import { RADIUS, FONTS } from '../constants/theme';
+import Sheet, { FormField } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
 import StatusBarScrim from '../components/StatusBarScrim';
@@ -166,80 +167,42 @@ export default function LoginScreen({ navigation }) {
       </KeyboardAvoidingView>
 
       {/* Forgot password sheet */}
-      <Modal statusBarTranslucent
+      <Sheet
         visible={resetVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setResetVisible(false)}
+        onClose={() => setResetVisible(false)}
+        title={resetSent ? "Check your email" : "Reset your password"}
+        subtitle={resetSent
+          ? `If an account exists for ${resetEmail.trim()}, a reset link has been sent.`
+          : "We'll email you a link to create a new password."}
+        icon={resetSent ? "mail-open" : "lock-open"}
+        busy={resetSending}
+        action={resetSent
+          ? null
+          : { title: "Send Reset Link", icon: "send", onPress: handleResetPassword, loading: resetSending }}
+        footer={resetSent ? (
+          <View style={styles.resetFooter}>
+            <GradientButton title="Back to Login" icon="arrow-back" onPress={() => setResetVisible(false)} />
+          </View>
+        ) : undefined}
       >
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-        <TouchableOpacity style={styles.resetOverlay} activeOpacity={1} onPress={() => setResetVisible(false)}>
-          <TouchableOpacity style={styles.resetSheet} activeOpacity={1}>
-            <View style={styles.resetHandle} />
-
-            {!resetSent ? (
-              <>
-                <View style={styles.resetIconCircle}>
-                  <Ionicons name="lock-open-outline" size={26} color={COLORS.primary} />
-                </View>
-                <Text style={styles.resetTitle}>Reset your password</Text>
-                <Text style={styles.resetSub}>
-                  Enter the email you signed up with. We'll send you a link to create a new password.
-                </Text>
-
-                <View style={styles.resetInputWrap}>
-                  <Ionicons name="mail-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
-                  <TextInput
-                    style={styles.resetInput}
-                    placeholder="yourname@slsu.edu.ph"
-                    placeholderTextColor={COLORS.textMuted}
-                    value={resetEmail}
-                    onChangeText={setResetEmail}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                  />
-                </View>
-
-                <TouchableOpacity
-                  style={[styles.resetBtn, resetSending && { opacity: 0.7 }]}
-                  activeOpacity={0.85}
-                  onPress={handleResetPassword}
-                  disabled={resetSending}
-                >
-                  {resetSending
-                    ? <ActivityIndicator color="#fff" />
-                    : <Text style={styles.resetBtnText}>Send Reset Link</Text>}
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.resetCancel} activeOpacity={0.7} onPress={() => setResetVisible(false)}>
-                  <Text style={styles.resetCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={[styles.resetIconCircle, { backgroundColor: COLORS.primaryPale }]}>
-                  <Ionicons name="mail-open-outline" size={26} color={COLORS.primary} />
-                </View>
-                <Text style={styles.resetTitle}>Check your email</Text>
-                <Text style={styles.resetSub}>
-                  If an account exists for {resetEmail.trim()}, a password reset link has been sent.
-                </Text>
-                <View style={styles.resetSpamNote}>
-                  <Ionicons name="alert-circle-outline" size={15} color="#e67e22" style={{ marginRight: 8 }} />
-                  <Text style={styles.resetSpamText}>
-                    Can't find it? Check your Spam or Junk folder.
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.resetBtn} activeOpacity={0.85} onPress={() => setResetVisible(false)}>
-                  <Text style={styles.resetBtnText}>Back to Login</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
+        {resetSent ? (
+          <View style={styles.resetSpamNote}>
+            <Ionicons name="alert-circle-outline" size={16} color={COLORS.warning} />
+            <Text style={styles.resetSpamText}>Can't find it? Check your Spam or Junk folder.</Text>
+          </View>
+        ) : (
+          <FormField
+            label="SLSU Email"
+            icon="mail-outline"
+            placeholder="yourname@slsu.edu.ph"
+            value={resetEmail}
+            onChangeText={setResetEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        )}
+      </Sheet>
     </View>
   );
 }
@@ -266,18 +229,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   // Forgot password
   forgotBtn: { alignSelf: 'flex-end', paddingVertical: 10, paddingLeft: 8 },
   forgotText: { fontSize: 13.5, color: COLORS.primary, fontWeight: '600' },
-  resetOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  resetSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 22, paddingTop: 10, paddingBottom: 30, alignItems: 'center' },
-  resetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 18 },
-  resetIconCircle: { width: 58, height: 58, borderRadius: 29, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
-  resetTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },
-  resetSub: { fontSize: 13.5, color: COLORS.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 20 },
-  resetInputWrap: { flexDirection: 'row', alignItems: 'center', width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, paddingHorizontal: 14, marginBottom: 16 },
-  resetInput: { flex: 1, fontSize: 15, color: COLORS.textPrimary },
-  resetBtn: { width: '100%', height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  resetBtnText: { fontSize: 15.5, fontFamily: FONTS.heading, color: '#fff' },
-  resetCancel: { height: 48, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  resetCancelText: { fontSize: 15, fontWeight: '700', color: COLORS.textSecondary },
-  resetSpamNote: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.warningLight, borderRadius: 12, padding: 12, marginBottom: 20, width: '100%' },
-  resetSpamText: { flex: 1, fontSize: 12.5, color: COLORS.warning, lineHeight: 18 },
+  resetSpamNote: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 12, marginTop: 14 },
+  resetFooter: { paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border },
+  resetSpamText: { flex: 1, fontSize: 13, color: COLORS.warning },
 });

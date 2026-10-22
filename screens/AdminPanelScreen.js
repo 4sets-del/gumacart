@@ -13,6 +13,7 @@ import { httpsCallable } from "firebase/functions";
 import { useActiveListings } from "../utils/useListings";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
+import Sheet, { SheetOption, SheetChoice } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 
 const AMBER = COLORS.warning;
@@ -866,7 +867,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardSub} numberOfLines={1}>Reported by {report.reporterName || "someone"}</Text>
                         <Text style={[styles.cardSub, { marginTop: 2 }]} numberOfLines={1}>{report.reason}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? "#E8F4EC" : "#F2F2F2" }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? COLORS.primaryPale : COLORS.surfaceAlt }]}>
                         <Text style={[styles.statusBadgeText, { color: report.status === "resolved" ? COLORS.primary : "#999" }]}>
                           {report.status === "resolved" ? "✓ Resolved" : "○ Dismissed"}
                         </Text>
@@ -944,7 +945,7 @@ export default function AdminPanelScreen({ navigation }) {
                         <Text style={styles.cardName}>{appeal.userName || "User"}</Text>
                         <Text style={styles.cardSub}>{appeal.userEmail}</Text>
                       </View>
-                      <View style={[styles.statusBadge, { backgroundColor: appeal.status === "approved" ? "#E8F4EC" : "#F2F2F2" }]}>
+                      <View style={[styles.statusBadge, { backgroundColor: appeal.status === "approved" ? COLORS.primaryPale : COLORS.surfaceAlt }]}>
                         <Text style={[styles.statusBadgeText, { color: appeal.status === "approved" ? COLORS.primary : "#999" }]}>
                           {appeal.status === "approved" ? "✓ Restored" : "✕ Declined"}
                         </Text>
@@ -1014,110 +1015,60 @@ export default function AdminPanelScreen({ navigation }) {
       </ScrollView>
       </View>
 
-      <Modal statusBarTranslucent visible={rejectVisible} transparent animationType="fade" onRequestClose={() => { setRejectVisible(false); setPendingReason(null); }}>
-        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => { setRejectVisible(false); setPendingReason(null); }}>
-          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
-            <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>Reject Verification</Text>
-            <Text style={styles.reportSub}>
-              {pendingReason ? "The student will be notified and can re-submit." : "Select the reason for rejection:"}
-            </Text>
-            {!pendingReason ? (
-              <>
-                {REJECT_REASONS.map((reason) => (
-                  <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setPendingReason(reason)}>
-                    <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
-                    <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => { setRejectVisible(false); setPendingReason(null); }}>
-                  <Text style={styles.reportCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.reasonSelected}>
-                  <Ionicons name="alert-circle" size={18} color="#e74c3c" style={{ marginRight: 10 }} />
-                  <Text style={styles.reasonSelectedText}>{pendingReason}</Text>
-                </View>
-                <TouchableOpacity style={styles.reportSubmit} activeOpacity={0.85} onPress={submitReject}>
-                  <Text style={styles.reportSubmitText}>Reject Verification</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setPendingReason(null)}>
-                  <Text style={styles.reportCancelText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <Sheet
+        visible={rejectVisible}
+        onClose={() => { setRejectVisible(false); setPendingReason(null); }}
+        title="Reject Verification"
+        subtitle={pendingReason ? "The student will be notified and can re-submit." : "Select the reason for rejection"}
+        icon="close-circle"
+        tone="danger"
+        cancelText="Back"
+        onCancel={() => setPendingReason(null)}
+        footer={pendingReason ? undefined : null}
+        action={{ title: "Reject", icon: "close", onPress: submitReject, danger: true }}
+      >
+        {!pendingReason ? (
+          REJECT_REASONS.map((reason) => (
+            <SheetOption key={reason} icon="alert-circle-outline" tone="danger" label={reason} onPress={() => setPendingReason(reason)} />
+          ))
+        ) : (
+          <SheetChoice icon="alert-circle" label={pendingReason} onChange={() => setPendingReason(null)} />
+        )}
+      </Sheet>
 
-      <Modal statusBarTranslucent visible={banVisible} transparent animationType="fade" onRequestClose={() => setBanVisible(false)}>
-        <TouchableOpacity style={styles.reportOverlay} activeOpacity={1} onPress={() => setBanVisible(false)}>
-          <TouchableOpacity style={styles.reportSheet} activeOpacity={1}>
-            <View style={styles.reportHandle} />
-            <Text style={styles.reportTitle}>Suspend {banUserName}</Text>
-            <Text style={styles.reportSub}>
-              {!banReason ? "Step 1 — choose a reason:" : !banDuration ? "Step 2 — choose a duration:" : "Confirm the suspension:"}
-            </Text>
-
-            {!banReason ? (
-              <>
-                {BAN_REASONS.map((reason) => (
-                  <TouchableOpacity key={reason} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setBanReason(reason)}>
-                    <Ionicons name="alert-circle-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 12 }} />
-                    <Text style={styles.reasonText}>{reason}</Text>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setBanVisible(false)}>
-                  <Text style={styles.reportCancelText}>Cancel</Text>
-                </TouchableOpacity>
-              </>
-            ) : !banDuration ? (
-              <>
-                <View style={styles.reasonSelected}>
-                  <Ionicons name="alert-circle" size={18} color={RED} style={{ marginRight: 10 }} />
-                  <Text style={styles.reasonSelectedText}>{banReason}</Text>
-                </View>
-                {BAN_DURATIONS.map((d) => (
-                  <TouchableOpacity key={d.key} style={styles.reasonRow} activeOpacity={0.7} onPress={() => setBanDuration(d.key)}>
-                    <Ionicons name={d.key === "permanent" ? "ban" : "time-outline"} size={18} color={d.key === "permanent" ? RED : "#666"} style={{ marginRight: 12 }} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.reasonText}>{d.label}</Text>
-                      <Text style={{ fontSize: 12, color: COLORS.textMuted, marginTop: 1 }}>{d.sub}</Text>
-                    </View>
-                    <Ionicons name="chevron-forward" size={18} color={COLORS.textMuted} />
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setBanReason(null)}>
-                  <Text style={styles.reportCancelText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <View style={styles.reasonSelected}>
-                  <Ionicons name="alert-circle" size={18} color={RED} style={{ marginRight: 10 }} />
-                  <Text style={styles.reasonSelectedText}>{banReason}</Text>
-                </View>
-                <View style={[styles.reasonSelected, { backgroundColor: COLORS.warningLight }]}>
-                  <Ionicons name="time" size={18} color={COLORS.warning} style={{ marginRight: 10 }} />
-                  <Text style={[styles.reasonSelectedText, { color: COLORS.warning }]}>
-                    {BAN_DURATIONS.find((d) => d.key === banDuration)?.label}
-                  </Text>
-                </View>
-                <TouchableOpacity style={styles.reportSubmit} activeOpacity={0.85} onPress={submitBan}>
-                  <Text style={styles.reportSubmitText}>Suspend User</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.reportCancel} activeOpacity={0.7} onPress={() => setBanDuration(null)}>
-                  <Text style={styles.reportCancelText}>Go Back</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+      <Sheet
+        visible={banVisible}
+        onClose={() => setBanVisible(false)}
+        title={`Suspend ${banUserName}`}
+        subtitle={!banReason ? "Step 1 of 3 · Choose a reason" : !banDuration ? "Step 2 of 3 · Choose a duration" : "Step 3 of 3 · Confirm the suspension"}
+        icon="ban"
+        tone="danger"
+        cancelText="Back"
+        onCancel={() => setBanDuration(null)}
+        footer={banReason && banDuration ? undefined : null}
+        action={{ title: "Suspend User", icon: "ban", onPress: submitBan, danger: true }}
+      >
+        {banReason ? <SheetChoice icon="alert-circle" label={banReason} onChange={() => { setBanReason(null); setBanDuration(null); }} /> : null}
+        {banDuration ? (
+          <SheetChoice icon="time" tone="warning" label={BAN_DURATIONS.find((d) => d.key === banDuration)?.label} onChange={() => setBanDuration(null)} />
+        ) : null}
+        {!banReason
+          ? BAN_REASONS.map((reason) => (
+              <SheetOption key={reason} icon="alert-circle-outline" tone="danger" label={reason} onPress={() => setBanReason(reason)} />
+            ))
+          : !banDuration
+            ? BAN_DURATIONS.map((d) => (
+                <SheetOption
+                  key={d.key}
+                  icon={d.key === "permanent" ? "ban" : "time-outline"}
+                  tone={d.key === "permanent" ? "danger" : "warning"}
+                  label={d.label}
+                  sub={d.sub}
+                  onPress={() => setBanDuration(d.key)}
+                />
+              ))
+            : null}
+      </Sheet>
 
       <Modal statusBarTranslucent visible={!!viewerImage} transparent animationType="fade" onRequestClose={() => setViewerImage(null)}>
         <View style={styles.viewerOverlay}>
@@ -1149,11 +1100,11 @@ function StatBox({ num, label, color, onPress }) {
 function StatusBadge({ status }) {
   const { COLORS, styles } = useTheme(createStyles);
   const config = {
-    pending:    { color: AMBER, bg: "#FFF3E0", label: "⏳ Pending" },
-    verified:   { color: COLORS.primary, bg: "#E8F4EC", label: "✓ Verified" },
-    rejected:   { color: RED,   bg: "#FDECEA", label: "✕ Rejected" },
-    unverified: { color: COLORS.textMuted, bg: "#F2F2F2", label: "○ Unverified" },
-    banned:     { color: RED,   bg: "#FDECEA", label: "Banned" },
+    pending:    { color: COLORS.warning, bg: COLORS.warningLight, label: "⏳ Pending" },
+    verified:   { color: COLORS.primary, bg: COLORS.primaryPale, label: "✓ Verified" },
+    rejected:   { color: COLORS.error, bg: COLORS.errorLight, label: "✕ Rejected" },
+    unverified: { color: COLORS.textMuted, bg: COLORS.surfaceAlt, label: "○ Unverified" },
+    banned:     { color: COLORS.error, bg: COLORS.errorLight, label: "Banned" },
   };
   const c = config[status] || config.unverified;
   return (
@@ -1198,8 +1149,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   statDivider: { width: 1, backgroundColor: COLORS.border },
   tabs: { flexDirection: "row", backgroundColor: COLORS.surface, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
   tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: RADIUS.md },
-  tabActive: { backgroundColor: COLORS.primaryPale },
-  tabIcon: { fontSize: 18, marginBottom: 3 },
   tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600" },
   tabLabelActive: { color: COLORS.primary, fontFamily: FONTS.heading },
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
@@ -1225,7 +1174,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   cardSub: { fontSize: 12, color: COLORS.textMuted },
   listingImageBox: { width: 54, height: 54, borderRadius: 12, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginRight: 12, overflow: "hidden" },
   listingThumb: { width: 54, height: 54, resizeMode: "cover" },
-  listingThumbPlaceholder: { fontSize: 24 },
   typePill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
   typePillText: { color: "#fff", fontSize: 9, fontFamily: FONTS.heading },
   countPill: { marginTop: 6, backgroundColor: RED, borderRadius: 8, paddingHorizontal: 7, paddingVertical: 2 },
@@ -1260,22 +1208,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   deleteUserBtnText: { fontSize: 13, fontWeight: "700", color: "#fff" },
   emptyState: { alignItems: "center", paddingVertical: 60 },
   emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 16 },
-  emptyIcon: { fontSize: 38 },
   emptyText: { fontSize: 14, color: COLORS.textMuted },
 
-  reportOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
-  reportSheet: { backgroundColor: COLORS.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 28 },
-  reportHandle: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: COLORS.border, marginBottom: 16 },
-  reportTitle: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 4 },
-  reportSub: { fontSize: 13.5, color: COLORS.textMuted, marginBottom: 16 },
-  reasonRow: { flexDirection: "row", alignItems: "center", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: COLORS.border },
-  reasonText: { flex: 1, fontSize: 14.5, color: COLORS.textPrimary, fontWeight: "500" },
-  reasonSelected: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.errorLight, borderRadius: 12, padding: 14, marginBottom: 12 },
-  reasonSelectedText: { flex: 1, fontSize: 14, fontWeight: "700", color: COLORS.error },
-  reportSubmit: { height: 52, borderRadius: 14, backgroundColor: "#e74c3c", alignItems: "center", justifyContent: "center", marginTop: 6 },
-  reportSubmitText: { fontSize: 15, fontFamily: FONTS.heading, color: "#fff" },
-  reportCancel: { height: 50, borderRadius: 14, alignItems: "center", justifyContent: "center", marginTop: 10 },
-  reportCancelText: { fontSize: 15, fontWeight: "700", color: COLORS.textSecondary },
 
   expandHint: { position: "absolute", bottom: 8, right: 8, flexDirection: "row", alignItems: "center", backgroundColor: "rgba(0,0,0,0.6)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
   expandHintText: { color: "#fff", fontSize: 11, fontWeight: "600", marginLeft: 4 },
