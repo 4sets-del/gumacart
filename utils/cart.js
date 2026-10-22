@@ -1,6 +1,7 @@
 import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { listingImage, listingTitle } from '../constants/listings';
+import { markInterested } from './interest';
 
 export async function addToCart(uid, listing) {
   await setDoc(doc(db, 'users', uid, 'cart', listing.id), {
@@ -15,6 +16,7 @@ export async function addToCart(uid, listing) {
     quantity: 1,
     addedAt: serverTimestamp(),
   });
+  markInterested(listing);
 }
 
 export async function removeFromCart(uid, listingId) {

@@ -80,6 +80,13 @@ service cloud.firestore {
       allow update: if request.auth != null
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
         && request.resource.data.viewCount == resource.data.get('viewCount', 0) + 1;
+
+      // People interested in this listing: each person adds or removes only
+      // their own entry; any signed-in user (e.g. the seller) can read them.
+      match /interested/{uid} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null && request.auth.uid == uid;
+      }
     }
     match /conversations/{convId} {
       allow read, write: if request.auth != null && !isActivelyBanned();

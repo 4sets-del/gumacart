@@ -20,6 +20,7 @@ import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
 import * as Linking from "expo-linking";
 import { getUserBasics } from "../utils/userCache";
+import { markInterested, getInterested } from "../utils/interest";
 import { normalizeCategory, priceLabel, typeMeta } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 import { addToCart, removeFromCart } from "../utils/cart";
@@ -188,6 +189,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleMessageSeller = async () => {
+    markInterested(product);
     try {
       const ids = [currentUser.uid, product.sellerId].sort();
       const conversationId = `${ids[0]}_${ids[1]}`;
