@@ -117,7 +117,7 @@ export default function LoginScreen({ navigation }) {
               <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 style={styles.input}
-                placeholder="you@example.com"
+                placeholder="yourname@slsu.edu.ph"
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -191,7 +191,7 @@ export default function LoginScreen({ navigation }) {
                   <Ionicons name="mail-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
                   <TextInput
                     style={styles.resetInput}
-                    placeholder="your.email@example.com"
+                    placeholder="yourname@slsu.edu.ph"
                     placeholderTextColor={COLORS.textMuted}
                     value={resetEmail}
                     onChangeText={setResetEmail}

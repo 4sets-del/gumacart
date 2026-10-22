@@ -13,16 +13,16 @@ import { RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
 
 
+// No email step: every account already signed up with a verified SLSU email
+// (see constants/school.js), so only the student ID is checked here.
 const STEPS = [
-  { id: 1, title: "School Email", icon: "mail" },
-  { id: 2, title: "Student ID Number", icon: "card" },
-  { id: 3, title: "ID Photo", icon: "camera" },
+  { id: 1, title: "Student ID Number", icon: "card" },
+  { id: 2, title: "ID Photo", icon: "camera" },
 ];
 
 export default function VerificationScreen({ navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
   const [currentStep, setCurrentStep] = useState(1);
-  const [schoolEmail, setSchoolEmail] = useState("");
   const [studentId, setStudentId] = useState("");
   const [idPhoto, setIdPhoto] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -45,12 +45,6 @@ export default function VerificationScreen({ navigation }) {
     loadStatus();
   }, []);
   const user = auth.currentUser;
-
-  const validateEmail = () => {
-    if (!schoolEmail.trim()) { Alert.alert("Required", "Please enter your school email."); return false; }
-    if (!schoolEmail.toLowerCase().endsWith("@slsu.edu.ph")) { Alert.alert("Invalid Email", "Please use your SLSU school email ending in @slsu.edu.ph"); return false; }
-    return true;
-  };
 
   const validateStudentId = () => {
     if (!studentId.trim()) { Alert.alert("Required", "Please enter your Student ID number."); return false; }
@@ -81,9 +75,8 @@ export default function VerificationScreen({ navigation }) {
   };
 
   const handleNext = () => {
-    if (currentStep === 1 && !validateEmail()) return;
-    if (currentStep === 2 && !validateStudentId()) return;
-    if (currentStep < 3) setCurrentStep(currentStep + 1);
+    if (currentStep === 1 && !validateStudentId()) return;
+    if (currentStep < STEPS.length) setCurrentStep(currentStep + 1);
   };
 
   const handleSubmit = async () => {
@@ -95,7 +88,7 @@ export default function VerificationScreen({ navigation }) {
       const idPhotoUrl = await uploadFile(idPhoto, filename, { maxSize: 1800, quality: 0.8 });
       await updateDoc(doc(db, "users", user.uid), {
         verification: {
-          schoolEmail: schoolEmail.trim().toLowerCase(),
+          schoolEmail: (user.email || "").toLowerCase(),
           studentId: studentId.trim(),
           idPhotoUrl,
           status: "pending",
@@ -149,6 +142,16 @@ export default function VerificationScreen({ navigation }) {
             </View>
           )}
 
+          {/* The SLSU email was already confirmed at sign-up */}
+          <View style={styles.emailDone}>
+            <Ionicons name="mail" size={18} color={COLORS.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.emailDoneLabel}>SLSU email verified</Text>
+              <Text style={styles.emailDoneValue} numberOfLines={1}>{user?.email}</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />
+          </View>
+
           {/* Progress bar */}
           <View style={styles.progressHeader}>
             <Text style={styles.progressText}>Step {currentStep} of {STEPS.length}</Text>
@@ -183,26 +186,6 @@ export default function VerificationScreen({ navigation }) {
           {currentStep === 1 && (
             <View style={styles.stepContent}>
               <View style={styles.stepIconCircle}>
-                <Ionicons name="mail" size={34} color={COLORS.primary} />
-              </View>
-              <Text style={styles.stepTitle}>School Email</Text>
-              <Text style={styles.stepDesc}>Enter your official SLSU school email address to verify you're a student.</Text>
-              <Text style={styles.inputLabel}>School Email</Text>
-              <View style={styles.inputWrapper}>
-                <Ionicons name="mail-outline" size={19} color={COLORS.textMuted} style={{ marginRight: 10 }} />
-                <TextInput style={styles.input} placeholder="yourname@slsu.edu.ph" placeholderTextColor={COLORS.textMuted} value={schoolEmail} onChangeText={setSchoolEmail} autoCapitalize="none" keyboardType="email-address" />
-              </View>
-              <View style={styles.infoBox}>
-                <Ionicons name="information-circle" size={17} color={COLORS.primary} style={{ marginRight: 8 }} />
-                <Text style={styles.infoText}>Only @slsu.edu.ph email addresses are accepted. Contact your registrar if you don't have one.</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Step 2 */}
-          {currentStep === 2 && (
-            <View style={styles.stepContent}>
-              <View style={styles.stepIconCircle}>
                 <Ionicons name="card" size={34} color={COLORS.primary} />
               </View>
               <Text style={styles.stepTitle}>Student ID Number</Text>
@@ -219,8 +202,8 @@ export default function VerificationScreen({ navigation }) {
             </View>
           )}
 
-          {/* Step 3 */}
-          {currentStep === 3 && (
+          {/* Step 2 */}
+          {currentStep === 2 && (
             <View style={styles.stepContent}>
               <View style={styles.stepIconCircle}>
                 <Ionicons name="camera" size={34} color={COLORS.primary} />
@@ -289,7 +272,7 @@ export default function VerificationScreen({ navigation }) {
                     <Ionicons name="mail-outline" size={14} color={COLORS.textMuted} style={{ marginRight: 6 }} />
                     <Text style={styles.summaryLabel}>School Email</Text>
                   </View>
-                  <Text style={styles.summaryValue}>{schoolEmail}</Text>
+                  <Text style={styles.summaryValue} numberOfLines={1}>{user?.email}</Text>
                 </View>
                 <View style={styles.summaryRow}>
                   <View style={styles.summaryLabelRow}>
@@ -320,7 +303,7 @@ export default function VerificationScreen({ navigation }) {
                 <Text style={styles.backStepBtnText}>Back</Text>
               </TouchableOpacity>
             )}
-            {currentStep < 3 ? (
+            {currentStep < STEPS.length ? (
               <TouchableOpacity style={styles.nextBtn} activeOpacity={0.85} onPress={handleNext}>
                 <Text style={styles.nextBtnText}>Next</Text>
                 <Ionicons name="arrow-forward" size={16} color="#fff" style={{ marginLeft: 4 }} />
@@ -351,6 +334,9 @@ const createStyles = (COLORS) => StyleSheet.create({
   // Pending banner
   pendingBanner: { flexDirection: "row", alignItems: "center", backgroundColor: COLORS.warningLight, borderRadius: RADIUS.lg, padding: 13, marginBottom: 20 },
   pendingText: { flex: 1, fontSize: 12.5, color: COLORS.warning, lineHeight: 18 },
+  emailDone: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.lg, paddingHorizontal: 14, paddingVertical: 11, marginBottom: 20 },
+  emailDoneLabel: { fontSize: 12, fontWeight: "700", color: COLORS.primary },
+  emailDoneValue: { fontSize: 13.5, color: COLORS.textPrimary, marginTop: 1 },
   stepsRow: { flexDirection: "row", alignItems: "center", marginBottom: 32 },
   stepItem: { alignItems: "center", flex: 1 },
   stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginBottom: 6, borderWidth: 2, borderColor: COLORS.border },

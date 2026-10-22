@@ -11,6 +11,7 @@ import { auth, db } from '../firebaseConfig';
 import { RADIUS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
+import { SCHOOL_DOMAIN, isSchoolEmail } from '../constants/school';
 
 export default function SignupScreen({ navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
@@ -24,6 +25,9 @@ export default function SignupScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [role, setRole] = useState('student'); // 'student' | 'faculty'
 
+  // Shown in red once they've typed a full email that isn't an SLSU one.
+  const emailWrong = email.includes('@') && !isSchoolEmail(email);
+
   const addressRef = useRef(null);
   const ageRef = useRef(null);
   const emailRef = useRef(null);
@@ -36,6 +40,10 @@ export default function SignupScreen({ navigation }) {
     }
     if (isNaN(age) || Number(age) < 12 || Number(age) > 100) {
       Alert.alert('Invalid age', 'Please enter a valid age.');
+      return;
+    }
+    if (!isSchoolEmail(email)) {
+      Alert.alert('SLSU email required', `GumaCart is only for the SLSU community. Please sign up with your institutional email ending in @${SCHOOL_DOMAIN}.`);
       return;
     }
     if (password.length < 6) {
@@ -61,12 +69,12 @@ export default function SignupScreen({ navigation }) {
   const createAccount = async (isFacultyRequest) => {
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
       await updateProfile(user, { displayName: name });
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid, name, address,
-        age: Number(age), email: email.trim(),
+        age: Number(age), email: email.trim().toLowerCase(),
         createdAt: serverTimestamp(),
         role: 'student',
         facultyRequest: isFacultyRequest ? 'pending' : 'none',
@@ -183,13 +191,13 @@ export default function SignupScreen({ navigation }) {
               />
             </View>
 
-            <Text style={styles.fieldLabel}>Email</Text>
+            <Text style={styles.fieldLabel}>SLSU Email</Text>
             <View style={styles.inputBox}>
               <Ionicons name="mail-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 ref={emailRef}
                 style={styles.input}
-                placeholder="Enter your email"
+                placeholder={`yourname@${SCHOOL_DOMAIN}`}
                 placeholderTextColor={COLORS.textMuted}
                 value={email}
                 onChangeText={setEmail}
@@ -198,6 +206,13 @@ export default function SignupScreen({ navigation }) {
                 returnKeyType="next"
                 onSubmitEditing={() => passwordRef.current?.focus()}
               />
+              {isSchoolEmail(email) && <Ionicons name="checkmark-circle" size={20} color={COLORS.primary} />}
+            </View>
+            <View style={styles.helpRow}>
+              <Ionicons name="school-outline" size={14} color={emailWrong ? COLORS.error : COLORS.textMuted} />
+              <Text style={[styles.helpText, emailWrong && { color: COLORS.error }]}>
+                Use your institutional email (@{SCHOOL_DOMAIN}). Personal emails aren't accepted.
+              </Text>
             </View>
 
             <Text style={styles.fieldLabel}>Password</Text>
@@ -264,6 +279,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   roleTextActive: { color: '#fff' },
   inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52 },
   inputIcon: { marginRight: 10 },
+  helpRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
+  helpText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: COLORS.textMuted },
   input: { flex: 1, fontSize: 15, color: COLORS.textPrimary, paddingVertical: 0 },
   signupBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 28 },
   signupBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },

@@ -40,6 +40,7 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import SchoolEmailRequiredScreen from '../screens/SchoolEmailRequiredScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
 import { auth, db } from '../firebaseConfig';
 
@@ -209,6 +210,14 @@ function EmailVerifyStack() {
   );
 }
 
+function SchoolEmailStack() {
+  return (
+    <Stack.Navigator screenOptions={STACK_OPTIONS}>
+      <Stack.Screen name="SchoolEmailRequired" component={SchoolEmailRequiredScreen} />
+    </Stack.Navigator>
+  );
+}
+
 function BannedStack() {
   return (
     <Stack.Navigator screenOptions={STACK_OPTIONS}>
@@ -218,7 +227,7 @@ function BannedStack() {
 }
 
 export default function AppNavigator() {
-  const { user, loading, emailVerified, isBanned } = useAuth();
+  const { user, loading, emailVerified, isBanned, schoolAccess } = useAuth();
   const navigationRef = useRef(null);
   const { COLORS, isDark } = useTheme();
 
@@ -283,6 +292,8 @@ export default function AppNavigator() {
     <NavigationContainer ref={navigationRef} theme={navTheme} linking={LINKING}>
       {!user
         ? <AuthStack />
+        : !schoolAccess
+          ? <SchoolEmailStack />
         : !emailVerified
           ? <EmailVerifyStack />
           : isBanned

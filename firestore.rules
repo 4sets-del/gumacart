@@ -5,6 +5,11 @@ service cloud.firestore {
       return request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
+    // GumaCart is for the SLSU community only (see constants/school.js).
+    function isSlsuEmail() {
+      return request.auth != null
+        && request.auth.token.get('email', '').lower().matches('.*@slsu[.]edu[.]ph');
+    }
     function isBanned() {
       return request.auth != null
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'banned';
@@ -21,6 +26,7 @@ service cloud.firestore {
       allow read: if request.auth != null;
 
       allow create: if (request.auth.uid == userId
+                        && isSlsuEmail()
                         && request.resource.data.role == 'student'
                         && request.resource.data.get('facultyRequest', 'none') in ['none', 'pending'])
                     || isAdmin();
@@ -72,7 +78,7 @@ service cloud.firestore {
 
     match /listings/{listingId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && !isActivelyBanned();
+      allow create: if request.auth != null && !isActivelyBanned() && (isSlsuEmail() || isAdmin());
       allow update, delete: if request.auth.uid == resource.data.sellerId || isAdmin();
 
       // Any signed-in user may bump the view counter, and nothing else: only

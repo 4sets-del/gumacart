@@ -13,8 +13,8 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'Information you give us',
     points: [
-      'Account details: your name, email address, address, age, and whether you signed up as a student or requested faculty status. Your password is handled by Firebase Authentication; we never see it.',
-      'Student verification: your school email, student ID number and a photo of your student ID, which admins use to confirm you belong to SLSU.',
+      'Account details: your name, SLSU email address (@slsu.edu.ph, required to sign up), address, age, and whether you signed up as a student or requested faculty status. Your password is handled by Firebase Authentication; we never see it.',
+      'Seller verification: your student ID number and a photo of your student ID, which admins use to confirm your identity before you can post listings.',
       'Profile photo, if you add one.',
       'Listings: photos, title, description, specifications, price, category, condition, meet-up location and the contact number you enter.',
       'Messages, including photos and videos you send in chat.',

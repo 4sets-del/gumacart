@@ -3,6 +3,7 @@ import { onAuthStateChanged, reload } from 'firebase/auth';
 import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { registerForPushNotifications } from '../utils/notifications';
+import { hasSchoolAccess } from '../constants/school';
 
 const AuthContext = createContext({});
 
@@ -65,18 +66,22 @@ export const AuthProvider = ({ children }) => {
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        setUser(firebaseUser);
-        setEmailVerified(firebaseUser.emailVerified);
+        // Load the profile before exposing the user, so the navigator knows
+        // their role (admins may use a non-SLSU email) on the first render.
+        let profile = null;
         try {
           const docRef = doc(db, 'users', firebaseUser.uid);
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
-            await applyProfile(firebaseUser.uid, docSnap.data());
+            profile = docSnap.data();
+            await applyProfile(firebaseUser.uid, profile);
           }
         } catch (e) {
           console.log('Error fetching profile:', e);
         }
-        if (firebaseUser.emailVerified) {
+        setUser(firebaseUser);
+        setEmailVerified(firebaseUser.emailVerified);
+        if (firebaseUser.emailVerified && hasSchoolAccess(firebaseUser, profile)) {
           registerForPushNotifications(firebaseUser.uid);
         }
       } else {
@@ -130,9 +135,10 @@ export const AuthProvider = ({ children }) => {
   }, [uid, userProfile]);
 
   const { banned: isBanned } = computeBanState(userProfile);
+  const schoolAccess = hasSchoolAccess(user, userProfile);
 
   return (
-    <AuthContext.Provider value={{ user, userProfile, setUserProfile, loading, emailVerified, isBanned }}>
+    <AuthContext.Provider value={{ user, userProfile, setUserProfile, loading, emailVerified, isBanned, schoolAccess }}>
       {children}
     </AuthContext.Provider>
   );
