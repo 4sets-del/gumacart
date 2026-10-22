@@ -19,6 +19,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 - Your recent searches, saved to your account so you can reuse them.
 - How many times a listing is viewed (a simple count; we do not record who viewed it).
 - The most recent listings are stored on your phone so the app opens faster. They are cleared when you log out.
+- If the app crashes, a crash report with technical details (device model, Android/iOS version, app version and the error) may be sent so we can fix the problem. It does not include your name, email, messages or listings.
 
 ## 3. How we use your information
 
@@ -39,6 +40,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 - Google Firebase (Authentication, Cloud Firestore, Cloud Storage and Cloud Functions) stores the app’s data and runs its server code on Google Cloud.
 - Expo’s push notification service delivers notifications to your phone.
+- Sentry receives crash reports, if crash reporting is enabled in the app.
 - These providers process data on our behalf under their own security and privacy terms.
 
 ## 6. How long we keep it

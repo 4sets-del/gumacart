@@ -13,6 +13,10 @@ import { ThemeProvider, useTheme } from './context/ThemeContext';
 import AppNavigator from './navigation/AppNavigator';
 import OfflineNotice from './components/OfflineNotice';
 import ErrorBoundary from './components/ErrorBoundary';
+import { initCrashReporting } from './utils/crashReporting';
+
+// Start crash reporting first so errors during startup are captured too.
+initCrashReporting();
 
 // Keep the native splash up until the fonts are ready, so text never
 // flashes in the wrong font.

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { FONTS, RADIUS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { reportError } from '../utils/crashReporting';
 
 // Catches unexpected errors while drawing a screen and shows a friendly
 // "Try again" page instead of a blank screen or crash.
@@ -15,6 +16,7 @@ export default class ErrorBoundary extends React.Component {
 
   componentDidCatch(error, info) {
     console.log('App error:', error?.message, info?.componentStack);
+    reportError(error, { componentStack: info?.componentStack });
   }
 
   reset = () => this.setState({ error: null });
