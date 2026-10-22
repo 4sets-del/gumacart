@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   doc, deleteDoc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs,
-  orderBy, limit,
+  orderBy, limit, onSnapshot,
 } from "firebase/firestore";
 import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
@@ -32,11 +32,23 @@ const TYPE_LABELS = { sell: "For Sale", buy: "Looking For", barter: "For Barter"
 
 export default function ProductDetailScreen({ route, navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
-  const { product } = route.params;
+  // Start from the listing passed in, then stay live: price, photos and
+  // status update while the page is open, and removal is detected.
+  const { product: initialProduct } = route.params;
+  const [product, setProduct] = useState(initialProduct);
+  const [removed, setRemoved] = useState(false);
+  useEffect(() => onSnapshot(
+    doc(db, "listings", initialProduct.id),
+    (snap) => {
+      if (snap.exists()) setProduct({ id: snap.id, ...snap.data() });
+      else setRemoved(true);
+    },
+    () => {},
+  ), [initialProduct.id]);
   const [inCart, setInCart] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [marking, setMarking] = useState(false);
-  const [isSold, setIsSold] = useState(product.status === "sold");
+  const isSold = product.status === "sold";
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
@@ -49,6 +61,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [uploadingReport, setUploadingReport] = useState(false);
   const currentUser = auth.currentUser;
   const isOwner = currentUser?.uid === product.sellerId;
+  // Deleted, or no longer visible to buyers (e.g. sent back for review).
+  const unavailable = removed || (!isOwner && !["active", "sold", "reserved"].includes(product.status));
 
   const images = product.images?.length > 0 ? product.images : product.image ? [product.image] : [];
   const galleryRef = useRef(null);
@@ -196,7 +210,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       await updateDoc(doc(db, "listings", product.id), sold
         ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp() }
         : { status: "active", soldTo: null });
-      setIsSold(sold);
+      setProduct((p) => ({ ...p, status: sold ? "sold" : "active" })); // instant; the live update confirms it
       if (sold && buyerId) Alert.alert("Marked as sold", "We'll ask the buyer to rate you.");
     } catch (e) {
       Alert.alert("Error", "Failed to update.");
@@ -327,6 +341,14 @@ export default function ProductDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.content}>
+          {unavailable && (
+            <View style={styles.unavailableBox}>
+              <Ionicons name="alert-circle" size={18} color={COLORS.error} />
+              <Text style={styles.unavailableText}>
+                {removed ? "This listing was removed by the seller." : "This listing isn't available right now."}
+              </Text>
+            </View>
+          )}
           <Text style={styles.productName}>{product.name}</Text>
           <Text style={[styles.price, { color: price.color }]}>{price.text}</Text>
 
@@ -445,7 +467,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         </View>
       </Modal>
 
-      {isOwner ? (
+      {unavailable && !isOwner ? null : isOwner ? (
         <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing", { editListing: product })} disabled={marking || deleting}>
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
@@ -640,6 +662,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
   viewProfileText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
 
+  unavailableBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
+  unavailableText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.error },
   bottomBar: { flexDirection: "row", gap: 12, paddingHorizontal: 18, paddingTop: 12, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
   chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
