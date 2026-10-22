@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "266559215480",
+    "project_id": "gumacartfinal",
+    "storage_bucket": "gumacartfinal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:266559215480:android:a55d5f145c2d7ff5d75a8d",
+        "android_client_info": {
+          "package_name": "com.omargerez.gumacart"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "266559215480-621jkb52vqb0dvu080e9826kaeidn6nq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcTuaZmpBYBhSYGUY7GMNr4RtGee67Plw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "266559215480-621jkb52vqb0dvu080e9826kaeidn6nq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
