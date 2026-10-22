@@ -54,7 +54,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 - Turn notification types on or off in Settings.
 - Remove a conversation from your inbox, delete your listings or reviews, and unfollow people.
 - Delete your account and its data from Settings.
-- Under the Data Privacy Act you may also ask us about the personal data we hold about you by contacting [your contact email].
+- Under the Data Privacy Act you may also ask us about the personal data we hold about you by contacting slsugumacart@gmail.com.
 
 ## 8. Security
 
@@ -70,4 +70,4 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 ## 11. Contact
 
-- Questions or requests about your data: [your contact email].
+- Questions or requests about your data: slsugumacart@gmail.com.

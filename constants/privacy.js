@@ -2,8 +2,8 @@
 // PRIVACY.md (scripts/export-privacy.js) for hosting on the web, which
 // Google Play requires. Keep it in sync with what the app actually does.
 
-// TODO: replace with a real contact address before publishing.
-export const PRIVACY_CONTACT = '[your contact email]';
+// Public contact address for privacy questions and data requests.
+export const PRIVACY_CONTACT = 'slsugumacart@gmail.com';
 export const PRIVACY_EFFECTIVE = 'October 21, 2026';
 
 export const PRIVACY_INTRO =
