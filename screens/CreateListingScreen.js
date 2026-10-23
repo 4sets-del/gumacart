@@ -206,9 +206,12 @@ export default function CreateListingScreen({ navigation, route }) {
           ...payload,
           status: "pending",
           updatedAt: serverTimestamp(),
+          // An expired listing being edited counts as renewed, so it isn't
+          // expired again right after approval.
+          ...(editListing.status === "expired" ? { createdAt: serverTimestamp(), expiryWarned: false } : {}),
         });
         Alert.alert(
-          "✅ Changes Submitted",
+          "Changes Submitted",
           "Your listing has been updated and is pending admin approval again. It will reappear once approved.",
           [{ text: "OK", onPress: () => navigation.navigate("Main", { screen: "Home" }) }]
         );

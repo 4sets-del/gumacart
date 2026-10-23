@@ -35,6 +35,12 @@ function meetupWhen(ts) {
   return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
+// A meet-up still waiting for an answer whose time is already over.
+function meetupPassed(msg) {
+  const ms = msg.at?.toMillis ? msg.at.toMillis() : new Date(msg.at).getTime();
+  return msg.type === "meetup" && (msg.status || "pending") === "pending" && ms < Date.now();
+}
+
 const OFFER_STATUS = {
   pending: { label: "Waiting for reply", icon: "time-outline", tone: "warning" },
   accepted: { label: "Accepted", icon: "checkmark-circle", tone: "primary" },
@@ -46,6 +52,7 @@ const MEETUP_STATUS = {
   confirmed: { label: "Confirmed", icon: "checkmark-circle", tone: "primary" },
   declined: { label: "Declined", icon: "close-circle", tone: "error" },
   cancelled: { label: "Cancelled", icon: "remove-circle", tone: "muted" },
+  passed: { label: "Time passed, not confirmed", icon: "time", tone: "muted" },
 };
 
 // Emoji users can react with
@@ -67,7 +74,9 @@ function isBareMedia(msg) {
 
 export default function ChatScreen({ route, navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
-  const { conversationId, otherUserId, otherUserName, listingName } = route.params;
+  const { conversationId, otherUserId, listingName } = route.params;
+  // Older listings may not carry the seller's name.
+  const otherUserName = route.params.otherUserName || "User";
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
@@ -210,7 +219,9 @@ export default function ChatScreen({ route, navigation }) {
     }
   }, [viewerVisible]);
 
-  const sendMessage = async (msgData, { withReply = true } = {}) => {
+  // clearComposer: only for what was typed in the message box, so sending a
+  // photo, offer or meet-up (or answering one) doesn't erase a draft.
+  const sendMessage = async (msgData, { withReply = true, clearComposer = false } = {}) => {
     if (!msgData.text?.trim() && !msgData.mediaUrl) return;
     setSending(true);
     try {
@@ -239,8 +250,8 @@ export default function ChatScreen({ route, navigation }) {
         lastMessageTime: serverTimestamp(),
         [`unreadCount.${otherUserId}`]: increment(1),
       });
-      setText("");
-      setReplyTo(null);
+      if (clearComposer) setText("");
+      if (withReply && replyTo) setReplyTo(null);
     } catch (e) {
       Alert.alert("Error", "Failed to send message.");
     } finally {
@@ -273,7 +284,7 @@ export default function ChatScreen({ route, navigation }) {
 
   const handleSendText = () => {
     if (!text.trim()) return;
-    sendMessage({ text: text.trim(), type: "text" });
+    sendMessage({ text: text.trim(), type: "text" }, { clearComposer: true });
   };
 
   const pickMedia = async (type) => {
@@ -379,7 +390,18 @@ export default function ChatScreen({ route, navigation }) {
   const setCardStatus = (msg, status) =>
     updateDoc(doc(db, "conversations", conversationId, "messages", msg.id), { status, respondedAt: serverTimestamp() });
 
+  // Ids of offer / meet-up cards being answered, so a double tap can't
+  // send the reply twice.
+  const responding = useRef(new Set());
+
   const respondOffer = async (msg, accept) => {
+    if (responding.current.has(msg.id)) return;
+    const listing = activeListings.find((l) => l.id === msg.listingId);
+    if (accept && !listing) {
+      Alert.alert("No longer available", `"${msg.listingName}" has been sold or removed, so this offer can't be accepted.`);
+      return;
+    }
+    responding.current.add(msg.id);
     try {
       await setCardStatus(msg, accept ? "accepted" : "declined");
       await sendMessage({
@@ -389,7 +411,6 @@ export default function ChatScreen({ route, navigation }) {
           : `Sorry, I can't accept ${peso(msg.amount)} for "${msg.listingName}".`,
       }, { withReply: false });
       // Seller accepted: offer to hold the item for this buyer.
-      const listing = activeListings.find((l) => l.id === msg.listingId);
       if (accept && listing && listing.sellerId === user.uid && !listing.reserved && (listing.quantity || 1) <= 1) {
         Alert.alert("Reserve it for them?", `Hold "${msg.listingName}" for ${otherUserName} so others know it's taken.`, [
           { text: "Not now", style: "cancel" },
@@ -403,10 +424,18 @@ export default function ChatScreen({ route, navigation }) {
       }
     } catch (e) {
       Alert.alert("Error", "Could not update the offer.");
+    } finally {
+      responding.current.delete(msg.id);
     }
   };
 
   const respondMeetup = async (msg, status) => {
+    if (responding.current.has(msg.id)) return;
+    if (status === "confirmed" && meetupPassed(msg)) {
+      Alert.alert("Time has passed", "This meet-up time is already over. Plan a new one from the 📎 menu.");
+      return;
+    }
+    responding.current.add(msg.id);
     try {
       await setCardStatus(msg, status);
       if (status === "confirmed") {
@@ -416,6 +445,8 @@ export default function ChatScreen({ route, navigation }) {
       }
     } catch (e) {
       Alert.alert("Error", "Could not update the meet-up.");
+    } finally {
+      responding.current.delete(msg.id);
     }
   };
 
@@ -481,9 +512,10 @@ export default function ChatScreen({ route, navigation }) {
   // Offer / meet-up card: summary, status, and the buttons that apply to you.
   const renderActionCard = (msg, isMe) => {
     const isOffer = msg.type === "offer";
-    const st = (isOffer ? OFFER_STATUS : MEETUP_STATUS)[msg.status] || (isOffer ? OFFER_STATUS : MEETUP_STATUS).pending;
+    const passed = meetupPassed(msg);
+    const st = passed ? MEETUP_STATUS.passed : (isOffer ? OFFER_STATUS : MEETUP_STATUS)[msg.status] || (isOffer ? OFFER_STATUS : MEETUP_STATUS).pending;
     const toneColor = { warning: COLORS.warning, primary: COLORS.primary, error: COLORS.error, muted: COLORS.textMuted }[st.tone];
-    const pending = msg.status === "pending" || !msg.status;
+    const pending = (msg.status === "pending" || !msg.status) && !passed;
     return (
       <View>
         <View style={[styles.cardHead, { backgroundColor: isOffer ? COLORS.warningLight : COLORS.infoLight }]}>
