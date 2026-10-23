@@ -21,7 +21,6 @@
     "android": {
       "package": "com.omargerez.gumacart",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#EEF6F0",
         "foregroundImage": "./assets/android-icon-foreground.png",
