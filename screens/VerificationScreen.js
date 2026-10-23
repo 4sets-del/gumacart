@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
+  View, Text, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator, Image, KeyboardAvoidingView, Platform,
 } from 'react-native';
+import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
@@ -112,7 +113,7 @@ export default function VerificationScreen({ navigation }) {
       <ScreenHeader title="Student Verification" onBack={() => navigation.goBack()} border />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+        <KeyboardScrollView contentContainerStyle={styles.container}>
 
           {/* Rejection notice — shown if a previous submission was not approved */}
           {verifStatus === "rejected" && (
@@ -314,7 +315,7 @@ export default function VerificationScreen({ navigation }) {
               </TouchableOpacity>
             )}
           </View>
-        </ScrollView>
+        </KeyboardScrollView>
       </KeyboardAvoidingView>
     </View>
   );

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView,
-  StatusBar, ActivityIndicator, Platform, KeyboardAvoidingView,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, ActivityIndicator, Platform, KeyboardAvoidingView,
 } from 'react-native';
+import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -113,8 +113,8 @@ export default function BannedScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle={COLORS.statusBar} backgroundColor={COLORS.white} />
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <KeyboardScrollView contentContainerStyle={styles.container}>
           <View style={styles.iconCircle}>
             <Ionicons name="ban" size={44} color={RED} />
           </View>
@@ -191,7 +191,7 @@ export default function BannedScreen() {
             <Ionicons name="log-out-outline" size={18} color={COLORS.textSecondary} style={{ marginRight: 6 }} />
             <Text style={styles.signOutText}>Sign out</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </KeyboardScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, Image, Dimensions,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Image, Dimensions,
 } from 'react-native';
+import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -88,7 +89,7 @@ export default function LoginScreen({ navigation }) {
       <StatusBarScrim />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <KeyboardScrollView contentContainerStyle={{ flexGrow: 1 }} showsVerticalScrollIndicator={false}>
           {/* Campus photo */}
           <View style={styles.hero}>
             <Image source={require('../assets/slsu-campus.jpg')} style={styles.heroImage} resizeMode="cover" />
@@ -163,7 +164,7 @@ export default function LoginScreen({ navigation }) {
           </View>
           </View>
 
-        </ScrollView>
+        </KeyboardScrollView>
       </KeyboardAvoidingView>
 
       {/* Forgot password sheet */}

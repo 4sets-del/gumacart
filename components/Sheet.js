@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, TextInput, useWindowDimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, StyleSheet, KeyboardAvoidingView, Platform, TextInput } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { GRADIENTS, RADIUS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from './GradientButton';
+import KeyboardScrollView from './KeyboardScrollView';
 
 // Bottom sheet in the app's style: handle, colored icon + title, close button,
 // scrollable body and a Cancel / main-action footer. Used for every form that
@@ -22,17 +23,16 @@ export default function Sheet({
 }) {
   const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
   const close = () => { if (!busy) onClose?.(); };
   const toneColor = tone === 'danger' ? COLORS.error : tone === 'info' ? COLORS.info : COLORS.primary;
   const toneBg = tone === 'danger' ? COLORS.errorLight : tone === 'info' ? COLORS.infoLight : COLORS.primaryPale;
-  const Body = scroll ? ScrollView : View;
+  const Body = scroll ? KeyboardScrollView : View;
 
   return (
     <Modal statusBarTranslucent visible={visible} transparent animationType="slide" onRequestClose={close}>
       <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <TouchableOpacity style={{ flex: 1 }} activeOpacity={1} onPress={close} accessibilityLabel="Close" />
-        <View style={[styles.sheet, { maxHeight: height * 0.9, paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 12) + 12 }]}>
           <View style={styles.handle} />
           <View style={styles.header}>
             {icon ? (
@@ -150,7 +150,9 @@ export function SheetSection({ title }) {
 
 const createStyles = (COLORS) => StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  // Max 92% of the space above the keyboard, so the top never goes off-screen.
   sheet: {
+    maxHeight: '92%',
     backgroundColor: COLORS.surface, borderTopLeftRadius: 28, borderTopRightRadius: 28, paddingTop: 10,
     borderWidth: COLORS.isDark ? 1 : 0, borderBottomWidth: 0, borderColor: COLORS.border,
   },
@@ -160,7 +162,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   title: { fontSize: 19, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   subtitle: { fontSize: 12.5, lineHeight: 17, color: COLORS.textMuted, marginTop: 1 },
   closeBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
-  body: { flexGrow: 0 },
+  body: { flexGrow: 0, flexShrink: 1 },
   bodyContent: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8 },
   footer: { flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border },
   cancelBtn: { flex: 1, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, alignItems: 'center', justifyContent: 'center' },
