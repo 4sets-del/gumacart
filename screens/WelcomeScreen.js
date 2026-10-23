@@ -36,7 +36,7 @@ export default function WelcomeScreen({ navigation }) {
       <View style={[styles.brand, { paddingTop: insets.top + 44 }]}>
         <Image source={require('../assets/icon.png')} style={styles.logo} />
         <Text style={styles.title}>SLSU-GumaCart</Text>
-        <Text style={styles.subtitle}>Buy  •  Sell  •  Exchange</Text>
+        <Text style={styles.subtitle}>Buy  •  Sell  •  Exchange  •  Donate</Text>
         <Text style={styles.tagline}>Your Campus Marketplace{'\n'}for Students, by Students.</Text>
       </View>
 

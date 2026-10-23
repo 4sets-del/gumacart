@@ -2,88 +2,79 @@ import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Animated, StatusBar, ActivityIndicator, Dimensions,
 } from 'react-native';
-import Svg, { Path, Rect, Ellipse } from 'react-native-svg';
+import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { FONTS } from '../constants/theme';
 
-const GREEN = '#2E6B3E';
-const W = Dimensions.get('window').width;
+// Shown while the session loads, right after the native splash screen
+// (assets/splash.png), so it uses the same light look: corner waves, the
+// cart logo, the app name and the tagline.
+const BG = '#F4F9F5';
+const DEEP = '#14532B';
+const LIGHT_WAVE = 'rgba(140,199,156,0.7)';
+const { width: W, height: H } = Dimensions.get('window');
 
-function CampusSilhouette() {
-  const c = 'rgba(255,255,255,0.12)';
+function Waves() {
+  // Drawn on a 1284 x 2778 canvas (same as splash.png) and stretched to fit.
   return (
-    <Svg width={W} height={110} viewBox="0 0 390 110" preserveAspectRatio="xMidYMid meet">
-      <Rect x="0" y="95" width="390" height="15" fill={c} />
-      <Ellipse cx="30" cy="66" rx="15" ry="24" fill={c} />
-      <Rect x="27" y="85" width="6" height="10" fill={c} />
-      <Rect x="50" y="58" width="50" height="37" fill={c} />
-      <Rect x="60" y="50" width="30" height="12" fill={c} />
-      <Rect x="130" y="52" width="130" height="43" fill={c} />
-      <Rect x="115" y="62" width="20" height="33" fill={c} />
-      <Rect x="255" y="62" width="20" height="33" fill={c} />
-      <Rect x="148" y="42" width="94" height="14" fill={c} />
-      <Rect x="178" y="28" width="34" height="16" fill={c} />
-      <Path d="M178 28 Q195 8 212 28 Z" fill={c} />
-      <Rect x="190" y="4" width="10" height="14" fill={c} />
-      <Rect x="285" y="58" width="52" height="37" fill={c} />
-      <Rect x="293" y="50" width="36" height="12" fill={c} />
-      <Ellipse cx="352" cy="66" rx="15" ry="24" fill={c} />
-      <Rect x="348" y="85" width="6" height="10" fill={c} />
+    <Svg width={W} height={H} viewBox="0 0 1284 2778" preserveAspectRatio="none" style={StyleSheet.absoluteFill}>
+      <Defs>
+        <LinearGradient id="wave" x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor={DEEP} />
+          <Stop offset="1" stopColor="#2E9A5A" />
+        </LinearGradient>
+      </Defs>
+      <Path d="M620 0 H760 C640 170 420 260 0 420 V330 C330 210 520 120 620 0 Z" fill={LIGHT_WAVE} />
+      <Path d="M0 0 H620 C520 120 330 210 0 330 Z" fill="url(#wave)" />
+      <Path d="M560 2778 H420 C560 2560 880 2440 1284 2360 V2440 C960 2520 700 2620 560 2778 Z" fill={LIGHT_WAVE} />
+      <Path d="M1284 2778 H560 C700 2620 960 2520 1284 2440 Z" fill="url(#wave)" />
     </Svg>
   );
 }
 
 export default function SplashScreen() {
-  const [logoScale] = useState(() => new Animated.Value(0.6));
+  const [logoScale] = useState(() => new Animated.Value(0.85));
   const [logoOpacity] = useState(() => new Animated.Value(0));
   const [textOpacity] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
     Animated.sequence([
       Animated.parallel([
-        Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-        Animated.timing(logoOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(logoScale, { toValue: 1, friction: 6, tension: 80, useNativeDriver: true }),
+        Animated.timing(logoOpacity, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]),
-      Animated.timing(textOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(textOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
   }, [logoScale, logoOpacity, textOpacity]);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={GREEN} />
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <Waves />
 
       <View style={styles.center}>
-        <Animated.View style={{ opacity: logoOpacity, transform: [{ scale: logoScale }], alignItems: 'center' }}>
-          <View style={styles.logoCircle}>
-            <Text style={styles.logoIcon}>🛒</Text>
-          </View>
-        </Animated.View>
-
+        <Animated.Image
+          source={require('../assets/logo.png')}
+          style={[styles.logo, { opacity: logoOpacity, transform: [{ scale: logoScale }] }]}
+          resizeMode="contain"
+        />
         <Animated.View style={{ opacity: textOpacity, alignItems: 'center' }}>
           <Text style={styles.appName}>SLSU-GumaCart</Text>
-          <Text style={styles.tagline}>Campus Marketplace</Text>
+          <Text style={styles.tagline}>Buy  •  Sell  •  Exchange  •  Donate</Text>
         </Animated.View>
       </View>
 
       <View style={styles.bottom}>
-        <ActivityIndicator size="small" color="rgba(255,255,255,0.9)" />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-
-      <View style={styles.silhouette} pointerEvents="none">
-        <CampusSilhouette />
+        <ActivityIndicator size="small" color={DEEP} />
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: GREEN },
+  container: { flex: 1, backgroundColor: BG },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  logoCircle: { width: 130, height: 130, borderRadius: 65, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 3, borderColor: 'rgba(255,255,255,0.25)' },
-  logoIcon: { fontSize: 60 },
-  appName: { fontSize: 32, fontFamily: FONTS.heading, color: '#fff', letterSpacing: -0.5, marginBottom: 6 },
-  tagline: { fontSize: 15, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-  bottom: { position: 'absolute', bottom: 140, left: 0, right: 0, alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 13, color: 'rgba(255,255,255,0.8)', fontWeight: '500' },
-  silhouette: { position: 'absolute', bottom: 0, left: 0, right: 0 },
+  logo: { width: 190, height: 190, marginBottom: 10 },
+  appName: { fontSize: 30, fontFamily: FONTS.heading, color: DEEP, letterSpacing: -0.5, marginBottom: 6 },
+  tagline: { fontSize: 15, color: '#59645C', fontWeight: '500' },
+  bottom: { position: 'absolute', bottom: 190, left: 0, right: 0, alignItems: 'center' },
 });

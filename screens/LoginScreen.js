@@ -108,7 +108,7 @@ export default function LoginScreen({ navigation }) {
           <View style={styles.logoSection}>
             <Image source={require('../assets/icon.png')} style={styles.logo} />
             <Text style={styles.title}>Welcome back!</Text>
-            <Text style={styles.tagline}>Log in to buy, sell, and exchange with fellow SLSU students.</Text>
+            <Text style={styles.tagline}>Log in to buy, sell, exchange, and donate with fellow SLSU students.</Text>
           </View>
 
           {/* Form */}
