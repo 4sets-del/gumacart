@@ -20,7 +20,6 @@ import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
 import AcademicFields from "../components/AcademicFields";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
-import WelcomeTutorial from "../components/WelcomeTutorial";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, SHADOWS, FONTS, GRADIENTS } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
@@ -31,7 +30,6 @@ export default function SettingsScreen({ navigation }) {
   const user = auth.currentUser;
 
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
   const [name, setName] = useState(user?.displayName || "");
   const [address, setAddress] = useState("");
   const [age, setAge] = useState("");
@@ -219,7 +217,6 @@ export default function SettingsScreen({ navigation }) {
 
   return (
     <View style={styles.safe}>
-      <WelcomeTutorial visible={showTutorial} onClose={() => setShowTutorial(false)} />
 
       <ScreenHeader
         title="Settings"
@@ -280,7 +277,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.card}>
           <SettingRow icon="document-text" iconColor="#0D9488" label="Terms and Conditions" onPress={() => navigation.navigate('Terms')} />
           <SettingRow icon="shield-checkmark" iconColor="#2563EB" label="Privacy Policy" sub="What we collect and how it's used" onPress={() => navigation.navigate('Privacy')} />
-          <SettingRow icon="help-circle" iconColor="#EA580C" label="How GumaCart Works" sub="Replay the welcome tutorial" onPress={() => setShowTutorial(true)} />
+          <SettingRow icon="help-circle" iconColor="#EA580C" label="App Tour" sub="Replay the guided tour of GumaCart's features" onPress={() => navigation.navigate("Main", { screen: "Home", params: { startTour: Date.now() } })} />
           <SettingRow icon="information-circle" iconColor="#16A34A" label="About GumaCart" sub="Our story and the team behind the app" onPress={() => navigation.navigate('About')} isLast />
         </View>
 

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { View } from 'react-native';
-import { NavigationContainer, DefaultTheme, DarkTheme } from '@react-navigation/native';
+import { View, StyleSheet } from 'react-native';
+import { NavigationContainer, DefaultTheme, DarkTheme, useNavigation } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -40,6 +40,8 @@ import WelcomeScreen from '../screens/WelcomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
+import PostTypeSheet from '../components/PostTypeSheet';
+import { tabBarRef } from '../utils/tourTargets';
 import SchoolEmailRequiredScreen from '../screens/SchoolEmailRequiredScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
 import { auth, db } from '../firebaseConfig';
@@ -76,14 +78,14 @@ const Tab = createBottomTabNavigator();
 const TAB_ICONS = {
   Home:       ['home', 'home-outline'],
   Categories: ['grid', 'grid-outline'],
-  Sell:       ['add-circle', 'add-circle-outline'],
+  Post:       ['add-circle', 'add-circle-outline'],
   Messages:   ['chatbubble-ellipses', 'chatbubble-ellipses-outline'],
   Profile:    ['person', 'person-outline'],
 };
 
-// "Sell" opens the CreateListing screen on top of the tabs instead of being a
-// real tab, so the form always starts fresh.
-function SellPlaceholder() {
+// "Post" isn't a real tab: it opens a sheet to pick the kind of listing (sell,
+// looking for, barter, donate), then the CreateListing form on top of the tabs.
+function PostPlaceholder() {
   return null;
 }
 
@@ -105,64 +107,77 @@ function useUnreadConversationCount() {
 function MainTabs() {
   const { COLORS, styles: tabStyles } = useTheme(makeTabStyles);
   const unread = useUnreadConversationCount();
+  const navigation = useNavigation();
+  const [postSheet, setPostSheet] = useState(false);
   // Room for icon + label, plus the phone's gesture/navigation bar.
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 8);
   return (
-    <Tab.Navigator
-      // A light tap vibration so every tab press feels instant.
-      screenListeners={{ tabPress: () => { Haptics.selectionAsync().catch(() => {}); } }}
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        // Tabs that aren't visible stop re-rendering until you come back.
-        freezeOnBlur: true,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          borderTopColor: COLORS.border,
-          backgroundColor: COLORS.surface,
-          height: 64 + bottomPad,
-          paddingTop: 8,
-          paddingBottom: bottomPad,
-        },
-        tabBarItemStyle: { height: 56 },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-        tabBarIcon: ({ focused, color }) => (
-          route.name === 'Sell' ? (
-            <LinearGradient colors={GRADIENTS.sunset} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tabStyles.sellBtn}>
-              <Ionicons name="add" size={28} color="#fff" />
-            </LinearGradient>
-          ) : (
-            <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
-              <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={22} color={color} />
-            </View>
-          )
-        ),
-      })}
-    >
-      <Tab.Screen name="Home"       component={HomeScreen} />
-      <Tab.Screen name="Categories" component={CategoriesScreen} />
-      <Tab.Screen
-        name="Sell"
-        component={SellPlaceholder}
-        options={{ tabBarLabelStyle: { fontSize: 11, fontWeight: '700', color: '#EA580C', marginTop: 2 } }}
-        listeners={({ navigation }) => ({
-          tabPress: (e) => {
-            e.preventDefault();
-            navigation.navigate('CreateListing');
+    <>
+      <Tab.Navigator
+        // A light tap vibration so every tab press feels instant.
+        screenListeners={{ tabPress: () => { Haptics.selectionAsync().catch(() => {}); } }}
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          // Tabs that aren't visible stop re-rendering until you come back.
+          freezeOnBlur: true,
+          tabBarActiveTintColor: COLORS.primary,
+          tabBarInactiveTintColor: COLORS.textMuted,
+          tabBarStyle: {
+            borderTopColor: COLORS.border,
+            backgroundColor: COLORS.surface,
+            height: 64 + bottomPad,
+            paddingTop: 8,
+            paddingBottom: bottomPad,
           },
+          tabBarItemStyle: { height: 56 },
+        // Invisible layer filling the tab bar, so the Home tour can measure it.
+        tabBarBackground: () => (
+          <View ref={(r) => { tabBarRef.current = r; }} collapsable={false} pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.surface }]} />
+        ),
+          tabBarLabelStyle: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+          tabBarIcon: ({ focused, color }) => (
+            route.name === 'Post' ? (
+              <LinearGradient colors={GRADIENTS.sunset} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={tabStyles.sellBtn}>
+                <Ionicons name="add" size={28} color="#fff" />
+              </LinearGradient>
+            ) : (
+              <View style={[tabStyles.iconWrap, focused && tabStyles.iconWrapActive]}>
+                <Ionicons name={TAB_ICONS[route.name][focused ? 0 : 1]} size={22} color={color} />
+              </View>
+            )
+          ),
         })}
+      >
+        <Tab.Screen name="Home"       component={HomeScreen} />
+        <Tab.Screen name="Categories" component={CategoriesScreen} />
+        <Tab.Screen
+          name="Post"
+          component={PostPlaceholder}
+          options={{ tabBarLabelStyle: { fontSize: 11, fontWeight: '700', color: '#EA580C', marginTop: 2 }, tabBarAccessibilityLabel: 'Post a listing' }}
+          listeners={{
+            tabPress: (e) => {
+              e.preventDefault();
+              setPostSheet(true);
+            },
+          }}
+        />
+        <Tab.Screen
+          name="Messages"
+          component={MessagesScreen}
+          options={{
+            tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
+            tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10 },
+          }}
+        />
+        <Tab.Screen name="Profile"    component={ProfileScreen} />
+      </Tab.Navigator>
+      <PostTypeSheet
+        visible={postSheet}
+        onClose={() => setPostSheet(false)}
+        onPick={(type) => { setPostSheet(false); navigation.navigate('CreateListing', { type }); }}
       />
-      <Tab.Screen
-        name="Messages"
-        component={MessagesScreen}
-        options={{
-          tabBarBadge: unread > 0 ? (unread > 9 ? '9+' : unread) : undefined,
-          tabBarBadgeStyle: { backgroundColor: COLORS.error, fontSize: 10 },
-        }}
-      />
-      <Tab.Screen name="Profile"    component={ProfileScreen} />
-    </Tab.Navigator>
+    </>
   );
 }
 

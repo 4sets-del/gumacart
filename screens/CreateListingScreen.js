@@ -50,7 +50,7 @@ export default function CreateListingScreen({ navigation, route }) {
   // When an existing listing is passed in, the screen works in EDIT mode.
   const editListing = route?.params?.editListing || null;
   const isEditing = !!editListing;
-  const [listingType, setListingType]       = useState(editListing?.type || "sell");
+  const [listingType, setListingType]       = useState(editListing?.type || route?.params?.type || "sell");
   const [title, setTitle]                   = useState(editListing?.name || editListing?.title || "");
   const [description, setDescription]       = useState(editListing?.description || "");
   const [specifications, setSpecifications] = useState(editListing?.specifications || "");

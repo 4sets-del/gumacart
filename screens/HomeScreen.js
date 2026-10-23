@@ -15,7 +15,7 @@ import { useIsFocused } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { collection, getDocs, doc, getDoc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
-import WelcomeTutorial from '../components/WelcomeTutorial';
+import { tabTarget } from '../utils/tourTargets';
 import CoachMark from '../components/CoachMark';
 import { ProductCard } from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
@@ -48,7 +48,7 @@ const BANNERS = [
   { title: 'Barter or\nDonate', text: 'Trade items or give them to someone who needs them.', icon: 'swap-horizontal', colors: GRADIENTS.berry },
 ];
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, route }) {
   const { COLORS, styles } = useTheme(createStyles);
   const insets = useSafeAreaInsets();
   const isFocused = useIsFocused();
@@ -62,8 +62,7 @@ export default function HomeScreen({ navigation }) {
 
   const user = auth.currentUser;
 
-  // Show the welcome tutorial once, on first launch after verifying.
-  const [showWelcome, setShowWelcome] = useState(false);
+  // Show the interactive tour once, on first launch after verifying.
   const [showCoachMarks, setShowCoachMarks] = useState(false);
   useEffect(() => {
     const checkWelcome = async () => {
@@ -71,17 +70,18 @@ export default function HomeScreen({ navigation }) {
       try {
         const snap = await getDoc(doc(db, 'users', user.uid));
         if (snap.exists() && snap.data()?.hasSeenWelcome !== true) {
-          setShowWelcome(true);
+          setShowCoachMarks(true);
         }
       } catch (e) {}
     };
     checkWelcome();
   }, []);
 
-  const handleWelcomeDone = () => {
-    setShowWelcome(false);
-    setShowCoachMarks(true);
-  };
+  // Settings → "App Tour" sends { startTour } to replay it.
+  const startTour = route?.params?.startTour;
+  useEffect(() => {
+    if (startTour) setShowCoachMarks(true);
+  }, [startTour]);
 
   const finishCoachMarks = async () => {
     setShowCoachMarks(false);
@@ -95,13 +95,28 @@ export default function HomeScreen({ navigation }) {
   const cartRef = useRef(null);
   const searchRef = useRef(null);
   const categoriesRef = useRef(null);
+  const featuredRef = useRef(null);
+  const typeChipsRef = useRef(null);
+  const rootRef = useRef(null);
 
-  const coachSteps = [
-    { ref: notifRef, title: 'Notifications', text: 'Get notified here about new messages, followers, and updates on your listings.' },
-    { ref: cartRef, title: 'Cart', text: "Items you're interested in buying are saved here for quick access." },
-    { ref: searchRef, title: 'Search', text: 'Search for listings or sellers, then sort and filter the results.' },
-    { ref: categoriesRef, title: 'Categories', text: 'Jump straight to a category. Use the tabs below to sell, chat, and see your profile.' },
-  ];
+  // Interactive tour of the main features. Steps without a ref appear in the
+  // middle of the screen; tab steps point at the bottom bar.
+  const coachSteps = useMemo(() => [
+    { icon: 'storefront', title: 'Welcome to GumaCart!', text: 'The campus marketplace for SLSU Gumaca. Here is a quick tour of everything you can do. Tap Next to start.' },
+    { ref: searchRef, icon: 'search', title: 'Search', text: 'Find items or sellers, then Sort & Filter by price, category and listing type.' },
+    { ref: cartRef, icon: 'cart', shape: 'circle', title: 'Your cart', text: 'Save items you want. At checkout your order is sent to each seller in chat.' },
+    { ref: notifRef, icon: 'notifications', shape: 'circle', title: 'Notifications', text: 'Messages, new followers, reviews, and updates when an item you want is reserved or sold.' },
+    { ref: categoriesRef, icon: 'grid', title: 'Categories', text: 'Jump straight to Food & Drinks, Clothes, Academic and more.' },
+    { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, add to cart, or chat with the seller.', optional: true },
+    { ref: typeChipsRef, icon: 'pricetags', title: 'Listing types', text: 'Show only For Sale, Wanted, Barter or Free items.', optional: true },
+    { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add up to 6 photos and a quantity.' },
+    { ref: tabTarget(2), icon: 'shield-checkmark', shape: 'circle', title: 'Get verified first', text: 'Before your first post, send your student ID once. An admin approves it, usually within 1–2 days.' },
+    { ref: tabTarget(3), icon: 'chatbubbles', title: 'Messages', text: 'Chat with buyers and sellers. Send up to 10 photos at once, react or reply with a long-press, and see when it\'s Seen.' },
+    { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it sold. Interested buyers are notified automatically.' },
+    { ref: tabTarget(4), icon: 'star', title: 'Ratings & followers', text: 'Buyers rate sellers after a sale, and people can follow you. Good ratings help your items get Featured.' },
+    { icon: 'flag', title: 'Stay safe', text: 'Meet in public places on campus and check items before paying. See something wrong? Tap the 🚩 flag on any listing or profile to report it.' },
+    { ref: tabTarget(4), icon: 'settings', title: 'Settings', text: 'In Profile → Settings: edit your course and year, switch to dark mode, choose notifications, and replay this tour anytime.' },
+  ], []);
 
   // ── Firestore: cart ──
   const loadCartCount = async () => {
@@ -182,11 +197,10 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <View style={styles.safe}>
+    <View style={styles.safe} ref={rootRef} collapsable={false}>
       {isFocused && <StatusBar barStyle="light-content" />}
 
-      <WelcomeTutorial visible={showWelcome} onClose={handleWelcomeDone} />
-      <CoachMark visible={showCoachMarks} steps={coachSteps} onFinish={finishCoachMarks} />
+      <CoachMark visible={showCoachMarks} steps={coachSteps} onFinish={finishCoachMarks} originRef={rootRef} />
 
       {/* ── GREEN HEADER (sits behind the status bar too) ── */}
       <LinearGradient colors={GRADIENTS.primaryDeep} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: insets.top + 8 }]}>
@@ -194,9 +208,9 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
             <Image source={require('../assets/icon.png')} style={styles.logo} />
-            <View>
-              <Text style={styles.headerHello}>Hi, {user?.displayName?.split(' ')[0] || 'there'} 👋</Text>
-              <Text style={styles.headerTitle}>SLSU-GumaCart</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.headerHello} numberOfLines={1}>Hi, {user?.displayName?.split(' ')[0] || 'there'} 👋</Text>
+              <Text style={styles.headerTitle} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>SLSU-GumaCart</Text>
             </View>
           </View>
           <View style={styles.headerRight}>
@@ -320,7 +334,7 @@ export default function HomeScreen({ navigation }) {
         ) : (
           <>
             {/* ── FEATURED ── */}
-            <View style={styles.sectionHeader}>
+            <View style={styles.sectionHeader} ref={featuredRef} collapsable={false}>
               <View style={styles.sectionTitleRow}>
                 <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B2E' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
                 <Text style={styles.sectionTitle}>Featured Listings</Text>
@@ -343,7 +357,7 @@ export default function HomeScreen({ navigation }) {
               </View>
               <Text style={styles.sectionCount}>{shownListings.length} items</Text>
             </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
+            <ScrollView ref={typeChipsRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
               {TYPE_FILTERS(COLORS).map((t) => {
                 const active = typeFilter === t.id;
                 return (
@@ -385,7 +399,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   header: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.lg, borderBottomLeftRadius: 26, borderBottomRightRadius: 26, overflow: 'hidden' },
   headerGlow: { position: 'absolute', right: -50, top: -40, width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.10)' },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, marginRight: 8 },
   logo: { width: 40, height: 40, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(255,255,255,0.5)' },
   headerHello: { fontSize: 12.5, color: 'rgba(255,255,255,0.85)', fontWeight: '500' },
   headerTitle: { fontSize: 19, fontFamily: FONTS.heading, color: '#fff', letterSpacing: -0.3 },
