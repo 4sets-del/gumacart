@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { RADIUS, SHADOWS, FONTS } from '../constants/theme';
+import { RADIUS, SHADOWS, FONTS, colorForName } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
-import { listingImage, listingTitle, priceLabel, typeMeta } from '../constants/listings';
+import { useWishlist, toggleSaved } from '../utils/wishlist';
+import * as Haptics from 'expo-haptics';
+import { listingImage, listingTitle, priceLabel, typeMeta, categoryMeta, shortTimeAgo } from '../constants/listings';
 
 function Rating({ rating, size = 11 }) {
   const { COLORS, styles } = useTheme(createStyles);
@@ -20,7 +22,26 @@ function Rating({ rating, size = 11 }) {
   );
 }
 
-function Thumb({ item, style, emojiSize }) {
+// Heart button to save / un-save a listing (kept in sync app-wide).
+export function SaveButton({ item, size = 16, style }) {
+  const { COLORS, styles } = useTheme(createStyles);
+  const { ids } = useWishlist();
+  const saved = ids.has(item.id);
+  if (!item?.id || item.id === 'preview') return null;
+  return (
+    <TouchableOpacity
+      style={style || styles.heart}
+      onPress={() => { Haptics.selectionAsync().catch(() => {}); toggleSaved(item).catch(() => {}); }}
+      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityLabel={saved ? 'Remove from saved' : 'Save item'}
+    >
+      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={size} color={saved ? COLORS.error : '#fff'} />
+    </TouchableOpacity>
+  );
+}
+
+function Thumb({ item, style, emojiSize, details = false }) {
   const { styles } = useTheme(createStyles);
   const img = listingImage(item);
   const reserved = item.reserved === true && item.status !== 'sold';
@@ -44,23 +65,64 @@ function Thumb({ item, style, emojiSize }) {
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
+      {details ? <SaveButton item={item} /> : null}
+      {details && item.createdAt ? (
+        <View style={styles.agePill}><Text style={styles.agePillText}>{shortTimeAgo(item.createdAt)}</Text></View>
+      ) : null}
+      {details && item.condition ? (
+        <View style={styles.conditionPill}><Text style={styles.conditionText}>{item.condition}</Text></View>
+      ) : null}
     </View>
   );
 }
 
 // Vertical card used in the Home "Featured" row and listing grids.
 // `onPress` receives the item, so screens can pass one stable function.
+// Shows the item at a glance: photo with type / condition / age, title,
+// price, category + meet-up spot, and who is selling it.
 export const ProductCard = React.memo(function ProductCard({ item, rating, onPress, width }) {
-  const { styles } = useTheme(createStyles);
+  const { COLORS, styles } = useTheme(createStyles);
   const price = priceLabel(item);
+  const cat = item.category ? categoryMeta(item.category) : null;
+  const seller = (item.sellerName || 'Seller').split(' ')[0];
   return (
     <TouchableOpacity style={[styles.card, width && { width }]} onPress={() => onPress?.(item)} activeOpacity={0.88}>
-      <Thumb item={item} style={styles.cardThumb} emojiSize={40} />
+      <Thumb item={item} style={styles.cardThumb} emojiSize={40} details />
       <View style={styles.cardBody}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{listingTitle(item)}</Text>
-        <Text style={[styles.cardPrice, { color: price.color }]} numberOfLines={1}>{price.text}</Text>
-        {item.quantity > 1 && item.status !== 'sold' ? <Text style={styles.stockText}>{item.quantity} available</Text> : null}
-        <Rating rating={rating} />
+        <Text style={styles.cardTitle} numberOfLines={2}>{listingTitle(item)}</Text>
+        <View style={styles.priceRow}>
+          <Text style={[styles.cardPrice, { color: price.color }]} numberOfLines={1}>{price.text}</Text>
+          {item.quantity > 1 && item.status !== 'sold' ? <Text style={styles.stockText}>×{item.quantity}</Text> : null}
+        </View>
+        {cat || item.location ? (
+          <View style={styles.metaRow}>
+            {cat ? <Text style={styles.metaEmoji}>{cat.emoji}</Text> : null}
+            {item.location ? (
+              <>
+                <Ionicons name="location-outline" size={11} color={COLORS.textMuted} />
+                <Text style={styles.metaText} numberOfLines={1}>{item.location}</Text>
+              </>
+            ) : (
+              <Text style={styles.metaText} numberOfLines={1}>{cat.name}</Text>
+            )}
+          </View>
+        ) : null}
+        <View style={styles.sellerRow}>
+          {item.sellerPhoto ? (
+            <Image source={{ uri: item.sellerPhoto }} style={styles.sellerAvatar} cachePolicy="memory-disk" />
+          ) : (
+            <View style={[styles.sellerAvatar, { backgroundColor: colorForName(item.sellerName || '') }]}>
+              <Text style={styles.sellerInitial}>{seller[0]?.toUpperCase()}</Text>
+            </View>
+          )}
+          <Text style={styles.sellerName} numberOfLines={1}>{seller}</Text>
+          {rating?.avg ? (
+            <View style={styles.ratingRow}>
+              <Ionicons name="star" size={10} color={COLORS.star} />
+              <Text style={styles.ratingText}>{rating.avg.toFixed(1)}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -91,10 +153,23 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   card: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, overflow: 'hidden', borderWidth: 1, borderColor: COLORS.border, ...SHADOWS.sm },
   cardThumb: { width: '100%', aspectRatio: 1.1 },
-  cardBody: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, gap: 3 },
-  cardTitle: { fontSize: 12.5, fontWeight: '600', color: COLORS.textPrimary },
-  stockText: { fontSize: 11, fontWeight: '600', color: COLORS.textMuted },
-  cardPrice: { fontSize: 14, fontFamily: FONTS.heading },
+  cardBody: { paddingHorizontal: 10, paddingTop: 8, paddingBottom: 10, gap: 4 },
+  cardTitle: { fontSize: 12.5, lineHeight: 16, minHeight: 32, fontWeight: '600', color: COLORS.textPrimary },
+  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  stockText: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted },
+  cardPrice: { flexShrink: 1, fontSize: 14, fontFamily: FONTS.heading },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metaEmoji: { fontSize: 11, marginRight: 2 },
+  metaText: { flex: 1, fontSize: 11, color: COLORS.textMuted },
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2, paddingTop: 6, borderTopWidth: 1, borderTopColor: COLORS.border },
+  sellerAvatar: { width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  sellerInitial: { color: '#fff', fontSize: 8.5, fontWeight: '800' },
+  sellerName: { flex: 1, fontSize: 11, fontWeight: '600', color: COLORS.textSecondary },
+  heart: { position: 'absolute', top: 6, right: 6, width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center' },
+  agePill: { position: 'absolute', bottom: 6, right: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: 'rgba(0,0,0,0.5)' },
+  agePillText: { color: '#fff', fontSize: 9.5, fontWeight: '700' },
+  conditionPill: { position: 'absolute', left: 6, bottom: 6, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, backgroundColor: 'rgba(255,255,255,0.92)' },
+  conditionText: { color: '#1A1D1B', fontSize: 9.5, fontWeight: '700' },
 
   row: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 10, borderWidth: 1, borderColor: COLORS.border, gap: 12 },
   rowThumb: { width: 86, height: 86, borderRadius: RADIUS.md },

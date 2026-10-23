@@ -39,6 +39,7 @@ import SplashScreen from '../screens/SplashScreen';
 import WelcomeScreen from '../screens/WelcomeScreen';
 import CategoriesScreen from '../screens/CategoriesScreen';
 import MyListingsScreen from '../screens/MyListingsScreen';
+import SavedScreen from '../screens/SavedScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import PostTypeSheet from '../components/PostTypeSheet';
 import { tabBarRef } from '../utils/tourTargets';
@@ -192,6 +193,7 @@ function AppStack() {
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings"      component={SettingsScreen} />
       <Stack.Screen name="MyListings"    component={MyListingsScreen} />
+      <Stack.Screen name="Saved"         component={SavedScreen} />
       <Stack.Screen name="About"         component={AboutScreen} />
       <Stack.Screen name="Terms"         component={TermsScreen} />
       <Stack.Screen name="Privacy"       component={PrivacyScreen} />

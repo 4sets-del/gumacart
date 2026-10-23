@@ -21,6 +21,8 @@ const NOTIF_ICONS = (COLORS) => ({
   review:      { icon: 'star',                color: '#F59E0B' },
   rate_prompt: { icon: 'star-half',           color: '#F59E0B' },
   listing_update: { icon: 'pricetags',        color: '#EA580C' },
+  search_alert: { icon: 'notifications',      color: '#0D9488' },
+  listing_expired: { icon: 'hourglass',       color: '#D9822B' },
   offer:       { icon: 'pricetag',            color: COLORS.primary },
   sold:        { icon: 'checkmark-circle',    color: COLORS.primary },
   new_listing: { icon: 'bag-handle',          color: '#EA580C' },

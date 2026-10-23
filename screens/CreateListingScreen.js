@@ -1,7 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Image, Platform,
 } from 'react-native';
+import { MEETUP_SPOTS } from '../constants/school';
+import CoachMark from '../components/CoachMark';
+import { useScreenTour } from '../utils/useScreenTour';
+import PostTypeSheet, { postTypeMeta } from '../components/PostTypeSheet';
+import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
@@ -16,12 +21,6 @@ import GradientButton from "../components/GradientButton";
 import { ProductCard } from "../components/ProductCard";
 
 
-const LISTING_TYPES = (COLORS) => ([
-  { id: 'sell',   label: 'For Sale',    icon: 'pricetag-outline',        color: COLORS.sell,   bg: COLORS.sellBg },
-  { id: 'buy',    label: 'Looking For', icon: 'search-outline',          color: COLORS.buy,    bg: COLORS.buyBg },
-  { id: 'barter', label: 'Barter',      icon: 'swap-horizontal-outline', color: COLORS.barter, bg: COLORS.barterBg },
-  { id: 'donate', label: 'Donate',      icon: 'gift-outline',            color: COLORS.donate, bg: COLORS.donateBg },
-]);
 
 
 const MAX_PHOTOS = 6;
@@ -40,9 +39,7 @@ function FieldError({ msg }) {
 
 const CONDITIONS = ["New", "Like New", "Good", "Fair", "Poor"];
 
-const CAMPUS_LOCATIONS = [
-  "Dormitory", "Admin Office", "Library", "Main Gate", "Other",
-];
+const CAMPUS_LOCATIONS = MEETUP_SPOTS;
 
 
 export default function CreateListingScreen({ navigation, route }) {
@@ -65,7 +62,24 @@ export default function CreateListingScreen({ navigation, route }) {
   const [images, setImages]                 = useState(editListing?.images || (editListing?.image ? [editListing.image] : []));
   const [loading, setLoading]               = useState(false);
 
-  const activeType = LISTING_TYPES(COLORS).find((t) => t.id === listingType);
+  const typeInfo = postTypeMeta(COLORS, listingType);
+  // New posts opened without a type (e.g. My Listings → Add New Listing)
+  // start by asking for one, the same way the + Post tab does.
+  const [typePicker, setTypePicker] = useState(!isEditing && !route?.params?.type);
+  const [typeChosen, setTypeChosen] = useState(isEditing || !!route?.params?.type);
+
+  // First-time mini tour of the form (after the type has been picked).
+  const rootRef = useRef(null);
+  const typeTagRef = useRef(null);
+  const photosRef = useRef(null);
+  const titleRef = useRef(null);
+  const [tourVisible, finishTour] = useScreenTour('create', !typePicker);
+  const tourSteps = useMemo(() => [
+    { ref: typeTagRef, icon: 'swap-horizontal', title: 'Listing type', text: 'This is what you\'re posting. Tap Change to switch between For Sale, Looking For, Barter and Donate.' },
+    { ref: photosRef, icon: 'camera', title: 'Photos', text: 'Add up to 6 clear, bright photos. The first one is the cover buyers see first.' },
+    { ref: titleRef, icon: 'create', title: 'Title & details', text: 'Use a clear title, then describe the condition and anything buyers should know.' },
+    { icon: 'eye', title: 'Price, meet-up & preview', text: 'Below, set the price (and quantity), choose a campus meet-up spot, and check the live preview. An admin approves new posts before they go live.' },
+  ], []);
 
   useEffect(() => {
     const checkVerification = async () => {
@@ -221,7 +235,15 @@ export default function CreateListingScreen({ navigation, route }) {
   const showQuantity = listingType === 'sell' || listingType === 'donate';
 
   return (
-    <View style={styles.safe}>
+    <View style={styles.safe} ref={rootRef} collapsable={false}>
+      <CoachMark visible={tourVisible} steps={tourSteps} onFinish={finishTour} originRef={rootRef} />
+      <PostTypeSheet
+        visible={typePicker}
+        onClose={() => setTypePicker(false)}
+        onPick={(t) => { setListingType(t); setTypeChosen(true); setTypePicker(false); }}
+        selected={typeChosen ? listingType : undefined}
+        title={isEditing ? "Change listing type" : "What do you want to post?"}
+      />
       <ScreenHeader
         title={isEditing ? "Edit Listing" : "Create Listing"}
         onBack={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}
@@ -229,33 +251,36 @@ export default function CreateListingScreen({ navigation, route }) {
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
-        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <KeyboardScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
-          {/* Listing Type */}
-          <Text style={styles.sectionLabel}>Listing Type</Text>
-          <View style={styles.typeRow}>
-            {LISTING_TYPES(COLORS).map((type) => {
-              const isActive = listingType === type.id;
-              return (
-                <TouchableOpacity
-                  key={type.id}
-                  activeOpacity={0.8}
-                  style={[styles.typeBtn, isActive && { backgroundColor: type.bg, borderColor: type.color }]}
-                  onPress={() => setListingType(type.id)}
-                >
-                  <Ionicons name={type.icon} size={20} color={isActive ? type.color : COLORS.textMuted} style={{ marginBottom: 4 }} />
-                  <Text style={[styles.typeBtnLabel, isActive && { color: type.color }]}>{type.label}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {/* Listing type: chosen on the Post sheet; "Change" reopens it. */}
+          <TouchableOpacity
+            ref={typeTagRef}
+            collapsable={false}
+            style={[styles.typeTag, { backgroundColor: typeInfo.bg, borderColor: typeInfo.color + '55' }]}
+            activeOpacity={0.85}
+            onPress={() => setTypePicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Listing type: ${typeInfo.label}. Change`}
+          >
+            <View style={[styles.typeTagIcon, { backgroundColor: typeInfo.color }]}>
+              <Ionicons name={typeInfo.icon} size={18} color="#fff" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.typeTagLabel, { color: typeInfo.color }]}>{typeInfo.label}</Text>
+              <Text style={styles.typeTagSub}>{typeInfo.sub}</Text>
+            </View>
+            <View style={styles.typeTagChange}>
+              <Text style={[styles.typeTagChangeText, { color: typeInfo.color }]}>Change</Text>
+            </View>
+          </TouchableOpacity>
 
           {/* Photos */}
           <View style={styles.sectionLabelRow}>
             <Text style={styles.sectionLabel}>Photos</Text>
             <Text style={[styles.required, images.length >= MAX_PHOTOS && { color: COLORS.primary }]}>{images.length}/{MAX_PHOTOS}</Text>
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
+          <ScrollView ref={photosRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
             {images.map((uri, index) => (
               <View key={index} style={styles.photoThumb}>
                 <Image source={{ uri }} style={styles.photoThumbImg} />
@@ -278,7 +303,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
           {/* Title */}
           <Text style={styles.sectionLabel}>Title</Text>
-          <View style={styles.inputWrapper}>
+          <View style={styles.inputWrapper} ref={titleRef} collapsable={false}>
             <TextInput
               style={styles.input}
               placeholder="e.g. Canon EOS Camera, Calculus Book"
@@ -446,12 +471,19 @@ export default function CreateListingScreen({ navigation, route }) {
                 price: Number(price) || 0,
                 type: listingType,
                 images,
+                quantity,
+                category,
+                condition,
+                location,
+                sellerName: auth.currentUser?.displayName || "You",
+                sellerPhoto: auth.currentUser?.photoURL || null,
+                createdAt: new Date(),
               }}
             />
             <View style={styles.previewInfo}>
-              <View style={[styles.previewDot, { backgroundColor: activeType?.color }]} />
+              <View style={[styles.previewDot, { backgroundColor: typeInfo.color }]} />
               <Text style={styles.previewHintText}>
-                Posts as <Text style={{ fontFamily: FONTS.heading, color: activeType?.color }}>{activeType?.label}</Text>
+                Posts as <Text style={{ fontFamily: FONTS.heading, color: typeInfo.color }}>{typeInfo.label}</Text>
                 {category ? ` in ${category}` : ""}. An admin reviews it before it goes live.
               </Text>
             </View>
@@ -472,7 +504,7 @@ export default function CreateListingScreen({ navigation, route }) {
           />
 
           <View style={{ height: 50 }} />
-        </ScrollView>
+        </KeyboardScrollView>
       </KeyboardAvoidingView>
     </View>
   );
@@ -484,9 +516,12 @@ const createStyles = (COLORS) => StyleSheet.create({
   sectionLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 10 },
   sectionLabel: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 10, marginTop: 18 },
   required: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
-  typeRow: { flexDirection: "row", gap: 8 },
-  typeBtn: { flex: 1, alignItems: "center", paddingVertical: 12, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.border, backgroundColor: COLORS.surface },
-  typeBtnLabel: { fontSize: 11, fontWeight: "700", color: COLORS.textSecondary },
+  typeTag: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, padding: 12, borderRadius: RADIUS.lg, borderWidth: 1.5 },
+  typeTagIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  typeTagLabel: { fontSize: 16, fontFamily: FONTS.heading },
+  typeTagSub: { fontSize: 12.5, color: COLORS.textSecondary, marginTop: 1 },
+  typeTagChange: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: RADIUS.full, backgroundColor: COLORS.surface },
+  typeTagChangeText: { fontSize: 13, fontWeight: "700" },
   photosRow: { flexDirection: "row", marginBottom: 4 },
   photoThumb: { width: 96, height: 96, borderRadius: RADIUS.md, marginRight: 10, overflow: "hidden", position: "relative" },
   photoThumbImg: { width: "100%", height: "100%" },

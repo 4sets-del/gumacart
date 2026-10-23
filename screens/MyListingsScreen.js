@@ -17,6 +17,7 @@ const STATUS_PILLS = (COLORS) => ({
   reserved: { label: 'Reserved',       color: COLORS.warning, bg: COLORS.warningLight },
   rejected: { label: 'Rejected',       color: COLORS.error,   bg: COLORS.errorLight },
   sold:     { label: 'Sold',           color: COLORS.textSecondary, bg: COLORS.surfaceAlt },
+  expired:  { label: 'Expired · tap to renew', color: COLORS.warning, bg: COLORS.warningLight },
 });
 
 export default function MyListingsScreen({ navigation }) {

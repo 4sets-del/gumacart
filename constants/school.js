@@ -48,3 +48,7 @@ export function academicLabel(profile) {
   if (!course) return isFaculty ? 'SLSU Faculty' : parts.length ? `SLSU · ${parts.join(' · ')}` : 'SLSU Student';
   return parts.join(' · ');
 }
+
+// Campus meet-up spots, used for a listing's meet-up place and for meet-ups
+// planned in chat.
+export const MEETUP_SPOTS = ['Library', 'Main Gate', 'Admin Office', 'Dormitory', 'Other'];

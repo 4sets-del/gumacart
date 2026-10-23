@@ -9,6 +9,8 @@ import {
   RefreshControl,
   Dimensions,
   Image,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
@@ -31,7 +33,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const BANNER_W = SCREEN_W - SPACING.lg * 2;
 const GRID_GAP = 12;
 const GRID_CARD_W = (SCREEN_W - SPACING.lg * 2 - GRID_GAP) / 2;
-const PAGE_SIZE = 20;
+const GridGap = () => <View style={{ height: GRID_GAP }} />;
 
 // Quick filter by listing type (what the old bottom-bar "Filter" button did).
 const TYPE_FILTERS = (COLORS) => ([
@@ -104,7 +106,7 @@ export default function HomeScreen({ navigation, route }) {
   const coachSteps = useMemo(() => [
     { icon: 'storefront', title: 'Welcome to GumaCart!', text: 'The campus marketplace for SLSU Gumaca. Here is a quick tour of everything you can do. Tap Next to start.' },
     { ref: searchRef, icon: 'search', title: 'Search', text: 'Find items or sellers, then Sort & Filter by price, category and listing type.' },
-    { ref: cartRef, icon: 'cart', shape: 'circle', title: 'Your cart', text: 'Save items you want. At checkout your order is sent to each seller in chat.' },
+    { ref: cartRef, icon: 'cart', shape: 'circle', title: 'Your cart', text: 'Items you plan to buy go here; at checkout your order is sent to each seller in chat. To just keep an eye on something, tap ♡ to save it (Profile → Saved Items).' },
     { ref: notifRef, icon: 'notifications', shape: 'circle', title: 'Notifications', text: 'Messages, new followers, reviews, and updates when an item you want is reserved or sold.' },
     { ref: categoriesRef, icon: 'grid', title: 'Categories', text: 'Jump straight to Food & Drinks, Clothes, Academic and more.' },
     { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, add to cart, or chat with the seller.', optional: true },
@@ -186,15 +188,141 @@ export default function HomeScreen({ navigation, route }) {
   const [typeFilter, setTypeFilter] = useState('all');
   const shownListings = typeFilter === 'all' ? listings : listings.filter((l) => (l.type || 'sell') === typeFilter);
 
-  // Draw the grid in pages so a large marketplace doesn't render every card
-  // at once; more are added as the user nears the bottom.
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  useEffect(() => { setVisibleCount(PAGE_SIZE); }, [typeFilter]);
-  const onScroll = ({ nativeEvent: { layoutMeasurement, contentOffset, contentSize } }) => {
-    if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 600 && visibleCount < shownListings.length) {
-      setVisibleCount((c) => c + PAGE_SIZE);
-    }
-  };
+
+  // Everything above the "Latest Listings" grid. The grid itself is a
+  // virtualized FlatList, so only cards near the screen are drawn even when
+  // the marketplace has hundreds of items.
+  const listHeader = (
+    <View style={{ paddingTop: SPACING.lg }}>
+
+      {/* ── BANNER CAROUSEL ── */}
+      <ScrollView
+        ref={bannerRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        snapToInterval={BANNER_W + SPACING.md}
+        decelerationRate="fast"
+        contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}
+        onMomentumScrollEnd={(e) => setBannerIndex(Math.round(e.nativeEvent.contentOffset.x / (BANNER_W + SPACING.md)))}
+      >
+        {BANNERS.map((b) => (
+          <LinearGradient key={b.title} colors={b.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
+            <View style={styles.bannerCircle} />
+            <View style={styles.bannerCircleSmall} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.bannerTitle}>{b.title}</Text>
+              <Text style={styles.bannerText}>{b.text}</Text>
+            </View>
+            <View style={styles.bannerIconBox}>
+              <Ionicons name={b.icon} size={42} color="#fff" />
+            </View>
+          </LinearGradient>
+        ))}
+      </ScrollView>
+      <View style={styles.dotsRow}>
+        {BANNERS.map((b, i) => (
+          <View key={b.title} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
+        ))}
+      </View>
+
+      {/* ── CATEGORIES ── */}
+      <ScrollView
+        ref={categoriesRef}
+        collapsable={false}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoriesRow}
+      >
+        <TouchableOpacity style={styles.categoryItem} activeOpacity={0.7} onPress={() => navigation.navigate('Categories')}>
+          <View style={[styles.categoryCircle, { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary + '40' }]}>
+            <Ionicons name="grid-outline" size={24} color={COLORS.primary} />
+          </View>
+          <Text style={styles.categoryLabel}>All</Text>
+        </TouchableOpacity>
+        {CATEGORIES.map((cat) => (
+          <TouchableOpacity key={cat.name} style={styles.categoryItem} activeOpacity={0.7} onPress={() => openCategory(cat.name)}>
+            <View style={[styles.categoryCircle, { backgroundColor: categoryTint(cat), borderColor: cat.color + '40' }]}>
+              <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
+            </View>
+            <Text style={styles.categoryLabel} numberOfLines={2}>{cat.name}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {listingsLoading && listings.length === 0 ? (
+        <>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.skeletonTitle, { width: 170 }]} />
+          </View>
+          <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+            {[0, 1, 2].map((i) => <SkeletonCard key={i} width={150} />)}
+          </ScrollView>
+          <View style={styles.sectionHeader}>
+            <View style={[styles.skeletonTitle, { width: 140 }]} />
+          </View>
+          <View style={styles.grid}>
+            {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} width={GRID_CARD_W} />)}
+          </View>
+        </>
+      ) : listings.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <View style={styles.emptyIconBox}>
+            <Ionicons name="storefront-outline" size={40} color={COLORS.primary} />
+          </View>
+          <Text style={styles.emptyText}>No listings yet</Text>
+          <Text style={styles.emptySub}>Be the first to post something!</Text>
+          <TouchableOpacity style={styles.emptyPostBtn} activeOpacity={0.85} onPress={() => navigation.navigate('CreateListing')}>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.emptyPostBtnText}>Post a Listing</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {/* ── FEATURED ── */}
+          <View style={styles.sectionHeader} ref={featuredRef} collapsable={false}>
+            <View style={styles.sectionTitleRow}>
+              <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B2E' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
+              <Text style={styles.sectionTitle}>Featured Listings</Text>
+            </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Search')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.seeAll}>See All</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+            {featured.map((item) => (
+              <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={150} onPress={openProduct} />
+            ))}
+          </ScrollView>
+
+          {/* ── ALL LISTINGS ── */}
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleRow}>
+              <View style={[styles.sectionIcon, { backgroundColor: '#2563EB2E' }]}><Ionicons name="sparkles" size={15} color="#2563EB" /></View>
+              <Text style={styles.sectionTitle}>Latest Listings</Text>
+            </View>
+            <Text style={styles.sectionCount}>{shownListings.length} items</Text>
+          </View>
+          <ScrollView ref={typeChipsRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
+            {TYPE_FILTERS(COLORS).map((t) => {
+              const active = typeFilter === t.id;
+              return (
+                <TouchableOpacity
+                  key={t.id}
+                  activeOpacity={0.8}
+                  onPress={() => setTypeFilter(t.id)}
+                  style={[styles.typeChip, { borderColor: t.color + '55' }, active && { backgroundColor: t.color, borderColor: t.color }]}
+                >
+                  <Ionicons name={t.icon} size={14} color={active ? '#fff' : t.color} />
+                  <Text style={[styles.typeChipText, { color: active ? '#fff' : t.color }]}>{t.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </>
+      )}
+    </View>
+  );
+  const showGrid = !(listingsLoading && listings.length === 0) && listings.length > 0;
 
   return (
     <View style={styles.safe} ref={rootRef} collapsable={false}>
@@ -242,152 +370,30 @@ export default function HomeScreen({ navigation, route }) {
         </TouchableOpacity>
       </LinearGradient>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: SPACING.lg, paddingBottom: 24 }}
-        onScroll={onScroll}
-        scrollEventThrottle={200}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
-      >
-
-        {/* ── BANNER CAROUSEL ── */}
-        <ScrollView
-          ref={bannerRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={BANNER_W + SPACING.md}
-          decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: SPACING.lg, gap: SPACING.md }}
-          onMomentumScrollEnd={(e) => setBannerIndex(Math.round(e.nativeEvent.contentOffset.x / (BANNER_W + SPACING.md)))}
-        >
-          {BANNERS.map((b) => (
-            <LinearGradient key={b.title} colors={b.colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.banner}>
-              <View style={styles.bannerCircle} />
-              <View style={styles.bannerCircleSmall} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.bannerTitle}>{b.title}</Text>
-                <Text style={styles.bannerText}>{b.text}</Text>
-              </View>
-              <View style={styles.bannerIconBox}>
-                <Ionicons name={b.icon} size={42} color="#fff" />
-              </View>
-            </LinearGradient>
-          ))}
-        </ScrollView>
-        <View style={styles.dotsRow}>
-          {BANNERS.map((b, i) => (
-            <View key={b.title} style={[styles.dot, i === bannerIndex && styles.dotActive]} />
-          ))}
-        </View>
-
-        {/* ── CATEGORIES ── */}
-        <ScrollView
-          ref={categoriesRef}
-          collapsable={false}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesRow}
-        >
-          <TouchableOpacity style={styles.categoryItem} activeOpacity={0.7} onPress={() => navigation.navigate('Categories')}>
-            <View style={[styles.categoryCircle, { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary + '40' }]}>
-              <Ionicons name="grid-outline" size={24} color={COLORS.primary} />
-            </View>
-            <Text style={styles.categoryLabel}>All</Text>
-          </TouchableOpacity>
-          {CATEGORIES.map((cat) => (
-            <TouchableOpacity key={cat.name} style={styles.categoryItem} activeOpacity={0.7} onPress={() => openCategory(cat.name)}>
-              <View style={[styles.categoryCircle, { backgroundColor: categoryTint(cat), borderColor: cat.color + '40' }]}>
-                <Text style={styles.categoryEmoji}>{cat.emoji}</Text>
-              </View>
-              <Text style={styles.categoryLabel} numberOfLines={2}>{cat.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {listingsLoading && listings.length === 0 ? (
-          <>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.skeletonTitle, { width: 170 }]} />
-            </View>
-            <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
-              {[0, 1, 2].map((i) => <SkeletonCard key={i} width={128} />)}
-            </ScrollView>
-            <View style={styles.sectionHeader}>
-              <View style={[styles.skeletonTitle, { width: 140 }]} />
-            </View>
-            <View style={styles.grid}>
-              {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} width={GRID_CARD_W} />)}
-            </View>
-          </>
-        ) : listings.length === 0 ? (
-          <View style={styles.emptyWrap}>
-            <View style={styles.emptyIconBox}>
-              <Ionicons name="storefront-outline" size={40} color={COLORS.primary} />
-            </View>
-            <Text style={styles.emptyText}>No listings yet</Text>
-            <Text style={styles.emptySub}>Be the first to post something!</Text>
-            <TouchableOpacity style={styles.emptyPostBtn} activeOpacity={0.85} onPress={() => navigation.navigate('CreateListing')}>
-              <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.emptyPostBtnText}>Post a Listing</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {/* ── FEATURED ── */}
-            <View style={styles.sectionHeader} ref={featuredRef} collapsable={false}>
-              <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B2E' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
-                <Text style={styles.sectionTitle}>Featured Listings</Text>
-              </View>
-              <TouchableOpacity onPress={() => navigation.navigate('Search')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.seeAll}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
-              {featured.map((item) => (
-                <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={128} onPress={openProduct} />
-              ))}
-            </ScrollView>
-
-            {/* ── ALL LISTINGS ── */}
-            <View style={styles.sectionHeader}>
-              <View style={styles.sectionTitleRow}>
-                <View style={[styles.sectionIcon, { backgroundColor: '#2563EB2E' }]}><Ionicons name="sparkles" size={15} color="#2563EB" /></View>
-                <Text style={styles.sectionTitle}>Latest Listings</Text>
-              </View>
-              <Text style={styles.sectionCount}>{shownListings.length} items</Text>
-            </View>
-            <ScrollView ref={typeChipsRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
-              {TYPE_FILTERS(COLORS).map((t) => {
-                const active = typeFilter === t.id;
-                return (
-                  <TouchableOpacity
-                    key={t.id}
-                    activeOpacity={0.8}
-                    onPress={() => setTypeFilter(t.id)}
-                    style={[styles.typeChip, { borderColor: t.color + '55' }, active && { backgroundColor: t.color, borderColor: t.color }]}
-                  >
-                    <Ionicons name={t.icon} size={14} color={active ? '#fff' : t.color} />
-                    <Text style={[styles.typeChipText, { color: active ? '#fff' : t.color }]}>{t.label}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-            {shownListings.length === 0 ? (
-              <View style={styles.typeEmpty}>
-                <Ionicons name="file-tray-outline" size={30} color={COLORS.textMuted} />
-                <Text style={styles.emptySub}>No {TYPE_FILTERS(COLORS).find((t) => t.id === typeFilter)?.label} listings right now.</Text>
-              </View>
-            ) : (
-              <View style={styles.grid}>
-                {shownListings.slice(0, visibleCount).map((item) => (
-                  <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={GRID_CARD_W} onPress={openProduct} />
-                ))}
-              </View>
-            )}
-          </>
+      <FlatList
+        data={showGrid ? shownListings : []}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.gridRow}
+        ItemSeparatorComponent={GridGap}
+        renderItem={({ item }) => (
+          <ProductCard item={item} rating={ratings[item.sellerId]} width={GRID_CARD_W} onPress={openProduct} />
         )}
-      </ScrollView>
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={showGrid ? (
+          <View style={styles.typeEmpty}>
+            <Ionicons name="file-tray-outline" size={30} color={COLORS.textMuted} />
+            <Text style={styles.emptySub}>No {TYPE_FILTERS(COLORS).find((t) => t.id === typeFilter)?.label} listings right now.</Text>
+          </View>
+        ) : null}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={7}
+        removeClippedSubviews={Platform.OS === 'android'}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+      />
     </View>
   );
 }
@@ -439,6 +445,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   sectionCount: { fontSize: 12.5, color: COLORS.textMuted },
   featuredRow: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg, gap: GRID_GAP },
+  gridRow: { paddingHorizontal: SPACING.lg, gap: GRID_GAP },
   skeletonTitle: { height: 18, borderRadius: 9, backgroundColor: COLORS.surfaceAlt },
   typeRow: { paddingHorizontal: SPACING.lg, gap: 8, paddingBottom: SPACING.md },
   typeChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 7, borderRadius: RADIUS.full, borderWidth: 1.5, backgroundColor: COLORS.surface },

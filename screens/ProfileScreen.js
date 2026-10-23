@@ -13,6 +13,7 @@ import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
 import { SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { useWishlist } from "../utils/wishlist";
 import { academicLabel } from "../constants/school";
 import { useTheme } from '../context/ThemeContext';
 
@@ -49,6 +50,7 @@ export default function ProfileScreen({ navigation }) {
   const [listingCount, setListingCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [cartCount, setCartCount] = useState(0);
+  const savedCount = useWishlist().items.length;
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [userData, setUserData] = useState(null);
@@ -293,6 +295,7 @@ export default function ProfileScreen({ navigation }) {
         {/* ── MENU ── */}
         <View style={styles.menu}>
           <MenuItem icon="pricetags" color="#16A34A" label="My Listings" onPress={() => navigation.navigate("MyListings")} />
+          <MenuItem icon="heart" color="#E11D48" label="Saved Items" badge={savedCount > 0 ? savedCount : null} onPress={() => navigation.navigate("Saved")} />
           <MenuItem icon="cart" color="#F59E0B" label="My Cart" badge={cartCount > 0 ? cartCount : null} onPress={() => navigation.navigate("Cart")} />
           <MenuItem icon="chatbubble-ellipses" color="#2563EB" label="Messages" onPress={() => navigation.navigate("Main", { screen: "Messages" })} />
           <MenuItem icon="people" color="#7C3AED" label="Followers & Following" onPress={() => navigation.navigate("Following")} />

@@ -73,3 +73,17 @@ export function priceLabel(item) {
   }
   return { text: item.price != null ? `₱${Number(item.price).toLocaleString()}` : '₱—', color: palette().primary };
 }
+
+// Compact age for cards: "Just now", "5m", "3h", "2d", then a short date.
+export function shortTimeAgo(date) {
+  if (!date) return '';
+  const d = date?.toDate ? date.toDate() : new Date(date);
+  const minutes = Math.floor((Date.now() - d.getTime()) / 60000);
+  if (minutes < 1) return 'Just now';
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d`;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}

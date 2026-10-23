@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Share, Dimensions, Modal, FlatList, Platform, ActivityIndicator,
 } from 'react-native';
@@ -15,6 +15,11 @@ import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
 import { RADIUS, FONTS, colorForName } from "../constants/theme";
+import { SaveButton } from "../components/ProductCard";
+import { renewListing, LISTING_LIFETIME_DAYS } from "../utils/renewListing";
+import ZoomableImage from "../components/ZoomableImage";
+import CoachMark from "../components/CoachMark";
+import { useScreenTour } from "../utils/useScreenTour";
 import ReportSheet from "../components/ReportSheet";
 import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
@@ -72,6 +77,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [fullscreenVisible, setFullscreenVisible] = useState(false);
   const [fullscreenIndex, setFullscreenIndex] = useState(0);
+  const [photoZoomed, setPhotoZoomed] = useState(false); // stop swiping photos while zoomed in
   const fullscreenRef = useRef(null);
   const insets = useSafeAreaInsets();
   const [reportVisible, setReportVisible] = useState(false);
@@ -87,6 +93,29 @@ export default function ProductDetailScreen({ route, navigation }) {
   const images = product.images?.length > 0 ? product.images : product.image ? [product.image] : [];
   const galleryRef = useRef(null);
   const sellerRating = useSellerRatings([product])[product.sellerId];
+
+  // First-time mini tours: one for buyers, one for the seller's own listing.
+  const tourOriginRef = useRef(null);
+  const headerActionsRef = useRef(null);
+  const imageRef = useRef(null);
+  const sellerCardRef = useRef(null);
+  const chatBtnRef = useRef(null);
+  const buyerBarRef = useRef(null);
+  const ownerBarRef = useRef(null);
+  const loadedListing = !!product.sellerId && !removed;
+  const [buyerTour, finishBuyerTour] = useScreenTour('product', loadedListing && !isOwner && !unavailable);
+  const [ownerTour, finishOwnerTour] = useScreenTour('productOwner', loadedListing && isOwner);
+  const buyerSteps = useMemo(() => [
+    { ref: imageRef, icon: 'images', title: 'Photos', text: 'Swipe through the photos. Tap one to view it full-screen, then pinch or double-tap to zoom.' },
+    { ref: headerActionsRef, icon: 'heart', title: 'Save, report, share', text: 'Tap ♡ to save it for later (Profile → Saved Items), 🚩 to report a problem, or share it with a friend.' },
+    { ref: sellerCardRef, icon: 'person', title: 'Know your seller', text: 'See their course, ratings and reviews before you buy.', optional: true },
+    { ref: chatBtnRef, icon: 'chatbubbles', title: 'Message the seller', text: 'Ask questions here. In the chat you can also Make an Offer and Plan a Meet-up on campus.' },
+    { ref: buyerBarRef, icon: 'cart', title: 'Add to Cart', text: 'Save it in your cart and check out with the seller when you\'re ready. If it\'s reserved, you can ask to be next.' },
+  ], []);
+  const ownerSteps = useMemo(() => [
+    { ref: ownerBarRef, icon: 'construct', title: 'Manage your listing', text: 'Edit it, Reserve it for one buyer, Mark it as sold (or "Sold one" if you have several), or delete it.' },
+    { icon: 'notifications', title: 'Buyers stay informed', text: 'People who were interested are notified when you reserve or sell. Reservations auto-release after 4 days, and listings expire after 30 days unless you renew them.' },
+  ], []);
 
   // Seller's course and year for the seller card (cached per user).
   const [sellerLabel, setSellerLabel] = useState("SLSU Student");
@@ -129,7 +158,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   const openFullscreen = (index) => {
     setFullscreenIndex(index);
-    setFullscreenVisible(true);
+    setPhotoZoomed(false); setFullscreenVisible(true);
     setTimeout(() => fullscreenRef.current?.scrollToIndex({ index, animated: false }), 100);
   };
 
@@ -378,6 +407,10 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
+      {/* Marks the top-left of the screen for the mini tour's measurements. */}
+      <View ref={tourOriginRef} collapsable={false} pointerEvents="none" style={styles.tourOrigin} />
+      <CoachMark visible={buyerTour} steps={buyerSteps} onFinish={finishBuyerTour} originRef={tourOriginRef} />
+      <CoachMark visible={ownerTour && !buyerTour} steps={ownerSteps} onFinish={finishOwnerTour} originRef={tourOriginRef} />
       <StatusBarScrim />
 
       <View style={[styles.header, { paddingTop: STATUSBAR_TOP + 8 }]}>
@@ -385,12 +418,13 @@ export default function ProductDetailScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={21} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: "row", gap: 8 }}>
+        <View style={{ flexDirection: "row", gap: 8 }} ref={headerActionsRef} collapsable={false}>
           {!isOwner && (
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report listing" style={styles.headerBtn} activeOpacity={0.7} onPress={openReport}>
               <Ionicons name="flag-outline" size={18} color="#fff" />
             </TouchableOpacity>
           )}
+          {!isOwner && product.sellerId ? <SaveButton item={product} size={19} style={styles.headerBtn} /> : null}
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Share listing" style={styles.headerBtn} activeOpacity={0.7} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={19} color="#fff" />
           </TouchableOpacity>
@@ -398,7 +432,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.imageContainer}>
+        <View style={styles.imageContainer} ref={imageRef} collapsable={false}>
           {images.length > 0 ? (
             <FlatList
               ref={galleryRef}
@@ -447,11 +481,29 @@ export default function ProductDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.content}>
+          {isOwner && product.status === "expired" ? (
+            <View style={styles.expiredBox}>
+              <Ionicons name="hourglass" size={18} color={COLORS.warning} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.expiredTitle}>This listing expired</Text>
+                <Text style={styles.expiredText}>Listings are hidden after {LISTING_LIFETIME_DAYS} days. Still available? Renew it to put it back on top.</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.renewBtn}
+                activeOpacity={0.85}
+                onPress={() => renewListing(product.id)
+                  .then(() => Alert.alert("Renewed", "Your listing is live again."))
+                  .catch(() => Alert.alert("Error", "Could not renew the listing."))}
+              >
+                <Text style={styles.renewText}>Renew</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null}
           {unavailable && (
             <View style={styles.unavailableBox}>
               <Ionicons name="alert-circle" size={18} color={COLORS.error} />
               <Text style={styles.unavailableText}>
-                {removed ? "This listing was removed by the seller." : "This listing isn't available right now."}
+                {removed ? "This listing was removed by the seller." : product.status === "expired" ? "This listing has expired." : "This listing isn't available right now."}
               </Text>
             </View>
           )}
@@ -519,6 +571,8 @@ export default function ProductDetailScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.sellerCard}
+            ref={sellerCardRef}
+            collapsable={false}
             onPress={() => navigation.navigate("SellerProfile", { sellerId: product.sellerId, sellerName: product.sellerName })}
             activeOpacity={0.85}
           >
@@ -557,7 +611,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             ref={fullscreenRef}
             data={images}
             keyExtractor={(_, i) => String(i)}
-            horizontal pagingEnabled
+            horizontal pagingEnabled scrollEnabled={!photoZoomed}
             showsHorizontalScrollIndicator={false}
             bounces={false}
             initialScrollIndex={fullscreenIndex}
@@ -565,7 +619,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             onMomentumScrollEnd={(e) => setFullscreenIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
             renderItem={({ item }) => (
               <View style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT, justifyContent: "center", alignItems: "center" }}>
-                <CachedImage source={{ uri: item }} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} contentFit="contain" cachePolicy="memory-disk" />
+                <ZoomableImage uri={item} style={{ width: SCREEN_WIDTH, height: SCREEN_HEIGHT }} onZoomChange={setPhotoZoomed} />
               </View>
             )}
           />
@@ -578,7 +632,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </Modal>
 
       {unavailable && !isOwner ? null : isOwner ? (
-        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]} ref={ownerBarRef} collapsable={false}>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing", { editListing: product })} disabled={marking || deleting}>
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
@@ -604,8 +658,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Message seller" style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]} ref={buyerBarRef} collapsable={false}>
+          <TouchableOpacity ref={chatBtnRef} collapsable={false} accessibilityRole="button" accessibilityLabel="Message seller" style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
             <Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primary} />
           </TouchableOpacity>
           {isSold ? (
@@ -713,6 +767,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10 },
   headerBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center" },
+  tourOrigin: { position: "absolute", top: 0, left: 0, width: 1, height: 1 },
   imageContainer: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: COLORS.surfaceAlt },
   galleryImage: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT },
   imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -757,6 +812,11 @@ const createStyles = (COLORS) => StyleSheet.create({
   viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
   viewProfileText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
 
+  expiredBox: { flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: COLORS.warningLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
+  expiredTitle: { fontSize: 14, fontWeight: "800", color: COLORS.warning },
+  expiredText: { fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary, marginTop: 2 },
+  renewBtn: { backgroundColor: COLORS.warning, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 },
+  renewText: { color: "#fff", fontWeight: "800", fontSize: 13 },
   unavailableBox: { flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginBottom: 12 },
   unavailableText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.error },
   pickerList: { marginTop: 10, gap: 8 },

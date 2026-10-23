@@ -86,7 +86,8 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   // above; only the phone push is skipped.
   const prefs = userData.notifPrefs || {};
   if (prefs.muteAll === true) return;
-  if (data?.nav === "listing" && prefs.listings === false) return;
+  if (storeType === "search_alert" && prefs.alerts === false) return;
+  if (storeType !== "search_alert" && data?.nav === "listing" && prefs.listings === false) return;
   if (storeType === "message" && prefs.messages === false) return;
   if (storeType === "follow" && prefs.followers === false) return;
   if (storeType === "review" && prefs.reviews === false) return;
@@ -145,6 +146,8 @@ exports.onNewMessage = functions
     const senderName = message.senderName || "Someone";
     const preview = (
       message.type === "listing" ? `🛍️ Interested in "${message.listingName || "your listing"}"`
+      : message.type === "offer" ? `💸 Offered ₱${Number(message.amount || 0).toLocaleString()} for "${message.listingName || "your item"}"`
+      : message.type === "meetup" ? `📍 Wants to meet at ${message.place || "campus"}. Tap to confirm.`
       : message.type === "image" ? "📷 Sent a photo"
       : message.type === "video" ? "🎥 Sent a video"
       : message.text || "Sent you a message"
@@ -289,6 +292,41 @@ async function interestedIds(listingId) {
   return snap.docs.map((d) => d.id);
 }
 
+// Same word rule as utils/searchAlerts.js in the app.
+function keywordsOf(text) {
+  const words = String(text || "").toLowerCase().match(/[a-z0-9]{2,}/g) || [];
+  return [...new Set(words)];
+}
+
+// "Notify me" saved searches: tell everyone whose saved search matches a
+// listing that just went live (every word of the search must appear).
+async function notifySearchAlerts(listingId, listing) {
+  const words = keywordsOf(`${listing.name || listing.title || ""} ${listing.description || ""} ${listing.category || ""}`);
+  if (!words.length) return;
+  const wordSet = new Set(words);
+  const matches = new Map(); // uid -> saved search term
+  // array-contains-any accepts up to 30 values per query.
+  for (let i = 0; i < words.length; i += 30) {
+    const snap = await db.collectionGroup("savedSearches")
+      .where("keywords", "array-contains-any", words.slice(i, i + 30))
+      .get();
+    for (const d of snap.docs) {
+      const uid = d.ref.parent.parent.id;
+      const s = d.data();
+      if (uid === listing.sellerId || matches.has(uid)) continue;
+      if ((s.keywords || []).every((w) => wordSet.has(w))) matches.set(uid, s.term);
+    }
+  }
+  const itemName = listing.name || listing.title || "A new item";
+  await Promise.all([...matches].map(([uid, term]) => notifyUser(uid, {
+    storeType: "search_alert",
+    styleKey: "system",
+    title: `New match for "${term}"`,
+    body: `"${itemName}" was just posted. Tap to see it before someone else does.`,
+    data: { nav: "listing", listingId },
+  })));
+}
+
 exports.onListingStatusChange = functions
   .region("asia-southeast1")
   .firestore
@@ -332,6 +370,11 @@ exports.onListingStatusChange = functions
         body: `"${itemName}" is now live on the marketplace.`,
         data: listingLink,
       });
+      // Only the first time it goes live (edits are re-approved too).
+      if (!after.alertsSent) {
+        await notifySearchAlerts(listingId, after).catch((e) => console.error("Search alerts", e.message));
+        await change.after.ref.update({ alertsSent: true });
+      }
     }
 
     if (statusChanged && after.status === "rejected") {
@@ -422,6 +465,76 @@ exports.checkReservations = functions
           storeType: "listing_update", styleKey: "system", data: link,
           title: "Still reserved?",
           body: `"${itemName}" has been reserved for 2 days. Mark it sold or release it; otherwise it's released automatically in 2 days.`,
+        });
+      }
+    }
+    return null;
+  });
+
+// Meet-up reminders: about an hour before a confirmed meet-up planned in chat,
+// remind both people. Runs every 15 minutes.
+exports.meetupReminders = functions
+  .region("asia-southeast1")
+  .pubsub.schedule("every 15 minutes")
+  .timeZone("Asia/Manila")
+  .onRun(async () => {
+    const now = Date.now();
+    const snap = await db.collectionGroup("messages")
+      .where("type", "==", "meetup")
+      .where("status", "==", "confirmed")
+      .where("reminderSent", "==", false)
+      .where("at", "<=", new Date(now + 70 * 60 * 1000))
+      .get();
+    for (const doc of snap.docs) {
+      const m = doc.data();
+      await doc.ref.update({ reminderSent: true });
+      if (!m.at || m.at.toMillis() < now) continue; // already started or passed
+      const convRef = doc.ref.parent.parent;
+      const conv = (await convRef.get()).data() || {};
+      const time = m.at.toDate().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" });
+      await Promise.all((conv.participants || []).map((uid) => notifyUser(uid, {
+        storeType: "message", styleKey: "message",
+        title: "Meet-up soon",
+        body: `You're meeting at ${m.place} at ${time}. Stay safe and meet in a public spot.`,
+        data: { nav: "chat", conversationId: convRef.id },
+      })));
+    }
+    return null;
+  });
+
+// Listing expiry: active listings older than 30 days are hidden (status
+// "expired") so Home doesn't fill up with stale items; the seller gets a
+// heads-up 3 days before and can Renew from the listing. Reserved items are
+// left alone while a sale is in progress. Runs daily.
+const DAY = 24 * HOUR;
+exports.expireListings = functions
+  .region("asia-southeast1")
+  .pubsub.schedule("every day 09:00")
+  .timeZone("Asia/Manila")
+  .onRun(async () => {
+    const now = Date.now();
+    const snap = await db.collection("listings")
+      .where("status", "==", "active")
+      .where("createdAt", "<", new Date(now - 27 * DAY))
+      .get();
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      if (d.reserved || !d.sellerId) continue;
+      const itemName = d.name || d.title || "your listing";
+      const link = { nav: "listing", listingId: doc.id };
+      if (d.createdAt.toMillis() < now - 30 * DAY) {
+        await doc.ref.update({ status: "expired", expiredAt: FieldValue.serverTimestamp() });
+        await notifyUser(d.sellerId, {
+          storeType: "listing_expired", styleKey: "system", data: link,
+          title: "Listing expired",
+          body: `"${itemName}" was up for 30 days and is now hidden. Still available? Tap to renew it.`,
+        });
+      } else if (!d.expiryWarned) {
+        await doc.ref.update({ expiryWarned: true });
+        await notifyUser(d.sellerId, {
+          storeType: "listing_expired", styleKey: "system", data: link,
+          title: "Expiring in 3 days",
+          body: `"${itemName}" will be hidden soon. Sold it? Mark it sold. Still selling? Renew it from the listing.`,
         });
       }
     }
@@ -523,8 +636,10 @@ async function deleteUserData(uid) {
   ]);
   await Promise.all([...listings.docs, ...written.docs, ...received.docs].map((d) => d.ref.delete()));
 
-  // Profile document plus its cart, notifications, followers and following.
+  // Profile document plus its cart, notifications, followers, following and
+  // saved searches; and their saved items (wishlist).
   await db.recursiveDelete(userRef);
+  await db.recursiveDelete(db.collection("wishlists").doc(uid));
 
   // Uploaded files: profile photo, listing photos and student ID.
   const bucket = getStorage().bucket();

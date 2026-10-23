@@ -10,6 +10,7 @@ import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
+import { useSearchAlerts, findAlert, addAlert, removeAlert, keywordsOf } from "../utils/searchAlerts";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
@@ -65,6 +66,7 @@ export default function SearchScreen({ navigation, route }) {
   const [draftFilters, setDraftFilters]   = useState(filters);
   const [cartIds, setCartIds]             = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
+  const alerts = useSearchAlerts();
   const inputRef = useRef(null);
   const user = auth.currentUser;
 
@@ -249,6 +251,9 @@ export default function SearchScreen({ navigation, route }) {
   );
 
   const showHistory = term.length === 0 && searchHistory.length > 0 && !initialCategory;
+  const currentAlert = findAlert(alerts, term);
+  const canAlert = activeTab === "listings" && keywordsOf(term).length > 0;
+  const toggleAlert = () => (currentAlert ? removeAlert(currentAlert.id) : addAlert(term)).catch(() => Alert.alert("Error", "Could not update the alert."));
 
   return (
     <View style={[styles.safe, { paddingTop: insets.top }]}>
@@ -335,6 +340,39 @@ export default function SearchScreen({ navigation, route }) {
         </View>
       )}
 
+      {/* "Notify me": get a notification when a new listing matches */}
+      {canAlert && (
+        <TouchableOpacity style={[styles.alertBar, currentAlert && styles.alertBarOn]} activeOpacity={0.85} onPress={toggleAlert}>
+          <Ionicons name={currentAlert ? "notifications" : "notifications-outline"} size={18} color={currentAlert ? "#fff" : COLORS.primary} />
+          <Text style={[styles.alertBarText, currentAlert && { color: "#fff" }]} numberOfLines={1}>
+            {currentAlert ? `You'll be notified about "${term}"` : `Notify me about new "${term}" listings`}
+          </Text>
+          <Text style={[styles.alertBarAction, currentAlert && { color: "rgba(255,255,255,0.85)" }]}>{currentAlert ? "Turn off" : "Turn on"}</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Your alerts — shown when the box is empty */}
+      {term.length === 0 && activeTab === "listings" && alerts.length > 0 && (
+        <View style={styles.historyBox}>
+          <View style={styles.historyHeader}>
+            <Text style={styles.historyTitle}>Your alerts</Text>
+          </View>
+          <View style={styles.historyChips}>
+            {alerts.map((a) => (
+              <View key={a.id} style={[styles.historyChip, { borderColor: COLORS.primary + "55" }]}>
+                <TouchableOpacity style={styles.historyChipMain} activeOpacity={0.7} onPress={() => setSearchText(a.term)}>
+                  <Ionicons name="notifications" size={13} color={COLORS.primary} style={{ marginRight: 6 }} />
+                  <Text style={styles.historyChipText}>{a.term}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Turn off alert for ${a.term}`} style={styles.historyChipX} activeOpacity={0.7} onPress={() => removeAlert(a.id).catch(() => {})}>
+                  <Ionicons name="close" size={13} color={COLORS.textMuted} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* Results */}
       {activeTab === "listings" ? (
         loadingListings ? (
@@ -343,7 +381,7 @@ export default function SearchScreen({ navigation, route }) {
           <View style={styles.emptyState}>
             <View style={styles.emptyIconBox}><Ionicons name="search" size={36} color={COLORS.primary} /></View>
             <Text style={styles.emptyTitle}>No listings found</Text>
-            <Text style={styles.emptySub}>Try a different search or filter</Text>
+            <Text style={styles.emptySub}>{canAlert && !currentAlert ? "Turn on the alert above and we'll tell you when someone posts it." : "Try a different search or filter"}</Text>
           </View>
         ) : (
           <FlatList
@@ -514,6 +552,10 @@ const createStyles = (COLORS) => StyleSheet.create({
   historyChipX: { paddingRight: 10, paddingLeft: 2, paddingVertical: 7 },
 
   // Sheet
+  alertBar: { flexDirection: "row", alignItems: "center", gap: 10, marginHorizontal: 16, marginTop: 8, marginBottom: 4, paddingHorizontal: 14, paddingVertical: 11, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryPale, borderWidth: 1, borderColor: COLORS.primary + "40" },
+  alertBarOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  alertBarText: { flex: 1, fontSize: 13.5, fontWeight: "600", color: COLORS.primary },
+  alertBarAction: { fontSize: 12.5, fontWeight: "800", color: COLORS.primary },
   priceRow: { flexDirection: "row", gap: 10 },
   chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 10 },
   fChip: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 13, height: 36, borderRadius: RADIUS.full, backgroundColor: COLORS.surfaceAlt, borderWidth: 1, borderColor: COLORS.border },
