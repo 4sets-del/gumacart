@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, StatusBar, FlatList, ScrollView, Image,
   ActivityIndicator,
@@ -10,6 +10,8 @@ import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
+import { getUserBasics } from "../utils/userCache";
+import { academicLabel } from "../constants/school";
 import { useSearchAlerts, findAlert, addAlert, removeAlert, keywordsOf } from "../utils/searchAlerts";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
@@ -97,24 +99,26 @@ export default function SearchScreen({ navigation, route }) {
     saveHistory([clean, ...searchHistory.filter((t) => t.toLowerCase() !== clean.toLowerCase())].slice(0, 8));
   };
 
-  // Load sellers only when the Sellers tab is first opened — this reads every
-  // user document, so it shouldn't happen for plain listing searches.
+  // Sellers = people with items on the marketplace right now, worked out from
+  // the listings already on the phone; only their profiles are fetched (from
+  // the shared cache), instead of downloading every user account.
   const sellersRequested = activeTab === "sellers";
+  const sellerCounts = useMemo(() => {
+    const counts = new Map();
+    listings.forEach((l) => { if (l.sellerId) counts.set(l.sellerId, (counts.get(l.sellerId) || 0) + 1); });
+    return counts;
+  }, [listings]);
   useEffect(() => {
-    if (!sellersRequested || sellers.length > 0) return;
-    const loadSellers = async () => {
-      try {
-        const snap = await getDocs(collection(db, "users"));
-        setSellers(
-          snap.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .filter((u) => u.uid !== user?.uid && u.role !== "banned"),
-        );
-      } catch (e) { console.log(e.message); }
-      finally { setLoadingSellers(false); }
-    };
-    loadSellers();
-  }, [sellersRequested]);
+    if (!sellersRequested) return;
+    let cancelled = false;
+    Promise.all([...sellerCounts].map(async ([id, count]) => ({ id, uid: id, count, ...(await getUserBasics(id)) })))
+      .then((list) => {
+        if (cancelled) return;
+        setSellers(list.filter((u) => u.role !== "banned").sort((a, b) => b.count - a.count));
+        setLoadingSellers(false);
+      });
+    return () => { cancelled = true; };
+  }, [sellersRequested, sellerCounts]);
 
   // Cart membership, so the cart button on each row shows its state.
   const loadCartIds = async () => {
@@ -237,7 +241,7 @@ export default function SearchScreen({ navigation, route }) {
           <Text style={styles.sellerName}>{item.name || "Student"}</Text>
           {item.verificationStatus === "verified" && <Ionicons name="checkmark-circle" size={14} color={COLORS.primary} />}
         </View>
-        <Text style={styles.sellerEmail} numberOfLines={1}>{item.email}</Text>
+        <Text style={styles.sellerEmail} numberOfLines={1}>{item.count} item{item.count !== 1 ? "s" : ""} for sale · {academicLabel(item)}</Text>
         {item.avgRating > 0 && (
           <View style={styles.sellerRatingRow}>
             <Ionicons name="star" size={12} color={COLORS.star} />
@@ -414,7 +418,7 @@ export default function SearchScreen({ navigation, route }) {
         <View style={styles.emptyState}>
           <View style={styles.emptyIconBox}><Ionicons name="people-outline" size={36} color={COLORS.primary} /></View>
           <Text style={styles.emptyTitle}>No sellers found</Text>
-          <Text style={styles.emptySub}>Try a different name or email</Text>
+          <Text style={styles.emptySub}>Only people with items on the marketplace are listed. Try a different name.</Text>
         </View>
       ) : (
         <FlatList
