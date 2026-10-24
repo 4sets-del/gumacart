@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Animated, StatusBar, ActivityIndicator, ImageBackground } from 'react-native';
 
-// Shown while the session loads, right after the native splash screen. It
-// draws the very same image (assets/splash.png) so the hand-off is seamless,
-// and adds a spinner under the tagline.
+// Shown while the session loads, right after Android's system splash (which
+// can only show the logo circle, assets/splash-icon.png). The full design,
+// assets/splash.jpg, has that circle at the same spot, so the waves, name and
+// campus simply appear around the logo. Regenerate both with
+// scripts/make-splash.sh.
 export default function SplashScreen() {
   const [spinner] = useState(() => new Animated.Value(0));
 
@@ -13,7 +15,7 @@ export default function SplashScreen() {
   }, [spinner]);
 
   return (
-    <ImageBackground source={require('../assets/splash.png')} style={styles.container} resizeMode="cover">
+    <ImageBackground source={require('../assets/splash.jpg')} style={styles.container} resizeMode="cover">
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <Animated.View style={[styles.spinner, { opacity: spinner }]}>
         <ActivityIndicator size="small" color="#14532B" />
@@ -23,7 +25,7 @@ export default function SplashScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F4F9F5' },
-  // Just below "Southern Luzon State University · Gumaca" in splash.png.
-  spinner: { position: 'absolute', top: '66.5%', left: 0, right: 0, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#F6FAF7' },
+  // Just below "Southern Luzon State University · Gumaca" in splash.jpg.
+  spinner: { position: 'absolute', top: '71.5%', left: 0, right: 0, alignItems: 'center' },
 });

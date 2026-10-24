@@ -87,3 +87,4 @@ Admins have `role: "admin"` on their `users/{uid}` document; set it in the Fireb
 - **Long forms** use `KeyboardScrollView`, so the focused field stays above the keyboard.
 - **SLSU domain:** keep `constants/school.js` and `isSlsuEmail()` in `firestore.rules` in sync.
 - **Privacy policy:** after editing `constants/privacy.js`, run `npm run privacy` to regenerate `PRIVACY.md`.
+- **Splash:** `assets/splash-icon.png` (Android's system splash) and `assets/splash.jpg` (the full splash) come from `scripts/make-splash.sh`; edit and rerun it to change them.
