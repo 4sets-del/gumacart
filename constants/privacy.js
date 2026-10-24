@@ -16,7 +16,7 @@ export const PRIVACY_SECTIONS = [
       'Account details: your name, SLSU email address (@slsu.edu.ph, required to sign up), address, age, and whether you signed up as a student or requested faculty status. Your password is handled by Firebase Authentication; we never see it.',
       'Seller verification: your student ID number and a photo of your student ID, which admins use to confirm your identity before you can post listings.',
       'Profile photo, if you add one.',
-      'Listings: photos, title, description, specifications, price, category, condition, meet-up location and the contact number you enter.',
+      'Listings: photos, title, description, price, quantity, category, condition and meet-up location. We do not ask for or show phone numbers; buyers and sellers talk through the in-app chat.',
       'Messages, including photos and videos you send in chat.',
       'Reviews and ratings you write, the people you follow, items in your cart, reports and ban appeals.',
     ],
@@ -44,7 +44,7 @@ export const PRIVACY_SECTIONS = [
   {
     title: 'Who can see your information',
     points: [
-      'Other signed-in users can see your name, profile photo, email address, verified/faculty badges, ratings and reviews, follower counts, and your active listings, including the contact number and meet-up location on them.',
+      'Other signed-in users can see your name, profile photo, email address, verified/faculty badges, ratings and reviews, follower counts, your course and year level, and your active listings, including the meet-up location on them.',
       'Messages are shown to the people in that conversation.',
       'Admins can see verification details (school email, student ID number, ID photo), reports, appeals and account status in order to moderate the app.',
       'Your address and age are kept on your account and are not shown on your profile.',

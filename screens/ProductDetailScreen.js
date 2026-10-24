@@ -554,6 +554,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{product.description || "No description provided."}</Text>
 
+          {/* Older listings may have a separate Specifications field (no
+              longer asked for when posting). */}
           {product.specifications ? (
             <>
               <Text style={styles.sectionTitle}>Specifications</Text>
@@ -565,8 +567,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           <View style={styles.card}>
             <DetailRow icon="cube-outline" label="Condition" value={product.condition || "Not specified"} />
             <DetailRow icon="pricetag-outline" label="Category" value={normalizeCategory(product.category) || "Not specified"} />
-            <DetailRow icon="location-outline" label="Meet-up" value={product.location || "Not specified"} />
-            <DetailRow icon="call-outline" label="Contact" value={product.contactNumber || "Not provided"} last />
+            <DetailRow icon="location-outline" label="Meet-up" value={product.location || "Not specified"} last />
           </View>
 
           <TouchableOpacity

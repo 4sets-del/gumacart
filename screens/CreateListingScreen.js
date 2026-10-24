@@ -9,7 +9,7 @@ import PostTypeSheet, { postTypeMeta } from '../components/PostTypeSheet';
 import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
@@ -50,14 +50,17 @@ export default function CreateListingScreen({ navigation, route }) {
   const [listingType, setListingType]       = useState(editListing?.type || route?.params?.type || "sell");
   const [title, setTitle]                   = useState(editListing?.name || editListing?.title || "");
   const [description, setDescription]       = useState(editListing?.description || "");
-  const [specifications, setSpecifications] = useState(editListing?.specifications || "");
   const [price, setPrice]                   = useState(editListing?.price ? String(editListing.price) : "");
   // How many identical items the seller has (e.g. food, crafts, shirts).
   const [quantity, setQuantity]             = useState(Math.max(1, Number(editListing?.quantity) || 1));
   const [category, setCategory]             = useState(normalizeCategory(editListing?.category));
   const [condition, setCondition]           = useState(editListing?.condition || "");
-  const [location, setLocation]             = useState(editListing?.location || "");
-  const [contactNumber, setContactNumber]   = useState(editListing?.contactNumber || "");
+  // Meet-up spot: one of the campus spots, or "Other" with the place typed in.
+  const initialPlace = editListing?.location || "";
+  const knownSpot = CAMPUS_LOCATIONS.includes(initialPlace) && initialPlace !== "Other";
+  const [spotChoice, setSpotChoice]         = useState(knownSpot ? initialPlace : initialPlace ? "Other" : "");
+  const [otherPlace, setOtherPlace]         = useState(knownSpot || initialPlace === "Other" ? "" : initialPlace);
+  const location = spotChoice === "Other" ? otherPlace.trim() : spotChoice;
   // Existing images are remote URLs; newly picked ones are local file URIs.
   const [images, setImages]                 = useState(editListing?.images || (editListing?.image ? [editListing.image] : []));
   const [loading, setLoading]               = useState(false);
@@ -152,8 +155,8 @@ export default function CreateListingScreen({ navigation, route }) {
   if (listingType === "sell" && !(Number(price) > 0)) errors.price = "Enter a price greater than 0.";
   if (!category) errors.category = "Pick a category.";
   if (!condition) errors.condition = "Pick a condition.";
-  if (!location) errors.location = "Pick a meet-up location.";
-  if (!/^(09\d{9}|\+639\d{9})$/.test(contactNumber.replace(/\s/g, ""))) errors.contact = "Enter a mobile number like 09XXXXXXXXX.";
+  if (!spotChoice) errors.location = "Pick a meet-up location.";
+  else if (!location) errors.location = "Type where to meet (e.g. Canteen).";
   const shownErrors = triedSubmit ? errors : {};
 
   const [uploadProgress, setUploadProgress] = useState(null); // { done, total } while posting
@@ -193,10 +196,9 @@ export default function CreateListingScreen({ navigation, route }) {
       const payload = {
         type: listingType, title: title.trim(), name: title.trim(),
         description: description.trim(),
-        specifications: specifications.trim(),
         price: listingType === "sell" ? Number(price) : 0,
         quantity: showQuantity ? quantity : 1,
-        category, condition, location, contactNumber: contactNumber.trim(),
+        category, condition, location,
         image: imageUrls[0], images: imageUrls,
       };
 
@@ -206,6 +208,7 @@ export default function CreateListingScreen({ navigation, route }) {
           ...payload,
           status: "pending",
           updatedAt: serverTimestamp(),
+          contactNumber: deleteField(), // phone numbers are no longer shown
           // An expired listing being edited counts as renewed, so it isn't
           // expired again right after approval.
           ...(editListing.status === "expired" ? { createdAt: serverTimestamp(), expiryWarned: false } : {}),
@@ -309,7 +312,7 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={styles.inputWrapper} ref={titleRef} collapsable={false}>
             <TextInput
               style={styles.input}
-              placeholder="e.g. Canon EOS Camera, Calculus Book"
+              placeholder="Item name"
               placeholderTextColor={COLORS.textMuted}
               value={title}
               onChangeText={setTitle}
@@ -324,7 +327,7 @@ export default function CreateListingScreen({ navigation, route }) {
           <View style={[styles.inputWrapper, { height: 110, alignItems: "flex-start" }]}>
             <TextInput
               style={[styles.input, { paddingTop: 14, height: 110 }]}
-              placeholder="Describe your item — condition, specs, reason for selling..."
+              placeholder="Describe your item"
               placeholderTextColor={COLORS.textMuted}
               value={description}
               onChangeText={setDescription}
@@ -335,24 +338,6 @@ export default function CreateListingScreen({ navigation, route }) {
           <Text style={styles.charCount}>{description.length}/500</Text>
 
           <FieldError msg={shownErrors.description} />
-
-          {/* Specifications (optional, flexible per item) */}
-          <View style={styles.sectionLabelRow}>
-            <Text style={styles.sectionLabel}>Specifications</Text>
-            <Text style={styles.required}>optional</Text>
-          </View>
-          <View style={[styles.inputWrapper, { height: 90, alignItems: "flex-start" }]}>
-            <TextInput
-              style={[styles.input, { paddingTop: 14, height: 90 }]}
-              placeholder="Any extra details — e.g. cable length: 2 meters, RAM: 8GB, size: Medium, color: Blue..."
-              placeholderTextColor={COLORS.textMuted}
-              value={specifications}
-              onChangeText={setSpecifications}
-              multiline
-              maxLength={300}
-            />
-          </View>
-          <Text style={styles.charCount}>{specifications.length}/300</Text>
 
           {/* Price */}
           {showPrice && (
@@ -435,33 +420,34 @@ export default function CreateListingScreen({ navigation, route }) {
               <TouchableOpacity
                 key={loc}
                 activeOpacity={0.8}
-                style={[styles.chip, location === loc && styles.chipActive]}
-                onPress={() => setLocation(loc)}
+                style={[styles.chip, spotChoice === loc && styles.chipActive]}
+                onPress={() => setSpotChoice(loc)}
               >
-                <Ionicons name="location-sharp" size={13} color={location === loc ? "#fff" : COLORS.textMuted} style={{ marginRight: 4 }} />
-                <Text style={[styles.chipLabel, location === loc && styles.chipLabelActive]}>{loc}</Text>
+                <Ionicons name="location-sharp" size={13} color={spotChoice === loc ? "#fff" : COLORS.textMuted} style={{ marginRight: 4 }} />
+                <Text style={[styles.chipLabel, spotChoice === loc && styles.chipLabelActive]}>{loc}</Text>
               </TouchableOpacity>
             ))}
           </View>
+          {spotChoice === "Other" && (
+            <View style={[styles.inputWrapper, { marginTop: 10 }]}>
+              <Ionicons name="location-outline" size={17} color={COLORS.textMuted} style={{ marginRight: 10 }} />
+              <TextInput
+                style={[styles.input, { flex: 1 }]}
+                placeholder="Where on campus? e.g. Canteen"
+                placeholderTextColor={COLORS.textMuted}
+                value={otherPlace}
+                onChangeText={setOtherPlace}
+                maxLength={40}
+              />
+            </View>
+          )}
 
           <FieldError msg={shownErrors.location} />
 
-          {/* Contact Number */}
-          <Text style={styles.sectionLabel}>Contact Number</Text>
-          <View style={styles.inputWrapper}>
-            <Ionicons name="call-outline" size={17} color={COLORS.textMuted} style={{ marginRight: 10 }} />
-            <TextInput
-              style={[styles.input, { flex: 1 }]}
-              placeholder="09XXXXXXXXX"
-              placeholderTextColor={COLORS.textMuted}
-              value={contactNumber}
-              onChangeText={setContactNumber}
-              keyboardType="phone-pad"
-              maxLength={13}
-            />
+          <View style={styles.chatNote}>
+            <Ionicons name="chatbubbles-outline" size={16} color={COLORS.primary} />
+            <Text style={styles.chatNoteText}>Buyers contact you through GumaCart chat, so your phone number stays private.</Text>
           </View>
-
-          <FieldError msg={shownErrors.contact} />
 
           {/* Live preview of how the listing card will look */}
           <Text style={styles.sectionLabel}>Preview</Text>
@@ -519,6 +505,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   sectionLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 10 },
   sectionLabel: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 10, marginTop: 18 },
   required: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
+  chatNote: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryPale },
+  chatNoteText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   typeTag: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, padding: 12, borderRadius: RADIUS.lg, borderWidth: 1.5 },
   typeTagIcon: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
   typeTagLabel: { fontSize: 16, fontFamily: FONTS.heading },
