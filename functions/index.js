@@ -143,6 +143,10 @@ exports.onNewMessage = functions
     const recipientId = participants.find((id) => id !== senderId);
     if (!recipientId) return null;
 
+    // No notification if the recipient blocked the sender.
+    const blocked = await db.collection("users").doc(recipientId).collection("blocked").doc(message.senderId).get();
+    if (blocked.exists) return null;
+
     const senderName = message.senderName || "Someone";
     const preview = (
       message.type === "listing" ? `🛍️ Interested in "${message.listingName || "your listing"}"`
@@ -541,6 +545,24 @@ exports.expireListings = functions
     return null;
   });
 
+// Settings → Send Feedback: let the admins know something arrived.
+exports.onFeedbackCreated = functions
+  .region("asia-southeast1")
+  .firestore
+  .document("feedback/{feedbackId}")
+  .onCreate(async (snap) => {
+    const f = snap.data();
+    const admins = await db.collection("users").where("role", "==", "admin").get();
+    const kind = f.type === "bug" ? "Problem report" : f.type === "idea" ? "Suggestion" : "Feedback";
+    await Promise.all(admins.docs.map((d) => notifyUser(d.id, {
+      storeType: "system", styleKey: "system",
+      title: `${kind} from ${f.userName || "a user"}`,
+      body: String(f.message || "").slice(0, 120),
+      data: { nav: "admin", tab: "insights" },
+    })));
+    return null;
+  });
+
 exports.onAppealResolved = functions
   .region("asia-southeast1")
   .firestore
@@ -562,6 +584,17 @@ exports.onAppealResolved = functions
     return null;
   });
 
+// When an admin resolves a report: tell the reporter how it went, and (for
+// warnings / deleted messages) tell the reported user which message it was
+// and how to respond. Suspensions are announced by onUserDocUpdate.
+function reportedMessageSummary(m) {
+  if (!m) return "a message";
+  if (m.type === "image") return "a photo";
+  if (m.type === "video") return "a video";
+  const text = String(m.text || "").trim();
+  return text ? `"${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"` : "a message";
+}
+
 exports.onReportResolved = functions
   .region("asia-southeast1")
   .firestore
@@ -571,23 +604,35 @@ exports.onReportResolved = functions
     const after = change.after.data();
     if (before.status === after.status) return null;
     if (after.status !== "resolved" && after.status !== "dismissed") return null;
-    if (!after.reporterId) return null;
 
     const targetName = after.kind === "listing"
       ? (after.listingName || "a listing")
-      : (after.reportedUserName || "a user");
+      : after.kind === "message"
+        ? `a message from ${after.reportedUserName || "a user"}`
+        : (after.reportedUserName || "a user");
 
-    const body = after.status === "resolved"
-      ? `Your report about ${targetName} was reviewed and action was taken. Thank you.`
-      : `Your report about ${targetName} was reviewed. No action was needed.`;
+    if (after.reporterId) {
+      const body = after.status === "resolved"
+        ? `Your report about ${targetName} was reviewed and action was taken. Thank you.`
+        : after.dismissKind === "false"
+          ? `Your report about ${targetName} was reviewed and didn't break the rules. Please only report real problems; repeated false reports can get your account restricted.`
+          : `Your report about ${targetName} was reviewed. No action was needed.`;
+      await notifyUser(after.reporterId, {
+        storeType: "system", styleKey: "report", title: "Report reviewed", body, data: { nav: "self" },
+      });
+    }
 
-    await notifyUser(after.reporterId, {
-      storeType: "system",
-      styleKey: "report",
-      title: "Report reviewed",
-      body,
-      data: { nav: "self" },
-    });
+    // Warnings: the reported person learns which message and why, with a way
+    // to respond (Settings → Send Feedback) if they think it's a mistake.
+    if (after.kind === "message" && after.reportedUserId && (after.action === "warn" || after.action === "delete")) {
+      const what = reportedMessageSummary(after.message);
+      await notifyUser(after.reportedUserId, {
+        storeType: "system", styleKey: "report",
+        title: after.action === "delete" ? "A message was removed" : "Warning about a message",
+        body: `${what} was reported for ${String(after.reason || "breaking the rules").toLowerCase()}${after.action === "delete" ? " and removed by an admin" : ""}. Please keep chats respectful; repeated reports can lead to suspension. Think this is a mistake? Tell us in Settings → Send Feedback.`,
+        data: { nav: "self" },
+      });
+    }
     return null;
   });
 

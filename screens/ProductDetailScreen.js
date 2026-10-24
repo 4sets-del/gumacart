@@ -20,6 +20,7 @@ import { renewListing, LISTING_LIFETIME_DAYS } from "../utils/renewListing";
 import ZoomableImage from "../components/ZoomableImage";
 import CoachMark from "../components/CoachMark";
 import { useScreenTour } from "../utils/useScreenTour";
+import { messagingBlockedReason } from "../utils/blocking";
 import ReportSheet from "../components/ReportSheet";
 import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
@@ -242,6 +243,8 @@ export default function ProductDetailScreen({ route, navigation }) {
   };
 
   const handleMessageSeller = async () => {
+    const blockedReason = await messagingBlockedReason(product.sellerId, product.sellerName || "this seller");
+    if (blockedReason) { Alert.alert("Can't send a message", blockedReason); return; }
     markInterested(product);
     try {
       const ids = [currentUser.uid, product.sellerId].sort();

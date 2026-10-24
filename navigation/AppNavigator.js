@@ -282,6 +282,8 @@ export default function AppNavigator() {
         } else {
           navRef.navigate('Main', { screen: 'Profile' });
         }
+      } else if (nav === 'admin') {
+        navRef.navigate('AdminPanel', { tab: data.tab || 'insights' });
       } else if (nav === 'verification') {
         navRef.navigate('Verification');
       } else if (nav === 'listing' && data.listingId) {

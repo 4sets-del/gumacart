@@ -9,6 +9,7 @@ import { collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from "firebase
 import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { SPACING, RADIUS, FONTS, colorForName } from "../constants/theme";
+import { messagingBlockedReason } from "../utils/blocking";
 import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
@@ -115,6 +116,8 @@ export default function CartScreen({ navigation }) {
   // buyer and seller agree on a meet-up.
   const checkoutWith = async (seller) => {
     setSellerPickerVisible(false);
+    const blockedReason = await messagingBlockedReason(seller.sellerId, seller.sellerName || "this seller");
+    if (blockedReason) { Alert.alert("Can't check out", blockedReason); return; }
     setCheckingOut(true);
     try {
       const lines = seller.items.map((i) => {

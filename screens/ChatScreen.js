@@ -20,6 +20,9 @@ import Sheet, { SheetOption } from "../components/Sheet";
 import ZoomableImage from "../components/ZoomableImage";
 import CoachMark from "../components/CoachMark";
 import { useScreenTour } from "../utils/useScreenTour";
+import { useBlocked, blockUser, unblockUser, hasBlockedMe } from "../utils/blocking";
+import ReportSheet from "../components/ReportSheet";
+import { reportMessage, messageSummary, MESSAGE_REPORT_REASONS } from "../utils/reportMessage";
 import OfferSheet from "../components/OfferSheet";
 import MeetupSheet from "../components/MeetupSheet";
 import { useActiveListings } from "../utils/useListings";
@@ -223,6 +226,7 @@ export default function ChatScreen({ route, navigation }) {
   // photo, offer or meet-up (or answering one) doesn't erase a draft.
   const sendMessage = async (msgData, { withReply = true, clearComposer = false } = {}) => {
     if (!msgData.text?.trim() && !msgData.mediaUrl) return;
+    if (iBlocked || blockedByThem) return; // the input is hidden then; this guards offers, photos, etc.
     setSending(true);
     try {
       const convoRef = doc(db, "conversations", conversationId);
@@ -333,6 +337,47 @@ export default function ChatScreen({ route, navigation }) {
     { ref: headerInfoRef, icon: 'person', title: 'Who you\'re talking to', text: 'Tap their name to see their profile, ratings and other items.' },
     { icon: 'shield-checkmark', title: 'Stay safe', text: 'Agree on a public spot on campus, and check the item before you pay.' },
   ], []);
+
+  // ── Blocking ──
+  const [menuOpen, setMenuOpen] = useState(false);
+  const iBlocked = useBlocked().ids.has(otherUserId);
+  const [blockedByThem, setBlockedByThem] = useState(false);
+  useEffect(() => {
+    if (otherUserId) hasBlockedMe(otherUserId).then(setBlockedByThem);
+  }, [otherUserId]);
+  const confirmBlock = () => {
+    setMenuOpen(false);
+    Alert.alert(`Block ${otherUserName}?`, "They won't be able to message you, and their listings will be hidden from you. They won't be told. You can unblock them anytime in Settings.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Block", style: "destructive", onPress: () => blockUser({ id: otherUserId, name: otherUserName, photoURL: otherUserPhoto })
+        .catch(() => Alert.alert("Error", "Could not block this person.")) },
+    ]);
+  };
+
+  // ── Reporting a message ──
+  const [reportMsg, setReportMsg] = useState(null);
+  const [reportReason, setReportReason] = useState(null);
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSending, setReportSending] = useState(false);
+  const openMessageReport = (msg) => { setActionMsg(null); setReportReason(null); setReportDetails(""); setReportMsg(msg); };
+  const closeMessageReport = () => { if (!reportSending) setReportMsg(null); };
+  const submitMessageReport = async () => {
+    const reason = reportReason === "Other" ? reportDetails.trim() : reportReason;
+    if (!reason || (reportReason === "Other" && reason.length < 3)) {
+      Alert.alert("Please specify", "Type a short reason so admins know the issue.");
+      return;
+    }
+    setReportSending(true);
+    try {
+      await reportMessage({ message: reportMsg, messages, conversationId, otherUserName, reason });
+      setReportMsg(null);
+      Alert.alert("Report sent", "Thank you. An admin will review it. You'll be notified when it's been looked at.");
+    } catch (e) {
+      Alert.alert("Error", "Could not send the report. Please try again.");
+    } finally {
+      setReportSending(false);
+    }
+  };
 
   // ── Offers & meet-ups ──
   const [offerOpen, setOfferOpen] = useState(false);
@@ -707,10 +752,10 @@ export default function ChatScreen({ route, navigation }) {
             )}
           </View>
         </TouchableOpacity>
-        <TouchableOpacity accessibilityRole="button" accessibilityLabel="View profile"
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Chat options"
           style={styles.backBtn}
           activeOpacity={0.7}
-          onPress={() => navigation.navigate("SellerProfile", { sellerId: otherUserId, sellerName: otherUserName })}
+          onPress={() => setMenuOpen(true)}
         >
           <Ionicons name="ellipsis-vertical" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
@@ -792,31 +837,45 @@ export default function ChatScreen({ route, navigation }) {
           </View>
         )}
 
-        <View style={[styles.inputBar, { paddingBottom: 10 + insets.bottom }]}>
-          <TouchableOpacity ref={attachRef} collapsable={false} accessibilityRole="button" accessibilityLabel="Send photos, an offer or a meet-up" style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
-            <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
-          </TouchableOpacity>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type a message..."
-            placeholderTextColor={COLORS.textMuted}
-            value={text}
-            onChangeText={setText}
-            multiline
-            maxLength={1000}
-          />
-          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send message"
-            style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
-            activeOpacity={0.8}
-            onPress={handleSendText}
-            disabled={!text.trim() || sending}
-          >
-            {sending
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Ionicons name="send" size={18} color="#fff" />
-            }
-          </TouchableOpacity>
-        </View>
+        {iBlocked || blockedByThem ? (
+          <View style={[styles.blockedBar, { paddingBottom: 14 + insets.bottom }]}>
+            <Ionicons name="ban" size={18} color={COLORS.textMuted} />
+            <Text style={styles.blockedText}>
+              {iBlocked ? `You blocked ${otherUserName}. You won't get messages from them.` : `You can't reply to this conversation.`}
+            </Text>
+            {iBlocked ? (
+              <TouchableOpacity onPress={() => unblockUser(otherUserId).catch(() => {})} style={styles.unblockBtn}>
+                <Text style={styles.unblockText}>Unblock</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        ) : (
+          <View style={[styles.inputBar, { paddingBottom: 10 + insets.bottom }]}>
+            <TouchableOpacity ref={attachRef} collapsable={false} accessibilityRole="button" accessibilityLabel="Send photos, an offer or a meet-up" style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
+              <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
+            </TouchableOpacity>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Type a message..."
+              placeholderTextColor={COLORS.textMuted}
+              value={text}
+              onChangeText={setText}
+              multiline
+              maxLength={1000}
+            />
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send message"
+              style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
+              activeOpacity={0.8}
+              onPress={handleSendText}
+              disabled={!text.trim() || sending}
+            >
+              {sending
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Ionicons name="send" size={18} color="#fff" />
+              }
+            </TouchableOpacity>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       <Modal
@@ -887,10 +946,44 @@ export default function ChatScreen({ route, navigation }) {
           })}
         </View>
         <SheetOption icon="arrow-undo" label="Reply" onPress={() => { setReplyTo(actionMsg); setActionMsg(null); }} />
-        {actionMsg?.senderId === user.uid && (
+        {actionMsg?.senderId === user.uid ? (
           <SheetOption icon="trash" tone="danger" label="Delete for everyone" onPress={() => deleteMessage(actionMsg)} />
-        )}
+        ) : actionMsg ? (
+          <SheetOption icon="flag" tone="danger" label="Report message" sub="Admins will review this message and the chat around it" onPress={() => openMessageReport(actionMsg)} />
+        ) : null}
       </Sheet>
+
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={otherUserName} subtitle={otherUserLabel} icon="person" footer={null}>
+        <SheetOption icon="person-circle" label="View profile" sub="Ratings, reviews and their listings" onPress={() => { setMenuOpen(false); navigation.navigate("SellerProfile", { sellerId: otherUserId, sellerName: otherUserName }); }} />
+        {iBlocked ? (
+          <SheetOption icon="lock-open" label="Unblock" sub="Allow messages from them again" onPress={() => { setMenuOpen(false); unblockUser(otherUserId).catch(() => {}); }} />
+        ) : (
+          <SheetOption icon="ban" tone="danger" label="Block" sub="They can't message you, and you won't see their listings" onPress={confirmBlock} />
+        )}
+        <SheetOption icon="flag" tone="danger" label="Report a message" sub="Long-press the message you want to report" onPress={() => { setMenuOpen(false); Alert.alert("Report a message", "Press and hold the message you want to report, then choose Report message."); }} />
+      </Sheet>
+
+      <ReportSheet
+        visible={!!reportMsg}
+        onClose={closeMessageReport}
+        title="Report Message"
+        question={`What's wrong with this message from ${otherUserName}?`}
+        reasons={MESSAGE_REPORT_REASONS}
+        reason={reportReason}
+        onReason={(r) => { setReportReason(r); if (!r) setReportDetails(""); }}
+        details={reportDetails}
+        onDetails={setReportDetails}
+        allowProof={false}
+        preview={reportMsg ? (
+          <View style={styles.reportPreview}>
+            <Text style={styles.reportPreviewLabel}>Reported message</Text>
+            <Text style={styles.reportPreviewText} numberOfLines={4}>{messageSummary(reportMsg)}</Text>
+            <Text style={styles.reportPreviewHint}>The messages around it are included so admins see the full context. {otherUserName} won't be told who reported them.</Text>
+          </View>
+        ) : null}
+        onSubmit={submitMessageReport}
+        submitting={reportSending}
+      />
     </SafeAreaView>
   );
 }
@@ -944,6 +1037,14 @@ const createStyles = (COLORS) => StyleSheet.create({
   cardPrice: { fontSize: 15, fontWeight: "800", color: COLORS.primary, marginTop: 2 },
   cardLink: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 6 },
   cardLinkText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
+  blockedBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingTop: 14, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  blockedText: { flex: 1, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 19 },
+  unblockBtn: { backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  unblockText: { color: COLORS.primary, fontWeight: "800", fontSize: 13 },
+  reportPreview: { marginTop: 12, padding: 12, borderRadius: 12, backgroundColor: COLORS.surfaceAlt, borderLeftWidth: 3, borderLeftColor: COLORS.error },
+  reportPreviewLabel: { fontSize: 11.5, fontWeight: "800", color: COLORS.error, textTransform: "uppercase", letterSpacing: 0.5 },
+  reportPreviewText: { fontSize: 14.5, color: COLORS.textPrimary, marginTop: 4, lineHeight: 20 },
+  reportPreviewHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 8, lineHeight: 17 },
   cardHead: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
   cardHeadText: { fontSize: 12.5, fontWeight: "800" },
   actionBody: { paddingHorizontal: 12, paddingTop: 10, gap: 4 },

@@ -3,6 +3,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebaseConfig';
+import { useBlocked } from './blocking';
 
 // One shared Firestore listener for active listings, used by every screen
 // (Home, Categories, Search...). Before, each screen opened its own listener
@@ -109,12 +110,14 @@ const getSnapshot = () => snapshot;
 
 export function useActiveListings({ includeOwn = false } = {}) {
   const state = useSyncExternalStore(subscribe, getSnapshot);
+  const { ids: blockedIds } = useBlocked();
 
   // Same array between updates, so screens can memoize work based on it.
+  // Listings from people you blocked are left out everywhere.
   const uid = auth.currentUser?.uid;
   const listings = useMemo(() => {
     const all = state.cache || [];
-    return includeOwn ? all : all.filter((item) => item.sellerId !== uid);
-  }, [state.cache, includeOwn, uid]);
+    return all.filter((item) => (includeOwn || item.sellerId !== uid) && !blockedIds.has(item.sellerId));
+  }, [state.cache, includeOwn, uid, blockedIds]);
   return { listings, loading: !state.loaded };
 }

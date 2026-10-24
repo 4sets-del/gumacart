@@ -6,7 +6,7 @@ import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   collection, getDocs, query, orderBy, where, limit, startAfter, getCountFromServer,
-  doc, updateDoc, deleteDoc, serverTimestamp, getDoc, addDoc,
+  doc, updateDoc, deleteDoc, serverTimestamp, getDoc, addDoc, increment,
 } from "firebase/firestore";
 import { auth, db, functions } from "../firebaseConfig";
 import { httpsCallable } from "firebase/functions";
@@ -14,6 +14,9 @@ import { useActiveListings } from "../utils/useListings";
 import ScreenHeader from "../components/ScreenHeader";
 import { COLORS, RADIUS, SHADOWS, FONTS } from "../constants/theme";
 import Sheet, { SheetOption, SheetChoice } from "../components/Sheet";
+import AdminInsights from "../components/AdminInsights";
+import MessageReportCard from "../components/MessageReportCard";
+import { messageSummary } from "../utils/reportMessage";
 import { useTheme } from '../context/ThemeContext';
 
 const AMBER = COLORS.warning;
@@ -25,6 +28,7 @@ const TABS = [
   { id: "reports",       label: "Reports",  icon: "flag",        color: "#E11D48" },
   { id: "appeals",       label: "Appeals",  icon: "mail-open",   color: "#7C3AED" },
   { id: "users",         label: "Users",    icon: "people",      color: "#EA580C" },
+  { id: "insights",      label: "Insights", icon: "stats-chart", color: "#0D9488" },
 ];
 
 const BAN_REASONS = [
@@ -43,9 +47,11 @@ const BAN_DURATIONS = [
   { key: "permanent", label: "Permanent", sub: "Until manually lifted" },
 ];
 
-export default function AdminPanelScreen({ navigation }) {
+export default function AdminPanelScreen({ navigation, route }) {
   const { COLORS, styles } = useTheme(createStyles);
-  const [activeTab, setActiveTab]       = useState("verifications");
+  // A "new feedback" notification opens straight to Insights.
+  const [activeTab, setActiveTab]       = useState(route?.params?.tab || "verifications");
+  const [insightsKey, setInsightsKey]   = useState(0); // bumped on pull-to-refresh
   const [verifySubTab, setVerifySubTab] = useState("pending");
   const [listingSubTab, setListingSubTab] = useState("pending");
   const [reportSubTab, setReportSubTab] = useState("open");
@@ -170,11 +176,14 @@ export default function AdminPanelScreen({ navigation }) {
     }
   };
 
-  const markReportsResolved = async (reportsArr, status) => {
+  // `extra` records what was done, e.g. { action: "warn" } or
+  // { dismissKind: "false" }; the server uses it to notify the right people.
+  const markReportsResolved = async (reportsArr, status, extra = {}) => {
     for (const r of reportsArr) {
       try {
         await updateDoc(doc(db, "reports", r.id), {
           status,
+          ...extra,
           resolvedAt: serverTimestamp(),
           resolvedBy: auth.currentUser.uid,
         });
@@ -182,17 +191,77 @@ export default function AdminPanelScreen({ navigation }) {
     }
   };
 
-  const dismissReportGroup = (group) => {
-    const targetName = group.kind === "listing" ? (group.listingName || "this listing") : (group.reportedUserName || "this user");
-    const n = group.reports.length;
-    Alert.alert("Dismiss Report" + (n > 1 ? "s" : ""), `Dismiss ${n} report${n > 1 ? "s" : ""} about "${targetName}"? No action will be taken.`, [
+  // Report history, so admins can tell a real problem from a prank:
+  // how often someone has been reported (and by how many people), how many
+  // of those were upheld, and how many of a reporter's reports were false.
+  const historyFor = (reportedId, reporterId) => {
+    const against = reports.filter((r) => (r.reportedUserId || r.sellerId) === reportedId);
+    const upheld = against.filter((r) => r.status === "resolved");
+    const byReporter = reports.filter((r) => r.reporterId === reporterId);
+    return {
+      reported: {
+        total: against.length,
+        people: new Set(against.map((r) => r.reporterId)).size,
+        upheld: upheld.length,
+        warnings: upheld.filter((r) => r.action === "warn" || r.action === "delete").length,
+      },
+      reporter: {
+        total: byReporter.length,
+        falseCount: byReporter.filter((r) => r.dismissKind === "false").length,
+      },
+    };
+  };
+
+  // ── Message reports ──
+  const warnFromReport = (group) => {
+    const r = group.reports[0];
+    Alert.alert("Warn user?", `${r.reportedUserName || "They"} will get a warning about this message. No ban.`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Dismiss", onPress: async () => {
+      { text: "Send warning", onPress: async () => {
         try {
-          await markReportsResolved(group.reports, "dismissed");
+          await updateDoc(doc(db, "users", r.reportedUserId), { warnings: increment(1), lastWarnedAt: serverTimestamp() });
+          await markReportsResolved(group.reports, "resolved", { action: "warn" });
           await loadReports();
-        } catch (e) { Alert.alert("Error", "Could not dismiss."); }
+          Alert.alert("Warning sent", "The user and the reporter have been notified.");
+        } catch (e) { Alert.alert("Error", "Could not send the warning."); }
       }},
+    ]);
+  };
+
+  const deleteReportedMessage = (group) => {
+    const r = group.reports[0];
+    Alert.alert("Delete this message?", "It's removed from the chat for both people, and the sender gets a warning.", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Delete & warn", style: "destructive", onPress: async () => {
+        try {
+          try { await deleteDoc(doc(db, "conversations", r.conversationId, "messages", r.messageId)); } catch (e) {}
+          await updateDoc(doc(db, "users", r.reportedUserId), { warnings: increment(1), lastWarnedAt: serverTimestamp() });
+          await markReportsResolved(group.reports, "resolved", { action: "delete" });
+          await loadReports();
+          Alert.alert("Message deleted", "The sender was warned and the reporter notified.");
+        } catch (e) { Alert.alert("Error", "Could not delete the message."); }
+      }},
+    ]);
+  };
+
+  const dismissReportGroup = (group) => {
+    const targetName = group.kind === "listing" ? (group.listingName || "this listing") : group.kind === "message" ? `a message from ${group.reportedUserName || "this user"}` : (group.reportedUserName || "this user");
+    const n = group.reports.length;
+    const dismiss = async (kind) => {
+      try {
+        await markReportsResolved(group.reports, "dismissed", { dismissKind: kind });
+        // False reports count against the people who made them.
+        if (kind === "false") {
+          await Promise.all([...new Set(group.reports.map((r) => r.reporterId).filter(Boolean))].map((uid) =>
+            updateDoc(doc(db, "users", uid), { falseReports: increment(1) }).catch(() => {})));
+        }
+        await loadReports();
+      } catch (e) { Alert.alert("Error", "Could not dismiss."); }
+    };
+    Alert.alert("Dismiss Report" + (n > 1 ? "s" : ""), `${n} report${n > 1 ? "s" : ""} about "${targetName}". No action is taken against them. Was it a false report?`, [
+      { text: "No action needed", icon: "checkmark", onPress: () => dismiss("ok") },
+      { text: "False report", icon: "alert-circle", style: "destructive", onPress: () => dismiss("false") },
+      { text: "Cancel", style: "cancel" },
     ]);
   };
 
@@ -314,7 +383,7 @@ export default function AdminPanelScreen({ navigation }) {
     if (activeTab === "users" && !usersLoaded) loadUsers();
   }, [activeTab]);
 
-  const onRefresh = async () => { setRefreshing(true); await loadAll(); setRefreshing(false); };
+  const onRefresh = async () => { setRefreshing(true); setInsightsKey((k) => k + 1); await loadAll(); setRefreshing(false); };
 
   const approveVerification = async (userId) => {
     Alert.alert("Approve", "Approve this student verification?", [
@@ -440,17 +509,20 @@ export default function AdminPanelScreen({ navigation }) {
     const bannedUntil = computeBannedUntil(banDuration);
     const reportGroup = banReports;
     const durLabel = BAN_DURATIONS.find((d) => d.key === banDuration)?.label || "";
+    // Suspending from a message report: show the user which message it was.
+    const reportedMsg = reportGroup?.kind === "message" ? reportGroup.reports[0]?.message : null;
+    const fullReason = reportedMsg ? `${banReason}. Reported message: "${messageSummary(reportedMsg).slice(0, 120)}"` : banReason;
     setBanVisible(false);
     try {
       await updateDoc(doc(db, "users", userId), {
         role: "banned",
-        banReason,
+        banReason: fullReason,
         bannedUntil: bannedUntil ? bannedUntil : null,
         bannedAt: serverTimestamp(),
         bannedBy: auth.currentUser.uid,
       });
       if (reportGroup?.reports?.length) {
-        await markReportsResolved(reportGroup.reports, "resolved");
+        await markReportsResolved(reportGroup.reports, "resolved", { action: "ban" });
       }
       await loadUsers();
       await loadReports();
@@ -509,7 +581,9 @@ export default function AdminPanelScreen({ navigation }) {
   const openReportsList = reports.filter((r) => r.status === "open");
   const reportGroups = Object.values(
     openReportsList.reduce((acc, r) => {
-      const key = r.kind === "listing" ? `listing_${r.listingId || "unknown"}` : `user_${r.reportedUserId || "unknown"}`;
+      const key = r.kind === "listing" ? `listing_${r.listingId || "unknown"}`
+        : r.kind === "message" ? `message_${r.messageId || r.id}`
+        : `user_${r.reportedUserId || "unknown"}`;
       if (!acc[key]) {
         acc[key] = {
           key, kind: r.kind,
@@ -783,6 +857,20 @@ export default function AdminPanelScreen({ navigation }) {
                 <EmptyState icon="flag-outline" text="No open reports" />
               ) : (
                 reportGroups.map((group) => {
+                  if (group.kind === "message") {
+                    return (
+                      <MessageReportCard
+                        key={group.key}
+                        group={group}
+                        history={historyFor(group.reportedUserId, group.reports[0].reporterId)}
+                        onWarn={warnFromReport}
+                        onDelete={deleteReportedMessage}
+                        onSuspend={(g) => openBan(g.reportedUserId, g.reportedUserName, g)}
+                        onDismiss={dismissReportGroup}
+                        onOpenImage={setViewerImage}
+                      />
+                    );
+                  }
                   const targetName = group.kind === "listing" ? (group.listingName || "Listing") : (group.reportedUserName || "User");
                   const reasons = [...new Set(group.reports.map((r) => r.reason).filter(Boolean))];
                   const reporterNames = [...new Set(group.reports.map((r) => r.reporterName).filter(Boolean))];
@@ -862,14 +950,16 @@ export default function AdminPanelScreen({ navigation }) {
                       </View>
                       <View style={styles.cardInfo}>
                         <Text style={styles.cardName} numberOfLines={1}>
-                          {report.kind === "listing" ? (report.listingName || "Listing") : (report.reportedUserName || "User")}
+                          {report.kind === "listing" ? (report.listingName || "Listing") : report.kind === "message" ? `💬 ${report.reportedUserName || "User"}: ${messageSummary(report.message).slice(0, 40)}` : (report.reportedUserName || "User")}
                         </Text>
                         <Text style={styles.cardSub} numberOfLines={1}>Reported by {report.reporterName || "someone"}</Text>
                         <Text style={[styles.cardSub, { marginTop: 2 }]} numberOfLines={1}>{report.reason}</Text>
                       </View>
                       <View style={[styles.statusBadge, { backgroundColor: report.status === "resolved" ? COLORS.primaryPale : COLORS.surfaceAlt }]}>
                         <Text style={[styles.statusBadgeText, { color: report.status === "resolved" ? COLORS.primary : "#999" }]}>
-                          {report.status === "resolved" ? "✓ Resolved" : "○ Dismissed"}
+                          {report.status === "resolved"
+                            ? ({ warn: "⚠ Warned", delete: "🗑 Deleted", ban: "⛔ Suspended" }[report.action] || "✓ Resolved")
+                            : report.dismissKind === "false" ? "✕ False report" : "○ Dismissed"}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -962,6 +1052,8 @@ export default function AdminPanelScreen({ navigation }) {
             )}
           </View>
         )}
+
+        {activeTab === "insights" && <AdminInsights refreshKey={insightsKey} />}
 
         {activeTab === "users" && (
           <View style={styles.tabContent}>
@@ -1149,7 +1241,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   statDivider: { width: 1, backgroundColor: COLORS.border },
   tabs: { flexDirection: "row", backgroundColor: COLORS.surface, marginHorizontal: 16, marginTop: 12, borderRadius: RADIUS.lg, padding: 4, ...SHADOWS.sm },
   tab: { flex: 1, alignItems: "center", paddingVertical: 9, borderRadius: RADIUS.md },
-  tabLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: "600" },
+  tabLabel: { fontSize: 10.5, color: COLORS.textMuted, fontWeight: "600" },
   tabLabelActive: { color: COLORS.primary, fontFamily: FONTS.heading },
   tabBadge: { position: "absolute", top: -4, right: -10, minWidth: 16, height: 16, paddingHorizontal: 3, borderRadius: 8, backgroundColor: RED, alignItems: "center", justifyContent: "center" },
   tabBadgeText: { color: "#fff", fontSize: 9, fontWeight: "700" },

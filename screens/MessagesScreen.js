@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { useIsFocused } from "@react-navigation/native";
 import { auth, db } from "../firebaseConfig";
+import { useBlocked } from "../utils/blocking";
 import { getUserBasics } from "../utils/userCache";
 import { Image as CachedImage } from "expo-image";
 import { colorForName, FONTS } from "../constants/theme";
@@ -38,6 +39,8 @@ export default function MessagesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const user = auth.currentUser;
+  // Chats with people you blocked are hidden (unblock in Settings to see them).
+  const { ids: blockedIds } = useBlocked();
 
   useEffect(() => {
     const q = query(
@@ -120,7 +123,9 @@ export default function MessagesScreen({ navigation }) {
     ]);
   };
 
-  const totalUnread = conversations.reduce((sum, c) => sum + (c.unread || 0), 0);
+  const totalUnread = conversations.filter((c) => !blockedIds.has(c.otherUserId)).reduce((sum, c) => sum + (c.unread || 0), 0);
+
+  const visibleConversations = conversations.filter((c) => !blockedIds.has(c.otherUserId));
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
@@ -142,7 +147,7 @@ export default function MessagesScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => setRefreshing(true)} colors={[COLORS.primary]} />}
         >
-          {conversations.length === 0 ? (
+          {visibleConversations.length === 0 ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
                 <Ionicons name="chatbubbles-outline" size={44} color={COLORS.primary} />
@@ -158,7 +163,7 @@ export default function MessagesScreen({ navigation }) {
             </View>
           ) : (
             <View style={styles.list}>
-              {conversations.map((convo) => {
+              {visibleConversations.map((convo) => {
                 const isUnread = convo.unread > 0;
                 const previewText = convo.lastMessage
                   ? convo.lastMessage.length > 40

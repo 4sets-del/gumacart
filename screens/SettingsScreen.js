@@ -21,8 +21,10 @@ import { unregisterPushToken } from "../utils/notifications";
 import { resetScreenTours } from "../utils/useScreenTour";
 import AcademicFields from "../components/AcademicFields";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
+import FeedbackSheet from "../components/FeedbackSheet";
+import { useBlocked, unblockUser } from "../utils/blocking";
 import ScreenHeader from "../components/ScreenHeader";
-import { RADIUS, SHADOWS, FONTS, GRADIENTS } from "../constants/theme";
+import { RADIUS, SHADOWS, FONTS, GRADIENTS, colorForName } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -43,6 +45,9 @@ export default function SettingsScreen({ navigation }) {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [showBlocked, setShowBlocked] = useState(false);
+  const { blocked } = useBlocked();
   const [deletePassword, setDeletePassword] = useState("");
   const [deleting, setDeleting] = useState(false);
 
@@ -239,7 +244,8 @@ export default function SettingsScreen({ navigation }) {
               onPress={() => navigation.navigate("Verification")}
             />
           )}
-          <SettingRow icon="lock-closed" iconColor="#7C3AED" label="Change Password" sub="Update your account password" onPress={() => setShowPasswordModal(true)} isLast />
+          <SettingRow icon="lock-closed" iconColor="#7C3AED" label="Change Password" sub="Update your account password" onPress={() => setShowPasswordModal(true)} />
+          <SettingRow icon="ban" iconColor="#E11D48" label="Blocked users" sub={blocked.length ? `${blocked.length} blocked` : "No one blocked"} onPress={() => setShowBlocked(true)} isLast />
         </View>
 
         <Text style={styles.sectionLabel}>Appearance</Text>
@@ -282,6 +288,7 @@ export default function SettingsScreen({ navigation }) {
           <SettingRow icon="document-text" iconColor="#0D9488" label="Terms and Conditions" onPress={() => navigation.navigate('Terms')} />
           <SettingRow icon="shield-checkmark" iconColor="#2563EB" label="Privacy Policy" sub="What we collect and how it's used" onPress={() => navigation.navigate('Privacy')} />
           <SettingRow icon="help-circle" iconColor="#EA580C" label="App Tour" sub="Replay the guided tours of GumaCart's features" onPress={() => { resetScreenTours().catch(() => {}); navigation.navigate("Main", { screen: "Home", params: { startTour: Date.now() } }); }} />
+          <SettingRow icon="chatbox-ellipses" iconColor="#7C3AED" label="Send Feedback" sub="Report a problem or suggest a feature" onPress={() => setShowFeedback(true)} />
           <SettingRow icon="information-circle" iconColor="#16A34A" label="About GumaCart" sub="Our story and the team behind the app" onPress={() => navigation.navigate('About')} isLast />
         </View>
 
@@ -297,6 +304,36 @@ export default function SettingsScreen({ navigation }) {
         <View style={{ height: 32 + insets.bottom }} />
       </ScrollView>
 
+      <FeedbackSheet visible={showFeedback} onClose={() => setShowFeedback(false)} />
+      <Sheet
+        visible={showBlocked}
+        onClose={() => setShowBlocked(false)}
+        title="Blocked users"
+        subtitle="They can't message you, and their listings are hidden from you."
+        icon="ban"
+        tone="danger"
+        footer={null}
+      >
+        {blocked.length === 0 ? (
+          <Text style={styles.blockedEmpty}>You haven't blocked anyone. To block someone, open their chat or profile and tap ⋮ → Block.</Text>
+        ) : (
+          blocked.map((b) => (
+            <View key={b.id} style={styles.blockedRow}>
+              {b.photoURL ? (
+                <Image source={{ uri: b.photoURL }} style={styles.blockedAvatar} cachePolicy="memory-disk" />
+              ) : (
+                <View style={[styles.blockedAvatar, { backgroundColor: colorForName(b.name) }]}>
+                  <Text style={styles.blockedInitial}>{(b.name || "?")[0].toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.blockedName} numberOfLines={1}>{b.name || "User"}</Text>
+              <TouchableOpacity style={styles.unblockBtn} onPress={() => unblockUser(b.id).catch(() => Alert.alert("Error", "Could not unblock."))}>
+                <Text style={styles.unblockText}>Unblock</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </Sheet>
       <Sheet
         visible={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -445,6 +482,13 @@ const createStyles = (COLORS) => StyleSheet.create({
   settingLabel: { fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
   settingSub: { fontSize: 12, color: COLORS.textMuted, marginTop: 2 },
   inputLabel: { fontSize: 13.5, fontWeight: "600", color: COLORS.textPrimary, marginTop: 14, marginBottom: 7 },
+  blockedEmpty: { fontSize: 13.5, color: COLORS.textMuted, lineHeight: 19, marginTop: 14 },
+  blockedRow: { flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt, marginTop: 8 },
+  blockedAvatar: { width: 38, height: 38, borderRadius: 19, alignItems: "center", justifyContent: "center" },
+  blockedInitial: { color: "#fff", fontFamily: FONTS.heading, fontSize: 16 },
+  blockedName: { flex: 1, fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
+  unblockBtn: { backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
+  unblockText: { color: COLORS.primary, fontWeight: "800", fontSize: 13 },
   fieldRow: { flexDirection: "row", gap: 10 },
   dangerNote: { flexDirection: "row", gap: 10, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginTop: 14 },
   dangerNoteText: { flex: 1, fontSize: 13, lineHeight: 19, color: COLORS.error },

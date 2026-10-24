@@ -28,7 +28,16 @@ const SORT_OPTIONS = [
   { id: "rating",    label: "Highest Rated" },
 ];
 
-const EMPTY_FILTERS = { categories: [], types: [], minPrice: "", maxPrice: "" };
+const EMPTY_FILTERS = { categories: [], types: [], minPrice: "", maxPrice: "", posted: "any" };
+
+// "Posted within" choices: how far back a listing's posting time may be.
+const POSTED_WITHIN = [
+  { id: "any", label: "Any time", ms: null },
+  { id: "day", label: "Last 24 hours", ms: 24 * 3600 * 1000 },
+  { id: "week", label: "This week", ms: 7 * 24 * 3600 * 1000 },
+  { id: "month", label: "This month", ms: 30 * 24 * 3600 * 1000 },
+];
+const postedMs = (l) => (l.createdAt?.toMillis ? l.createdAt.toMillis() : l.createdAtMs || Date.now());
 
 function toggleIn(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -167,7 +176,9 @@ export default function SearchScreen({ navigation, route }) {
     const price = typeof l.price === "number" ? l.price : null;
     const matchMin = isNaN(min) || (price !== null && price >= min);
     const matchMax = isNaN(max) || (price !== null && price <= max);
-    return matchSearch && matchCat && matchType && matchMin && matchMax;
+    const within = POSTED_WITHIN.find((p) => p.id === (filters.posted || "any"))?.ms;
+    const matchPosted = !within || postedMs(l) >= Date.now() - within;
+    return matchSearch && matchCat && matchType && matchMin && matchMax && matchPosted;
   });
 
   const sortedListings = (() => {
@@ -196,7 +207,7 @@ export default function SearchScreen({ navigation, route }) {
   const filteredSellers = sellers.filter((s) =>
     !term || (s.name || "").toLowerCase().includes(term) || (s.email || "").toLowerCase().includes(term));
 
-  const filterCount = filters.categories.length + filters.types.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0);
+  const filterCount = filters.categories.length + filters.types.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0) + ((filters.posted || "any") !== "any" ? 1 : 0);
   const isDefault = sortBy === "relevant" && filterCount === 0;
 
   const openSheet = () => {
@@ -311,9 +322,12 @@ export default function SearchScreen({ navigation, route }) {
               <Text style={[styles.chipText, filterCount > 0 && styles.chipTextOn]}>Filter{filterCount > 0 ? ` (${filterCount})` : ""}</Text>
             </TouchableOpacity>
           </ScrollView>
-          {filters.categories.length > 0 && (
+          {(filters.categories.length > 0 || (filters.posted || "any") !== "any") && (
             <Text style={styles.activeCats} numberOfLines={1}>
-              In {filters.categories.join(", ")}
+              {[
+                filters.categories.length > 0 ? `In ${filters.categories.join(", ")}` : null,
+                (filters.posted || "any") !== "any" ? `Posted ${POSTED_WITHIN.find((p) => p.id === filters.posted)?.label.toLowerCase()}` : null,
+              ].filter(Boolean).join(" · ")}
             </Text>
           )}
         </View>
@@ -479,6 +493,18 @@ export default function SearchScreen({ navigation, route }) {
               emoji={c.emoji}
               selected={draftFilters.categories.includes(c.name)}
               onPress={() => setDraftFilters((f) => ({ ...f, categories: toggleIn(f.categories, c.name) }))}
+            />
+          ))}
+        </View>
+
+        <SheetSection title="Posted" />
+        <View style={styles.chipWrap}>
+          {POSTED_WITHIN.map((p) => (
+            <Chip
+              key={p.id}
+              label={p.label}
+              selected={(draftFilters.posted || "any") === p.id}
+              onPress={() => setDraftFilters((f) => ({ ...f, posted: p.id }))}
             />
           ))}
         </View>

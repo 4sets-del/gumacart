@@ -160,6 +160,11 @@ export default function NotificationsScreen({ navigation }) {
       return;
     }
 
+    if (nav === 'admin') {
+      navigation.navigate('AdminPanel', { tab: notif.tab || 'insights' });
+      return;
+    }
+
     if (nav === 'listing' && notif.listingId) {
       try {
         const snap = await getDoc(doc(db, 'listings', notif.listingId));

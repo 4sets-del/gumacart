@@ -33,7 +33,8 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 - Other signed-in users can see your name, profile photo, email address, verified/faculty badges, ratings and reviews, follower counts, your course and year level, and your active listings, including the meet-up location on them.
 - Messages are shown to the people in that conversation.
-- Admins can see verification details (school email, student ID number, ID photo), reports, appeals and account status in order to moderate the app.
+- Admins can see verification details (school email, student ID number, ID photo), reports, appeals, feedback and account status in order to moderate the app.
+- Chats are private between the two people. If someone reports a chat message, a copy of that message and up to 10 messages before and after it (from both people) is shared with admins so they can judge the context. The reported person is not told who reported them.
 - Your address and age are kept on your account and are not shown on your profile.
 
 ## 5. Service providers

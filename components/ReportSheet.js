@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -14,16 +14,25 @@ const REASON_ICONS = {
   'Harassment': 'hand-left-outline',
   'Fake account': 'person-remove-outline',
   'Inappropriate behavior': 'sad-outline',
+  'Harassment or threats': 'hand-left-outline',
+  'Spam': 'megaphone-outline',
   'Other': 'ellipsis-horizontal-circle-outline',
 };
 
-// Two-step report form shared by listings and user profiles: pick a reason,
-// then add details / a proof photo and submit. The screen owns the state.
+// Two-step report form shared by listings, user profiles and chat messages:
+// pick a reason, then add details (and a proof photo) and submit. The
+// reporter must confirm it's a real problem, since false reports count
+// against them. The screen owns the form state.
+// `preview` shows what is being reported (e.g. the chat message); message
+// reports pass allowProof={false} because the message itself is attached.
 export default function ReportSheet({
   visible, onClose, title, question, reasons, reason, onReason,
   details, onDetails, proof, onPickProof, onRemoveProof, onSubmit, submitting,
+  allowProof = true, preview = null,
 }) {
   const { COLORS, styles } = useTheme(createStyles);
+  const [confirmed, setConfirmed] = useState(false);
+  useEffect(() => { if (!visible || !reason) setConfirmed(false); }, [visible, reason]);
 
   return (
     <Sheet
@@ -37,8 +46,9 @@ export default function ReportSheet({
       cancelText="Back"
       onCancel={() => onReason(null)}
       footer={reason ? undefined : null}
-      action={{ title: 'Submit Report', icon: 'send', onPress: onSubmit, loading: submitting, danger: true }}
+      action={{ title: 'Submit Report', icon: 'send', onPress: onSubmit, loading: submitting, danger: true, disabled: !confirmed }}
     >
+      {preview}
       {!reason ? (
         <View style={styles.list}>
           {reasons.map((r) => (
@@ -72,8 +82,8 @@ export default function ReportSheet({
             />
           )}
 
-          <SheetSection title="Proof (optional)" />
-          {proof ? (
+          {allowProof ? <SheetSection title="Proof (optional)" /> : null}
+          {!allowProof ? null : proof ? (
             <View style={styles.proofWrap}>
               <Image source={{ uri: proof }} style={styles.proof} contentFit="cover" />
               <TouchableOpacity style={styles.proofRemove} onPress={onRemoveProof} accessibilityRole="button" accessibilityLabel="Remove proof photo">
@@ -86,6 +96,19 @@ export default function ReportSheet({
               <Text style={styles.proofAddText}>Add a screenshot or photo</Text>
             </TouchableOpacity>
           )}
+
+          <TouchableOpacity
+            style={styles.confirm}
+            activeOpacity={0.8}
+            onPress={() => setConfirmed(!confirmed)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: confirmed }}
+          >
+            <Ionicons name={confirmed ? 'checkbox' : 'square-outline'} size={22} color={confirmed ? COLORS.error : COLORS.textMuted} />
+            <Text style={styles.confirmText}>
+              This is a real problem, not a joke. I understand false reports can get my own account restricted.
+            </Text>
+          </TouchableOpacity>
         </>
       )}
     </Sheet>
@@ -114,4 +137,6 @@ const createStyles = (COLORS) => StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: COLORS.surfaceAlt,
   },
   proofAddText: { fontSize: 13.5, fontWeight: '600', color: COLORS.primary },
+  confirm: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 16, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt },
+  confirmText: { flex: 1, fontSize: 13, lineHeight: 18, color: COLORS.textSecondary },
 });

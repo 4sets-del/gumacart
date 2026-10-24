@@ -15,7 +15,8 @@ import { LinearGradient } from "expo-linear-gradient";
 import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
 import { academicLabel } from "../constants/school";
 import ReportSheet from "../components/ReportSheet";
-import Sheet, { FormField } from "../components/Sheet";
+import Sheet, { FormField, SheetOption } from "../components/Sheet";
+import { useBlocked, blockUser, unblockUser } from "../utils/blocking";
 import { useTheme } from '../context/ThemeContext';
 
 
@@ -234,6 +235,9 @@ export default function SellerProfileScreen({ route, navigation }) {
     ]);
   };
 
+  const [menuOpen, setMenuOpen] = useState(false);
+  const blockedByMe = useBlocked().ids.has(sellerId);
+
   const handleMessage = async (listingName = null) => {
     try {
       const ids = [currentUser.uid, sellerId].sort();
@@ -277,8 +281,8 @@ export default function SellerProfileScreen({ route, navigation }) {
             </TouchableOpacity>
             <Text style={styles.heroTitle}>Seller Profile</Text>
             {!isOwnProfile ? (
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report user" style={styles.heroBtn} activeOpacity={0.7} onPress={openReport}>
-                <Ionicons name="flag-outline" size={19} color="#fff" />
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="More options" style={styles.heroBtn} activeOpacity={0.7} onPress={() => setMenuOpen(true)}>
+                <Ionicons name="ellipsis-vertical" size={19} color="#fff" />
               </TouchableOpacity>
             ) : (
               <View style={{ width: 40 }} />
@@ -494,6 +498,27 @@ export default function SellerProfileScreen({ route, navigation }) {
           maxLength={300}
           hint={`${myReview.length}/300`}
         />
+      </Sheet>
+
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={sellerName} icon="person" footer={null}>
+        <SheetOption icon="flag" tone="danger" label="Report user" sub="Scam, harassment, fake account…" onPress={() => { setMenuOpen(false); openReport(); }} />
+        {blockedByMe ? (
+          <SheetOption icon="lock-open" label="Unblock" sub="See their listings and messages again" onPress={() => { setMenuOpen(false); unblockUser(sellerId).catch(() => {}); }} />
+        ) : (
+          <SheetOption
+            icon="ban"
+            tone="danger"
+            label="Block"
+            sub="They can't message you, and you won't see their listings"
+            onPress={() => {
+              setMenuOpen(false);
+              Alert.alert(`Block ${sellerName}?`, "They won't be able to message you, and their listings will be hidden from you. They won't be told. You can unblock them anytime in Settings.", [
+                { text: "Cancel", style: "cancel" },
+                { text: "Block", style: "destructive", onPress: () => blockUser({ id: sellerId, name: sellerName, photoURL: seller?.photoURL }).catch(() => Alert.alert("Error", "Could not block this person.")) },
+              ]);
+            }}
+          />
+        )}
       </Sheet>
 
       <ReportSheet
