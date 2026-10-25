@@ -27,6 +27,7 @@ import { useBlocked, blockUser, unblockUser, hasBlockedMe } from "../utils/block
 import ReportSheet from "../components/ReportSheet";
 import { reportMessage, messageSummary, MESSAGE_REPORT_REASONS } from "../utils/reportMessage";
 import { useActiveListings } from "../utils/useListings";
+import { getUserBasics } from "../utils/userCache";
 import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
@@ -89,17 +90,16 @@ export default function ChatScreen({ route, navigation }) {
     setViewerType(null);
   };
 
+  // From the shared profile cache, so reopening a chat doesn't re-download it.
   useEffect(() => {
-    const fetchOtherUserPhoto = async () => {
-      try {
-        const otherUserDoc = await getDoc(doc(db, "users", otherUserId));
-        if (otherUserDoc.exists()) {
-          setOtherUserPhoto(otherUserDoc.data()?.photoURL || null);
-          setOtherUserLabel(academicLabel(otherUserDoc.data()));
-        }
-      } catch (e) {}
-    };
-    if (otherUserId) fetchOtherUserPhoto();
+    if (!otherUserId) return;
+    let alive = true;
+    getUserBasics(otherUserId).then((basics) => {
+      if (!alive) return;
+      setOtherUserPhoto(basics.photoURL);
+      setOtherUserLabel(academicLabel(basics));
+    });
+    return () => { alive = false; };
   }, [otherUserId]);
 
   // Only the latest messages are loaded; "Load earlier messages" grows the
@@ -219,10 +219,10 @@ export default function ChatScreen({ route, navigation }) {
   }, [viewerVisible]);
 
   // clearComposer: only for what was typed in the message box, so sending a
-  // photo, offer or meet-up (or answering one) doesn't erase a draft.
+  // photo, voice message or listing doesn't erase a draft.
   const sendMessage = async (msgData, { withReply = true, clearComposer = false } = {}) => {
     if (!msgData.text?.trim() && !msgData.mediaUrl) return;
-    if (iBlocked || blockedByThem) return; // the input is hidden then; this guards offers, photos, etc.
+    if (iBlocked || blockedByThem) return; // the input is hidden then; this guards photos, quick replies, etc.
     setSending(true);
     try {
       const convoRef = doc(db, "conversations", conversationId);
