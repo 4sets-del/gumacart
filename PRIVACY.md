@@ -23,7 +23,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 ## 3. How we use your information
 
-- To run the marketplace: show listings, let buyers and sellers chat, and keep carts, follows and reviews.
+- To run the marketplace: show listings, let buyers and sellers chat, and keep saved items and reviews.
 - To verify that users are SLSU students or faculty, and to review listings before they go live.
 - To send notifications you have not turned off (new messages, reviews, listing updates and search alerts can be switched off in Settings; account and listing notices are always sent).
 - To keep the community safe: handle reports, suspensions and appeals.
@@ -47,7 +47,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 ## 6. How long we keep it
 
 - We keep your information while your account exists.
-- When you delete your account (Settings → Delete account), we delete your login, profile, listings and their photos, profile photo, student ID photo, reviews you wrote or received, follows, cart and notifications.
+- When you delete your account (Settings → Delete account), we delete your login, profile, listings and their photos, profile photo, student ID photo, reviews you wrote or received, saved items, saved searches and notifications.
 - Conversations are kept so the other person still has their chat history; your messages in them remain.
 - If an admin removes your account, the same deletion happens.
 

@@ -65,7 +65,8 @@
         {
           "microphonePermission": "Allow GumaCart to use the microphone to record voice messages."
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {

@@ -1,6 +1,6 @@
 # SLSU-GumaCart
 
-The campus marketplace for **Southern Luzon State University – Gumaca**. Students and faculty buy, sell, barter and donate items with each other, chat, make offers, and plan safe meet-ups on campus.
+The campus marketplace for **Southern Luzon State University – Gumaca**. Students and faculty buy, sell, barter and donate items with each other, chat, and meet up on campus.
 
 Only `@slsu.edu.ph` accounts can use the app (admins are the one exception), and sellers verify their student ID before posting.
 
@@ -34,13 +34,14 @@ context/               AuthContext (user, ban + SLSU checks), ThemeContext
 constants/             theme (colors, fonts), listings, school (domain, courses,
                        meet-up spots), privacy policy text
 utils/                 Firestore helpers and shared stores (listings, wishlist,
-                       search alerts, cart, chat, uploads, notifications)
-functions/index.js     Cloud Functions (notifications, moderation, reminders,
+                       search alerts, chat, uploads, notifications)
+functions/index.js     Cloud Functions (notifications, moderation, reservations,
                        listing expiry, account cleanup)
 firestore.rules        Firestore security rules
 firestore.indexes.json Composite / collection-group indexes
 storage.rules          Storage security rules
-scripts/               export-privacy.js (writes PRIVACY.md)
+scripts/               export-privacy.js (writes PRIVACY.md), make-splash.sh,
+                       remove-phone-numbers.js
 ```
 
 ## Running it
@@ -71,7 +72,7 @@ The download link appears when the build finishes (expo.dev → GumaCart → Bui
 npx firebase-tools deploy --only functions,firestore:rules,firestore:indexes,storage
 ```
 
-- Cloud Functions need the Firebase **Blaze** plan. The scheduled ones (reservations, meet-up reminders, listing expiry) use Cloud Scheduler.
+- Cloud Functions need the Firebase **Blaze** plan. The scheduled ones (reservations, listing expiry) use Cloud Scheduler.
 - New indexes take a few minutes to build.
 - If the deploy asks to delete indexes that aren't in `firestore.indexes.json`, answer **N**.
 

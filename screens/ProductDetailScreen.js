@@ -490,6 +490,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           {/* Seller-only stats: how much attention this listing gets. */}
           {isOwner && product.status !== "pending" && product.status !== "rejected" ? (
             <View style={styles.statsCard}>
+              <View style={styles.statsRow}>
               {[
                 ["eye", "Views", product.viewCount || 0, "#2563EB"],
                 ["heart", "Saves", Math.max(0, product.saveCount || 0), COLORS.error],
@@ -501,6 +502,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                   <Text style={styles.statLabel}>{label}</Text>
                 </View>
               ))}
+              </View>
               <Text style={styles.statsNote}>Only you can see these numbers.</Text>
             </View>
           ) : null}
@@ -834,11 +836,14 @@ const createStyles = (COLORS) => StyleSheet.create({
   sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 0, marginRight: 10 },
   sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
-  statsCard: { flexDirection: "row", flexWrap: "wrap", backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, paddingTop: 12, marginBottom: 14 },
+  // The tiles get their own (non-wrapping) row: with flexWrap, Android
+  // squeezed flex:1 tiles to zero width.
+  statsCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, paddingTop: 12, marginBottom: 14 },
+  statsRow: { flexDirection: "row" },
   statTile: { flex: 1, alignItems: "center", gap: 2 },
   statNum: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
-  statsNote: { width: "100%", textAlign: "center", fontSize: 11, color: COLORS.textMuted, paddingVertical: 8 },
+  statsNote: { textAlign: "center", fontSize: 11, color: COLORS.textMuted, paddingVertical: 8 },
   similarRow: { gap: 10, paddingVertical: 4, paddingRight: 4 },
   sellerReply: { fontSize: 11.5, fontWeight: "700", color: COLORS.primary, marginTop: 2 },
   sellerSub: { fontSize: 12, color: COLORS.primary, fontWeight: "500" },

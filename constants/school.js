@@ -49,8 +49,7 @@ export function academicLabel(profile) {
   return parts.join(' · ');
 }
 
-// Campus meet-up spots, used for a listing's meet-up place and for meet-ups
-// planned in chat.
+// Campus meet-up spots, used for a listing's meet-up place.
 export const MEETUP_SPOTS = ['Library', 'Main Gate', 'Admin Office', 'Dormitory', 'Other'];
 
 // Posting rules: anyone may post "Looking For" (a request; nobody receives

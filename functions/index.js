@@ -14,7 +14,6 @@ const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 const NOTIF_STYLES = {
   message:  { channelId: "default", color: "#2980b9", titlePrefix: "💬 " },
-  follow:   { channelId: "default", color: "#2E6B3E", titlePrefix: "👤 " },
   review:   { channelId: "default", color: "#F4C542", titlePrefix: "⭐ " },
   verified: { channelId: "default", color: "#2E6B3E", titlePrefix: "✅ " },
   rejected: { channelId: "default", color: "#e74c3c", titlePrefix: "⚠️ " },
@@ -93,7 +92,6 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   if (storeType === "search_alert" && prefs.alerts === false) return;
   if (storeType !== "search_alert" && data?.nav === "listing" && prefs.listings === false) return;
   if (storeType === "message" && prefs.messages === false) return;
-  if (storeType === "follow" && prefs.followers === false) return;
   if (storeType === "review" && prefs.reviews === false) return;
 
   const messages = tokens.map((token) => {
@@ -702,7 +700,8 @@ exports.onReviewWrite = functions
 async function deleteUserData(uid) {
   const userRef = db.collection("users").doc(uid);
 
-  // Follow links stored on the other side of each relationship.
+  // Follow links from the old follow feature, stored on the other side of
+  // each relationship (older accounts may still have them).
   const [following, followers] = await Promise.all([
     userRef.collection("following").get(),
     userRef.collection("followers").get(),
@@ -721,8 +720,8 @@ async function deleteUserData(uid) {
   ]);
   await Promise.all([...listings.docs, ...written.docs, ...received.docs].map((d) => d.ref.delete()));
 
-  // Profile document plus its cart, notifications, followers, following and
-  // saved searches; and their saved items (wishlist).
+  // Profile document plus its notifications, saved searches, blocked list
+  // and any old cart / follow data; and their saved items (wishlist).
   await db.recursiveDelete(userRef);
   await db.recursiveDelete(db.collection("wishlists").doc(uid));
 

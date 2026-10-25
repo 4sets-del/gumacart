@@ -547,7 +547,7 @@ export default function AdminPanelScreen({ navigation, route }) {
   const deleteUser = async (userId, userName) => {
     Alert.alert(
       "Delete User",
-      `Permanently delete ${userName}'s account and ALL of their data — listings, reviews, ratings, follows, cart, and notifications? This cannot be undone.`,
+      `Permanently delete ${userName}'s account and ALL of their data — listings, reviews, ratings, saved items and notifications? This cannot be undone.`,
       [
         { text: "Cancel", style: "cancel" },
         { text: "Delete Everything", style: "destructive", onPress: async () => {
