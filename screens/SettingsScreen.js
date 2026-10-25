@@ -18,7 +18,6 @@ import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
-import { resetScreenTours } from "../utils/useScreenTour";
 import AcademicFields from "../components/AcademicFields";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import FeedbackSheet from "../components/FeedbackSheet";
@@ -52,7 +51,6 @@ export default function SettingsScreen({ navigation }) {
   const [deleting, setDeleting] = useState(false);
 
   const [notifMessages, setNotifMessages] = useState(true);
-  const [notifFollowers, setNotifFollowers] = useState(true);
   const [notifReviews, setNotifReviews] = useState(true);
   const [notifListings, setNotifListings] = useState(true);
   const [notifAlerts, setNotifAlerts] = useState(true);
@@ -73,7 +71,6 @@ export default function SettingsScreen({ navigation }) {
         setVerificationStatus(data?.verificationStatus || null);
         // Show the saved notification switches as soon as Settings opens.
         setNotifMessages(data?.notifPrefs?.messages !== false);
-        setNotifFollowers(data?.notifPrefs?.followers !== false);
         setNotifReviews(data?.notifPrefs?.reviews !== false);
         setNotifListings(data?.notifPrefs?.listings !== false);
         setNotifAlerts(data?.notifPrefs?.alerts !== false);
@@ -95,7 +92,6 @@ export default function SettingsScreen({ navigation }) {
       setIsFaculty(data?.role === "faculty");
       setPhotoURL(data?.photoURL || user?.photoURL || null);
       setNotifMessages(data?.notifPrefs?.messages !== false);
-      setNotifFollowers(data?.notifPrefs?.followers !== false);
       setNotifReviews(data?.notifPrefs?.reviews !== false);
     } catch (e) {}
   };
@@ -277,7 +273,6 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.card}>
           <ToggleRow icon="notifications-off" iconColor={COLORS.error} label="Mute all" sub="Pause every push notification. They still appear in the app." value={muteAll} onChange={(v) => handleNotifToggle("muteAll", v, setMuteAll)} />
           <ToggleRow icon="chatbubble-ellipses" iconColor="#2563EB" label="Messages" sub="Get notified about new messages" value={notifMessages} onChange={(v) => handleNotifToggle("messages", v, setNotifMessages)} disabled={muteAll} />
-          <ToggleRow icon="person-add" iconColor="#7C3AED" label="New Followers" sub="When someone follows you" value={notifFollowers} onChange={(v) => handleNotifToggle("followers", v, setNotifFollowers)} disabled={muteAll} />
           <ToggleRow icon="star" iconColor="#F59E0B" label="Reviews" sub="When you get a new rating or review" value={notifReviews} onChange={(v) => handleNotifToggle("reviews", v, setNotifReviews)} disabled={muteAll} />
           <ToggleRow icon="pricetags" iconColor="#16A34A" label="Listing updates" sub="When a listing is approved or needs changes" value={notifListings} onChange={(v) => handleNotifToggle("listings", v, setNotifListings)} disabled={muteAll} />
           <ToggleRow icon="search" iconColor="#0D9488" label="Search alerts" sub={'New items matching your "Notify me" searches'} value={notifAlerts} onChange={(v) => handleNotifToggle("alerts", v, setNotifAlerts)} disabled={muteAll} isLast />
@@ -287,7 +282,7 @@ export default function SettingsScreen({ navigation }) {
         <View style={styles.card}>
           <SettingRow icon="document-text" iconColor="#0D9488" label="Terms and Conditions" onPress={() => navigation.navigate('Terms')} />
           <SettingRow icon="shield-checkmark" iconColor="#2563EB" label="Privacy Policy" sub="What we collect and how it's used" onPress={() => navigation.navigate('Privacy')} />
-          <SettingRow icon="help-circle" iconColor="#EA580C" label="App Tour" sub="Replay the guided tours of GumaCart's features" onPress={() => { resetScreenTours().catch(() => {}); navigation.navigate("Main", { screen: "Home", params: { startTour: Date.now() } }); }} />
+          <SettingRow icon="help-circle" iconColor="#EA580C" label="App Tour" sub="Replay the guided tour of GumaCart's features" onPress={() => navigation.navigate("Main", { screen: "Home", params: { startTour: Date.now() } })} />
           <SettingRow icon="chatbox-ellipses" iconColor="#7C3AED" label="Send Feedback" sub="Report a problem or suggest a feature" onPress={() => setShowFeedback(true)} />
           <SettingRow icon="information-circle" iconColor="#16A34A" label="About GumaCart" sub="Our story and the team behind the app" onPress={() => navigation.navigate('About')} isLast />
         </View>

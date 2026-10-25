@@ -58,7 +58,7 @@ export async function registerForPushNotifications(userId) {
         lightColor: '#2980b9',
       });
       await Notifications.setNotificationChannelAsync('social', {
-        name: 'Followers & Reviews',
+        name: 'Reviews',
         importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 200],
         lightColor: '#2E6B3E',
@@ -137,4 +137,11 @@ export function addNotificationResponseListener(handler) {
   } catch (e) {
     return () => {};
   }
+}
+
+// Clear a chat's notification from the phone's tray (the server tags each
+// chat's notification "chat_<conversationId>"), e.g. when the chat is opened.
+export function dismissChatNotification(conversationId) {
+  if (isExpoGo || !Notifications || !conversationId) return;
+  Notifications.dismissNotificationAsync(`chat_${conversationId}`).catch(() => {});
 }

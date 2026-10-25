@@ -5,7 +5,7 @@ import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc, setDoc,
+  collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc,
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { auth, db } from "../firebaseConfig";
@@ -14,6 +14,10 @@ import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
 import { academicLabel } from "../constants/school";
+import { useReplyTime } from "../utils/replyTime";
+import { ensureConversation } from "../utils/chat";
+import { hasCompletedDealWith } from "../utils/deals";
+import { getUserBasics } from "../utils/userCache";
 import ReportSheet from "../components/ReportSheet";
 import Sheet, { FormField, SheetOption } from "../components/Sheet";
 import { useBlocked, blockUser, unblockUser } from "../utils/blocking";
@@ -40,6 +44,17 @@ export default function SellerProfileScreen({ route, navigation }) {
   const [seller, setSeller] = useState(null);
   const [listings, setListings] = useState([]);
   const [reviews, setReviews] = useState([]);
+  // Reviewers' current name and photo (reviews only store the name).
+  const [reviewers, setReviewers] = useState({});
+  useEffect(() => {
+    const ids = [...new Set(reviews.map((r) => r.reviewerId).filter(Boolean))];
+    if (!ids.length) return;
+    let cancelled = false;
+    Promise.all(ids.map(async (id) => [id, await getUserBasics(id)])).then((entries) => {
+      if (!cancelled) setReviewers(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [reviews]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -55,15 +70,28 @@ export default function SellerProfileScreen({ route, navigation }) {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState(null);
   const [activeTab, setActiveTab] = useState("active");
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [followerCount, setFollowerCount] = useState(0);
-  const [followLoading, setFollowLoading] = useState(false);
   const currentUser = auth.currentUser;
   const isOwnProfile = currentUser?.uid === sellerId;
 
+  // Reviews come from real deals: you can rate someone after they marked an
+  // item as sold to you (editing your existing review always works).
+  const [canRate, setCanRate] = useState(false);
+  const replyTime = useReplyTime(sellerId);
   useEffect(() => {
-    if (openRating && !loading && !isOwnProfile) setShowRatingModal(true);
-  }, [openRating, loading, isOwnProfile]);
+    if (!isOwnProfile && sellerId) hasCompletedDealWith(sellerId).then(setCanRate);
+  }, [sellerId, isOwnProfile]);
+  const startRating = () => {
+    if (canRate) { setShowRatingModal(true); return; }
+    Alert.alert(
+      "Rate after a deal",
+      `You can rate ${sellerName} after buying from them. Once they mark an item as sold to you, you'll get a notification to rate them.`,
+      [{ text: "OK" }],
+    );
+  };
+
+  useEffect(() => {
+    if (openRating && !loading && !isOwnProfile && canRate) setShowRatingModal(true);
+  }, [openRating, loading, isOwnProfile, canRate]);
 
   const loadAll = async () => {
     try {
@@ -74,12 +102,6 @@ export default function SellerProfileScreen({ route, navigation }) {
       const reviewsSnap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", sellerId)));
       setReviews(reviewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0)));
 
-      const followersSnap = await getDocs(collection(db, "users", sellerId, "followers"));
-      setFollowerCount(followersSnap.size);
-      if (!isOwnProfile && currentUser?.uid) {
-        const myFollowDoc = await getDoc(doc(db, "users", sellerId, "followers", currentUser.uid));
-        setIsFollowing(myFollowDoc.exists());
-      }
     } catch (e) {
       console.log("Seller profile error:", e.message);
     } finally {
@@ -156,37 +178,6 @@ export default function SellerProfileScreen({ route, navigation }) {
     }
   };
 
-  const toggleFollow = async () => {
-    if (!currentUser?.uid) return;
-    setFollowLoading(true);
-    const followerRef = doc(db, "users", sellerId, "followers", currentUser.uid);
-    const followingRef = doc(db, "users", currentUser.uid, "following", sellerId);
-    try {
-      if (isFollowing) {
-        await deleteDoc(followerRef);
-        await deleteDoc(followingRef);
-        setIsFollowing(false);
-        setFollowerCount((c) => Math.max(0, c - 1));
-      } else {
-        await setDoc(followerRef, {
-          uid: currentUser.uid,
-          name: currentUser.displayName || "Anonymous",
-          followedAt: serverTimestamp(),
-        });
-        await setDoc(followingRef, {
-          uid: sellerId,
-          name: sellerName,
-          followedAt: serverTimestamp(),
-        });
-        setIsFollowing(true);
-        setFollowerCount((c) => c + 1);
-      }
-    } catch (e) {
-      Alert.alert("Error", "Could not update follow status.");
-    } finally {
-      setFollowLoading(false);
-    }
-  };
 
   const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : seller?.avgRating || 0;
 
@@ -240,13 +231,7 @@ export default function SellerProfileScreen({ route, navigation }) {
 
   const handleMessage = async (listingName = null) => {
     try {
-      const ids = [currentUser.uid, sellerId].sort();
-      const conversationId = `${ids[0]}_${ids[1]}`;
-      const convoRef = doc(db, "conversations", conversationId);
-      const convoDoc = await getDoc(convoRef);
-      if (!convoDoc.exists()) {
-        await setDoc(convoRef, { participants: [currentUser.uid, sellerId], listingName: listingName || "", lastMessage: "", lastMessageTime: serverTimestamp(), unreadCount: { [currentUser.uid]: 0, [sellerId]: 0 }, createdAt: serverTimestamp() });
-      }
+      const conversationId = await ensureConversation(currentUser, sellerId, { listingName: listingName || "" });
       navigation.navigate("Chat", { conversationId, otherUserId: sellerId, otherUserName: sellerName, listingName: listingName || null });
     } catch (e) { Alert.alert("Error", "Could not start conversation."); }
   };
@@ -279,7 +264,8 @@ export default function SellerProfileScreen({ route, navigation }) {
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Go back" style={styles.heroBtn} activeOpacity={0.7} onPress={() => { if (navigation.canGoBack()) navigation.goBack(); else navigation.navigate("Main", { screen: "Home" }); }}>
               <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
-            <Text style={styles.heroTitle}>Seller Profile</Text>
+            {/* Everyone has this page (buyers too), so it's titled by who they are. */}
+            <Text style={styles.heroTitle}>{seller?.role === "faculty" ? "Faculty Profile" : seller?.role === "admin" ? "Profile" : "Student Profile"}</Text>
             {!isOwnProfile ? (
               <TouchableOpacity accessibilityRole="button" accessibilityLabel="More options" style={styles.heroBtn} activeOpacity={0.7} onPress={() => setMenuOpen(true)}>
                 <Ionicons name="ellipsis-vertical" size={19} color="#fff" />
@@ -302,6 +288,12 @@ export default function SellerProfileScreen({ route, navigation }) {
             <View style={{ flex: 1 }}>
               <Text style={styles.sellerName} numberOfLines={1}>{sellerName}</Text>
               <Text style={styles.sellerEmail} numberOfLines={1}>{seller?.email}</Text>
+              {replyTime ? (
+                <View style={styles.replyRow}>
+                  <Ionicons name="flash" size={12} color={COLORS.primary} />
+                  <Text style={styles.replyText}>{replyTime}</Text>
+                </View>
+              ) : null}
               <View style={styles.heroMetaRow}>
                 {(seller?.course || seller?.yearLevel) && (
                   <View style={[styles.verifiedBadge, { backgroundColor: COLORS.infoLight }]}>
@@ -330,7 +322,6 @@ export default function SellerProfileScreen({ route, navigation }) {
               { label: "Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", color: "#F59E0B" },
               { label: "Reviews", value: reviews.length, color: "#2563EB" },
               { label: "Listings", value: activeListings.length, color: COLORS.primary },
-              { label: "Followers", value: followerCount, color: "#7C3AED" },
             ].map((stat, i) => (
               <View key={stat.label} style={[styles.statItem, i > 0 && styles.statDivider]}>
                 <Text style={[styles.statNum, { color: stat.color }]}>{stat.value}</Text>
@@ -341,28 +332,11 @@ export default function SellerProfileScreen({ route, navigation }) {
 
           {!isOwnProfile && (
             <View style={styles.actionBtns}>
-              <TouchableOpacity
-                style={[styles.followBtn, isFollowing && styles.followingBtn]}
-                activeOpacity={0.85}
-                onPress={toggleFollow}
-                disabled={followLoading}
-              >
-                {followLoading ? (
-                  <ActivityIndicator color={isFollowing ? COLORS.primary : "#fff"} size="small" />
-                ) : (
-                  <>
-                    <Ionicons name={isFollowing ? "checkmark" : "add"} size={18} color={isFollowing ? COLORS.primary : "#fff"} style={{ marginRight: 4 }} />
-                    <Text style={[styles.followBtnText, isFollowing && styles.followingBtnText]}>
-                      {isFollowing ? "Following" : "Follow"}
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.messageBtn} activeOpacity={0.8} onPress={() => handleMessage()}>
-                <Ionicons name="chatbubble-ellipses-outline" size={17} color={COLORS.primary} style={{ marginRight: 6 }} />
+              <TouchableOpacity style={styles.messageBtn} activeOpacity={0.85} onPress={() => handleMessage()}>
+                <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
                 <Text style={styles.messageBtnText}>Message</Text>
               </TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={styles.rateBtn} activeOpacity={0.85} onPress={() => setShowRatingModal(true)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={[styles.rateBtn, !canRate && { opacity: 0.5 }]} activeOpacity={0.85} onPress={startRating}>
                 <Ionicons name="star" size={19} color={COLORS.star} />
               </TouchableOpacity>
             </View>
@@ -395,7 +369,7 @@ export default function SellerProfileScreen({ route, navigation }) {
               </View>
               <Text style={styles.emptyText}>No reviews yet</Text>
               {!isOwnProfile && (
-                <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={() => setShowRatingModal(true)}>
+                <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={startRating}>
                   <Text style={styles.emptyBtnText}>Be the first to review</Text>
                 </TouchableOpacity>
               )}
@@ -404,13 +378,26 @@ export default function SellerProfileScreen({ route, navigation }) {
             reviews.map((review) => (
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
-                  <View style={[styles.reviewAvatar, { backgroundColor: colorForName(review.reviewerName) }]}>
-                    <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase()}</Text>
-                  </View>
-                  <View style={styles.reviewInfo}>
-                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                    <StarRating rating={review.rating} size={13} />
-                  </View>
+                  <TouchableOpacity
+                    style={styles.reviewWho}
+                    activeOpacity={0.75}
+                    disabled={!review.reviewerId || review.reviewerId === sellerId}
+                    onPress={() => navigation.push("SellerProfile", { sellerId: review.reviewerId, sellerName: reviewers[review.reviewerId]?.name || review.reviewerName })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${review.reviewerName}'s profile`}
+                  >
+                    {reviewers[review.reviewerId]?.photoURL ? (
+                      <Image source={{ uri: reviewers[review.reviewerId].photoURL }} style={styles.reviewAvatar} />
+                    ) : (
+                      <View style={[styles.reviewAvatar, { backgroundColor: colorForName(review.reviewerName) }]}>
+                        <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase()}</Text>
+                      </View>
+                    )}
+                    <View style={styles.reviewInfo}>
+                      <Text style={styles.reviewerName}>{reviewers[review.reviewerId]?.name || review.reviewerName}</Text>
+                      <StarRating rating={review.rating} size={13} />
+                    </View>
+                  </TouchableOpacity>
                   <Text style={styles.reviewDate}>{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : "Recently"}</Text>
                 </View>
                 {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
@@ -571,12 +558,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   statLabel: { fontSize: 11.5, color: COLORS.textMuted, marginTop: 2 },
 
   actionBtns: { flexDirection: "row", gap: 10, marginTop: 16 },
-  followBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.primary },
-  followingBtn: { backgroundColor: COLORS.primaryPale },
-  followBtnText: { fontSize: 14.5, fontWeight: "700", color: "#fff" },
-  followingBtnText: { color: COLORS.primary },
-  messageBtn: { flex: 1, flexDirection: "row", height: 46, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  messageBtnText: { fontSize: 14.5, fontWeight: "700", color: COLORS.primary },
+  messageBtn: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.primary },
+  messageBtnText: { fontSize: 14.5, fontWeight: "700", color: "#fff" },
   rateBtn: { width: 46, height: 46, borderRadius: RADIUS.md, backgroundColor: COLORS.accentLight, alignItems: "center", justifyContent: "center" },
 
   section: { paddingHorizontal: 16, marginTop: 22 },
@@ -594,6 +577,9 @@ const createStyles = (COLORS) => StyleSheet.create({
   breakdownCount: { fontSize: 11, color: COLORS.textMuted, width: 18, textAlign: "right" },
   reviewCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: COLORS.border },
   reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
+  replyRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 },
+  replyText: { fontSize: 12, fontWeight: "700", color: COLORS.primary },
+  reviewWho: { flex: 1, flexDirection: "row", alignItems: "center" },
   reviewAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center", marginRight: 10 },
   reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
   reviewInfo: { flex: 1 },

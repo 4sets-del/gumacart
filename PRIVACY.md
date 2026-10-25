@@ -11,7 +11,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 - Profile photo, if you add one.
 - Listings: photos, title, description, price, quantity, category, condition and meet-up location. We do not ask for or show phone numbers; buyers and sellers talk through the in-app chat.
 - Messages, including photos and videos you send in chat.
-- Reviews and ratings you write, the people you follow, items in your cart, reports and ban appeals.
+- Reviews and ratings you write, items you save, searches you ask to be notified about, people you block, reports, feedback and ban appeals.
 
 ## 2. Information collected automatically
 
@@ -25,13 +25,13 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 - To run the marketplace: show listings, let buyers and sellers chat, and keep carts, follows and reviews.
 - To verify that users are SLSU students or faculty, and to review listings before they go live.
-- To send notifications you have not turned off (new messages, followers and reviews can be switched off in Settings; account and listing notices are always sent).
+- To send notifications you have not turned off (new messages, reviews, listing updates and search alerts can be switched off in Settings; account and listing notices are always sent).
 - To keep the community safe: handle reports, suspensions and appeals.
 - We do not sell your information and we do not show ads.
 
 ## 4. Who can see your information
 
-- Other signed-in users can see your name, profile photo, email address, verified/faculty badges, ratings and reviews, follower counts, your course and year level, and your active listings, including the meet-up location on them.
+- Other signed-in users can see your name, profile photo, email address, verified/faculty badges, ratings and reviews, how quickly you usually reply, whether you’re active now, your course and year level, and your active listings, including the meet-up location on them.
 - Messages are shown to the people in that conversation.
 - Admins can see verification details (school email, student ID number, ID photo), reports, appeals, feedback and account status in order to moderate the app.
 - Chats are private between the two people. If someone reports a chat message, a copy of that message and up to 10 messages before and after it (from both people) is shared with admins so they can judge the context. The reported person is not told who reported them.
@@ -55,7 +55,7 @@ SLSU-GumaCart ("GumaCart", "we") is a campus marketplace for students and facult
 
 - Access and correct your details any time in Settings → Edit Profile.
 - Turn notification types on or off in Settings.
-- Remove a conversation from your inbox, delete your listings or reviews, and unfollow people.
+- Remove a conversation from your inbox, delete your listings or reviews, remove saved items, and unblock people.
 - Delete your account and its data from Settings.
 - Under the Data Privacy Act you may also ask us about the personal data we hold about you by contacting slsugumacart@gmail.com.
 

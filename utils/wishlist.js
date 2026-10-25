@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
-import { collection, doc, setDoc, deleteDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, increment, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth, db } from '../firebaseConfig';
 import { listingImage, listingTitle } from '../constants/listings';
+import { markInterested } from './interest';
 
 // Saved items ("wishlist"): wishlists/{uid}/items/{listingId}. One shared
 // listener for the signed-in user, so every heart icon in the app stays in
@@ -66,8 +67,12 @@ export async function toggleSaved(listing) {
   const uid = auth.currentUser?.uid;
   if (!uid || !listing?.id) return;
   const ref = doc(db, 'wishlists', uid, 'items', listing.id);
+  // The listing's save counter feeds the seller's stats; failing to update
+  // it shouldn't block saving.
+  const bumpCount = (by) => updateDoc(doc(db, 'listings', listing.id), { saveCount: increment(by) }).catch(() => {});
   if (ids.has(listing.id)) {
     await deleteDoc(ref);
+    bumpCount(-1);
   } else {
     await setDoc(ref, {
       listingId: listing.id,
@@ -79,5 +84,7 @@ export async function toggleSaved(listing) {
       sellerName: listing.sellerName || '',
       savedAt: serverTimestamp(),
     });
+    bumpCount(1);
+    markInterested(listing); // savers hear when it's reserved or sold
   }
 }

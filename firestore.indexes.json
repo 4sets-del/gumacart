@@ -58,28 +58,6 @@
       "density": "SPARSE_ALL"
     },
     {
-      "collectionGroup": "messages",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        {
-          "fieldPath": "type",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "reminderSent",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "at",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
       "collectionGroup": "listings",
       "queryScope": "COLLECTION",
       "fields": [
@@ -105,6 +83,20 @@
         },
         {
           "arrayConfig": "CONTAINS",
+          "queryScope": "COLLECTION_GROUP"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "items",
+      "fieldPath": "listingId",
+      "indexes": [
+        {
+          "order": "ASCENDING",
+          "queryScope": "COLLECTION"
+        },
+        {
+          "order": "ASCENDING",
           "queryScope": "COLLECTION_GROUP"
         }
       ]

@@ -86,7 +86,7 @@ export function FormField({ label, icon, secure, error, hint, style, ...inputPro
   return (
     <View style={style}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.inputBox, error && styles.inputBoxError, inputProps.multiline && styles.inputBoxMulti]}>
+      <View style={[styles.inputBox, !label && styles.inputBoxNoLabel, error && styles.inputBoxError, inputProps.multiline && styles.inputBoxMulti]}>
         {icon ? <Ionicons name={icon} size={19} color={error ? COLORS.error : COLORS.textMuted} style={styles.inputIcon} /> : null}
         <TextInput
           style={[styles.input, inputProps.multiline && styles.inputMulti]}
@@ -177,6 +177,8 @@ const createStyles = (COLORS) => StyleSheet.create({
   choiceChange: { fontSize: 13, fontWeight: '700', color: COLORS.textSecondary },
   label: { fontSize: 13.5, fontWeight: '600', color: COLORS.textPrimary, marginTop: 14, marginBottom: 7 },
   inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, paddingHorizontal: 14, height: 52, borderWidth: 1, borderColor: 'transparent' },
+  // Without a label (e.g. the "Other" place box under chips) keep a gap above.
+  inputBoxNoLabel: { marginTop: 10 },
   inputBoxError: { borderColor: COLORS.error },
   inputBoxMulti: { height: undefined, minHeight: 96, alignItems: 'flex-start', paddingVertical: 12 },
   inputIcon: { marginRight: 10 },

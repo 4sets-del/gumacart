@@ -34,11 +34,12 @@ function uriToBlob(uri) {
 }
 
 // Uploads a local file to Firebase Storage and returns its download URL.
-// Images are compressed first unless `compress` is false (e.g. videos).
-export async function uploadFile(uri, path, { compress = true, ...options } = {}) {
+// Images are compressed first unless `compress` is false (e.g. videos,
+// voice messages); `contentType` labels non-image files (e.g. 'audio/mp4').
+export async function uploadFile(uri, path, { compress = true, contentType, ...options } = {}) {
   const localUri = compress ? await compressImage(uri, options) : uri;
   const blob = await uriToBlob(localUri);
   const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, blob, compress ? { contentType: 'image/jpeg' } : undefined);
+  await uploadBytes(storageRef, blob, compress ? { contentType: 'image/jpeg' } : contentType ? { contentType } : undefined);
   return getDownloadURL(storageRef);
 }

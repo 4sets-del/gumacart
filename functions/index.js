@@ -8,6 +8,8 @@ const { getAuth } = require("firebase-admin/auth");
 initializeApp();
 const db = getFirestore();
 
+const HOUR = 60 * 60 * 1000;
+const DAY = 24 * HOUR;
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 const NOTIF_STYLES = {
@@ -48,7 +50,9 @@ async function sendExpoPush(messages) {
   }
 }
 
-async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey }) {
+// `image`: a person's profile photo URL. Android shows it as the round
+// picture beside the notification (like Messenger), via Expo's richContent.
+async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey, image }) {
   const style = NOTIF_STYLES[styleKey] || NOTIF_STYLES.system;
   const notifCol = db.collection("users").doc(userId).collection("notifications");
 
@@ -103,6 +107,7 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
       channelId: style.channelId,
       badge: 1,
     };
+    if (image) msg.richContent = { image };
     if (groupTag) {
       msg.tag = groupTag;
       msg._displayInForeground = true;
@@ -116,6 +121,16 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   }
 }
 
+// A user's profile photo URL (or undefined), for notification pictures.
+async function photoOf(uid) {
+  if (!uid) return undefined;
+  try {
+    return (await db.collection("users").doc(uid).get()).get("photoURL") || undefined;
+  } catch (e) {
+    return undefined;
+  }
+}
+
 function suspensionPhrase(bannedUntil) {
   if (!bannedUntil) return "Your account has been permanently suspended by an admin.";
   const until = bannedUntil.toDate ? bannedUntil.toDate() : new Date(bannedUntil);
@@ -125,6 +140,17 @@ function suspensionPhrase(bannedUntil) {
   if (hours < 24) return `Your account has been suspended for about ${hours} hour(s).`;
   const days = Math.round(hours / 24);
   return `Your account has been suspended for about ${days} day(s).`;
+}
+
+// One line describing a chat message, for notifications.
+function messagePreview(m) {
+  return (
+    m.type === "listing" ? `🛍️ Interested in "${m.listingName || "your listing"}"`
+    : m.type === "image" ? "📷 Sent a photo"
+    : m.type === "video" ? "🎥 Sent a video"
+    : m.type === "audio" ? "🎤 Sent a voice message"
+    : m.text || "Sent you a message"
+  ).slice(0, 100);
 }
 
 exports.onNewMessage = functions
@@ -148,40 +174,52 @@ exports.onNewMessage = functions
     if (blocked.exists) return null;
 
     const senderName = message.senderName || "Someone";
-    const preview = (
-      message.type === "listing" ? `🛍️ Interested in "${message.listingName || "your listing"}"`
-      : message.type === "offer" ? `💸 Offered ₱${Number(message.amount || 0).toLocaleString()} for "${message.listingName || "your item"}"`
-      : message.type === "meetup" ? `📍 Wants to meet at ${message.place || "campus"}. Tap to confirm.`
-      : message.type === "image" ? "📷 Sent a photo"
-      : message.type === "video" ? "🎥 Sent a video"
-      : message.text || "Sent you a message"
-    ).slice(0, 100);
+
+    // Messenger-style stacking: show every message from this person that the
+    // recipient hasn't read yet (up to 5) in one notification. It uses the
+    // same tag per chat, so each new message replaces the previous card
+    // instead of adding another one. Stops at the recipient's last reply or
+    // the last time they opened the chat.
+    const conv = convSnap.data();
+    const lastReadMs = conv.lastReadAt?.[recipientId]?.toMillis?.() || 0;
+    const recent = await db.collection("conversations").doc(context.params.convId).collection("messages")
+      .orderBy("createdAt", "desc").limit(12).get();
+    const unread = [];
+    for (const d of recent.docs) {
+      const m = d.data();
+      const ms = m.createdAt?.toMillis?.() || Date.now();
+      if (m.senderId === recipientId || (lastReadMs && ms <= lastReadMs)) break;
+      if (m.senderId === senderId) unread.push({ id: d.id, ...m });
+    }
+    if (!unread.some((m) => m.id === context.params.msgId)) {
+      unread.unshift({ id: context.params.msgId, ...message }); // in case it isn't in the query yet
+    }
+    // Reply speed: if this message answers the other person's last message,
+    // record how long the sender took (shown as "Usually replies within …").
+    // Gaps over 3 days don't count (the chat had gone quiet), and each one is
+    // capped at a day so one slow reply doesn't dominate.
+    const prev = recent.docs.find((d) => d.id !== context.params.msgId);
+    const prevMs = prev?.get("createdAt")?.toMillis?.();
+    const nowMs = message.createdAt?.toMillis?.() || Date.now();
+    if (prev && prev.get("senderId") === recipientId && prevMs && nowMs - prevMs < 3 * DAY) {
+      await db.collection("replyStats").doc(senderId).set({
+        replies: FieldValue.increment(1),
+        totalMs: FieldValue.increment(Math.min(nowMs - prevMs, DAY)),
+      }, { merge: true }).catch(() => {});
+    }
+
+    const lines = unread.slice(0, 5).reverse().map((m) => messagePreview(m));
+    const extra = unread.length > 5 ? `+${unread.length - 5} more\n` : "";
 
     await notifyUser(recipientId, {
       storeType: "message",
       styleKey: "message",
-      title: senderName,
-      body: preview,
+      title: unread.length > 1 ? `${senderName} (${unread.length} new messages)` : senderName,
+      body: (extra + lines.join("\n")).slice(0, 600),
       data: { nav: "chat", conversationId: context.params.convId },
       groupTag: "chat_" + context.params.convId,
       collapseKey: "chat_" + context.params.convId,
-    });
-    return null;
-  });
-
-exports.onNewFollower = functions
-  .region("asia-southeast1")
-  .firestore
-  .document("users/{userId}/followers/{followerId}")
-  .onCreate(async (snap, context) => {
-    const follower = snap.data();
-    const followerName = follower.name || "Someone";
-    await notifyUser(context.params.userId, {
-      storeType: "follow",
-      styleKey: "follow",
-      title: "New follower",
-      body: `${followerName} started following you`,
-      data: { nav: "self" },
+      image: await photoOf(message.senderId),
     });
     return null;
   });
@@ -205,6 +243,7 @@ exports.onNewReview = functions
       title: stars ? `New review ${stars}` : "New review",
       body,
       data: { nav: "self" },
+      image: await photoOf(review.reviewerId),
     });
     return null;
   });
@@ -349,8 +388,10 @@ exports.onListingStatusChange = functions
     const reassigned = isReserved && wasReserved && before.reservedFor !== after.reservedFor;
     const released = wasReserved && !isReserved && after.status === "active";
     const newSale = !!after.lastSaleAt && !(before.lastSaleAt && before.lastSaleAt.isEqual(after.lastSaleAt));
+    const priceDropped = after.status === "active" && typeof before.price === "number"
+      && typeof after.price === "number" && after.price < before.price;
     // Most updates (e.g. view counts) change none of these; stop early.
-    if (!statusChanged && !becameReserved && !reassigned && !released && !newSale) return null;
+    if (!statusChanged && !becameReserved && !reassigned && !released && !newSale && !priceDropped) return null;
 
     const itemName = after.name || after.title || "your listing";
     const sellerName = after.sellerName || "the seller";
@@ -358,13 +399,30 @@ exports.onListingStatusChange = functions
     const notifyListing = (uid, title, body) => notifyUser(uid, {
       storeType: "listing_update", styleKey: "system", title, body, data: listingLink,
     });
-    const ratePrompt = (uid) => notifyUser(uid, {
-      storeType: "rate_prompt",
-      styleKey: "review",
-      title: "How was your purchase?",
-      body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
-      data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
-    });
+    // A sale to a specific buyer is recorded (deals/{id}) and the buyer is
+    // invited to rate. Only buyers with a recorded sale can rate a seller, so
+    // reviews come from real deals.
+    const ratePrompt = async (buyerId) => {
+      const buyer = (await db.collection("users").doc(buyerId).get()).data() || {};
+      await db.collection("deals").add({
+        listingId,
+        listingName: itemName,
+        listingImage: (after.images && after.images[0]) || after.image || null,
+        price: after.type === "sell" ? (after.price || 0) : 0,
+        type: after.type || "sell",
+        sellerId, sellerName,
+        buyerId, buyerName: buyer.name || "Buyer",
+        status: "completed",
+        createdAt: FieldValue.serverTimestamp(),
+      });
+      await notifyUser(buyerId, {
+        storeType: "rate_prompt",
+        styleKey: "review",
+        title: "How was your purchase?",
+        body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
+        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
+      });
+    };
 
     if (statusChanged && before.status === "pending" && after.status === "active") {
       await notifyUser(sellerId, {
@@ -379,6 +437,21 @@ exports.onListingStatusChange = functions
         await notifySearchAlerts(listingId, after).catch((e) => console.error("Search alerts", e.message));
         await change.after.ref.update({ alertsSent: true });
       }
+    }
+
+    // Price drop: tell everyone who saved it (wishlists/{uid}/items/{id}).
+    if (priceDropped) {
+      const savers = await db.collectionGroup("items").where("listingId", "==", listingId).get();
+      const peso = (n) => `₱${Number(n).toLocaleString()}`;
+      await Promise.all(savers.docs
+        .map((d) => d.ref.parent.parent.id)
+        .filter((uid) => uid !== sellerId)
+        .map((uid) => notifyUser(uid, {
+          storeType: "price_drop", styleKey: "system",
+          title: "Price drop on a saved item",
+          body: `"${itemName}" is now ${peso(after.price)} (was ${peso(before.price)}).`,
+          data: listingLink,
+        })));
     }
 
     if (statusChanged && after.status === "rejected") {
@@ -398,12 +471,11 @@ exports.onListingStatusChange = functions
 
     if (statusChanged && after.status === "sold") {
       // The buyer rates the seller; everyone else who was interested is told
-      // it's gone, and it's removed from their cart.
+      // it's gone.
       if (after.soldTo && after.soldTo !== sellerId) await ratePrompt(after.soldTo);
       const others = (await interestedIds(listingId)).filter((uid) => uid !== after.soldTo && uid !== sellerId);
       await Promise.all(others.map(async (uid) => {
         await notifyListing(uid, "Item sold", `Sorry, "${itemName}" has been sold.`);
-        await db.collection("users").doc(uid).collection("cart").doc(listingId).delete().catch(() => {});
       }));
       return null;
     }
@@ -441,7 +513,6 @@ exports.onListingDeleted = functions
 // Reservations shouldn't hang forever: after 48h remind the seller, after
 // 96h release it automatically (onListingStatusChange then tells the
 // interested buyers it's available again).
-const HOUR = 60 * 60 * 1000;
 exports.checkReservations = functions
   .region("asia-southeast1")
   .pubsub.schedule("every 6 hours")
@@ -475,42 +546,10 @@ exports.checkReservations = functions
     return null;
   });
 
-// Meet-up reminders: about an hour before a confirmed meet-up planned in chat,
-// remind both people. Runs every 15 minutes.
-exports.meetupReminders = functions
-  .region("asia-southeast1")
-  .pubsub.schedule("every 15 minutes")
-  .timeZone("Asia/Manila")
-  .onRun(async () => {
-    const now = Date.now();
-    const snap = await db.collectionGroup("messages")
-      .where("type", "==", "meetup")
-      .where("status", "==", "confirmed")
-      .where("reminderSent", "==", false)
-      .where("at", "<=", new Date(now + 70 * 60 * 1000))
-      .get();
-    for (const doc of snap.docs) {
-      const m = doc.data();
-      await doc.ref.update({ reminderSent: true });
-      if (!m.at || m.at.toMillis() < now) continue; // already started or passed
-      const convRef = doc.ref.parent.parent;
-      const conv = (await convRef.get()).data() || {};
-      const time = m.at.toDate().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Manila" });
-      await Promise.all((conv.participants || []).map((uid) => notifyUser(uid, {
-        storeType: "message", styleKey: "message",
-        title: "Meet-up soon",
-        body: `You're meeting at ${m.place} at ${time}. Stay safe and meet in a public spot.`,
-        data: { nav: "chat", conversationId: convRef.id },
-      })));
-    }
-    return null;
-  });
-
 // Listing expiry: active listings older than 30 days are hidden (status
 // "expired") so Home doesn't fill up with stale items; the seller gets a
 // heads-up 3 days before and can Renew from the listing. Reserved items are
 // left alone while a sale is in progress. Runs daily.
-const DAY = 24 * HOUR;
 exports.expireListings = functions
   .region("asia-southeast1")
   .pubsub.schedule("every day 09:00")
@@ -591,6 +630,7 @@ function reportedMessageSummary(m) {
   if (!m) return "a message";
   if (m.type === "image") return "a photo";
   if (m.type === "video") return "a video";
+  if (m.type === "audio") return "a voice message";
   const text = String(m.text || "").trim();
   return text ? `"${text.slice(0, 80)}${text.length > 80 ? "…" : ""}"` : "a message";
 }

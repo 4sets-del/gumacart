@@ -52,3 +52,16 @@ export function academicLabel(profile) {
 // Campus meet-up spots, used for a listing's meet-up place and for meet-ups
 // planned in chat.
 export const MEETUP_SPOTS = ['Library', 'Main Gate', 'Admin Office', 'Dormitory', 'Other'];
+
+// Posting rules: anyone may post "Looking For" (a request; nobody receives
+// anything from it). Selling, bartering and donating hand items to other
+// students, so they need a verified student ID (admins are exempt).
+export const OPEN_POST_TYPES = ['buy'];
+
+export function isVerifiedPoster(profile) {
+  return profile?.verificationStatus === 'verified' || profile?.role === 'admin';
+}
+
+export function canPostType(profile, type) {
+  return OPEN_POST_TYPES.includes(type) || isVerifiedPoster(profile);
+}

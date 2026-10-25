@@ -54,17 +54,6 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys()
              .hasOnly(['avgRating', 'totalReviews']);
 
-      match /cart/{cartItemId} {
-        allow read, write: if request.auth.uid == userId || isAdmin();
-      }
-      match /followers/{followerId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && (request.auth.uid == followerId || isAdmin());
-      }
-      match /following/{followingId} {
-        allow read: if request.auth != null;
-        allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      }
       match /notifications/{notifId} {
         allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
       }
@@ -96,6 +85,13 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewCount'])
         && request.resource.data.viewCount == resource.data.get('viewCount', 0) + 1;
 
+      // Saving / un-saving (❤️) moves the save counter by exactly one, and
+      // nothing else.
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['saveCount'])
+        && (request.resource.data.saveCount == resource.data.get('saveCount', 0) + 1
+            || request.resource.data.saveCount == resource.data.get('saveCount', 0) - 1);
+
       // People interested in this listing: each person adds or removes only
       // their own entry; any signed-in user (e.g. the seller) can read them.
       match /interested/{uid} {
@@ -119,6 +115,21 @@ service cloud.firestore {
     match /feedback/{feedbackId} {
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
+    }
+    // Sales records, written by the server when a seller marks an item sold
+    // to a buyer (that's what lets the buyer rate them). Read-only.
+    match /deals/{dealId} {
+      allow read: if request.auth != null
+        && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+    // How fast each person answers messages; written only by the server.
+    match /replyStats/{userId} {
+      allow read: if request.auth != null;
+    }
+    // "Active now": each user refreshes only their own entry.
+    match /presence/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.uid == userId;
     }
     match /reports/{reportId} {
       allow create: if request.auth != null;

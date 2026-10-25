@@ -29,19 +29,6 @@ export default function ScreenHeader({ title, subtitle, onBack, right, border = 
   );
 }
 
-export function HeaderButton({ icon, onPress, color, badge }) {
-  const { COLORS, styles } = useTheme(createStyles);
-  color = color || COLORS.textPrimary;
-  return (
-    <TouchableOpacity style={styles.iconBtn} onPress={onPress} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-      <Ionicons name={icon} size={22} color={color} />
-      {badge ? (
-        <View style={styles.badge}><Text style={styles.badgeText}>{badge}</Text></View>
-      ) : null}
-    </TouchableOpacity>
-  );
-}
-
 const createStyles = (COLORS) => StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: SPACING.sm, paddingBottom: SPACING.sm, backgroundColor: COLORS.surface },
   border: { borderBottomWidth: 1, borderBottomColor: COLORS.border },
@@ -49,6 +36,4 @@ const createStyles = (COLORS) => StyleSheet.create({
   titleBox: { flex: 1, marginLeft: 4 },
   title: { fontSize: 20, fontFamily: FONTS.heading, color: COLORS.textPrimary, letterSpacing: -0.3 },
   subtitle: { fontSize: 12.5, color: COLORS.textMuted, marginTop: 1 },
-  badge: { position: 'absolute', top: 6, right: 6, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: COLORS.error, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
-  badgeText: { color: '#fff', fontSize: 9, fontFamily: FONTS.heading },
 });

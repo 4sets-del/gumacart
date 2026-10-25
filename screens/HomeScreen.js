@@ -15,9 +15,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useIsFocused } from '@react-navigation/native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { collection, getDocs, doc, getDoc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 import { tabTarget } from '../utils/tourTargets';
+import { useAuth } from '../context/AuthContext';
+import { useUserBasicsMap } from '../utils/userCache';
+import { useWishlist } from '../utils/wishlist';
 import CoachMark from '../components/CoachMark';
 import { ProductCard } from '../components/ProductCard';
 import SkeletonCard from '../components/SkeletonCard';
@@ -56,13 +59,22 @@ export default function HomeScreen({ navigation, route }) {
   const isFocused = useIsFocused();
   const { listings, loading: listingsLoading } = useActiveListings();
   const ratings = useSellerRatings(listings);
-  const [cartCount, setCartCount] = useState(0);
+  const savedCount = useWishlist().items.length;
   const [refreshing, setRefreshing] = useState(false);
   const [notifCount, setNotifCount] = useState(0);
   const [bannerIndex, setBannerIndex] = useState(0);
   const bannerRef = useRef(null);
 
   const user = auth.currentUser;
+
+  // "From your course": listings by sellers in the same course as you.
+  const { userProfile } = useAuth();
+  const myCourse = userProfile?.course && userProfile.course !== 'Other' ? userProfile.course : null;
+  const sellerProfiles = useUserBasicsMap(myCourse ? listings.map((l) => l.sellerId) : []);
+  const courseListings = useMemo(
+    () => (myCourse ? listings.filter((l) => sellerProfiles[l.sellerId]?.course === myCourse).slice(0, 10) : []),
+    [listings, sellerProfiles, myCourse],
+  );
 
   // Show the interactive tour once, on first launch after verifying.
   const [showCoachMarks, setShowCoachMarks] = useState(false);
@@ -94,7 +106,7 @@ export default function HomeScreen({ navigation, route }) {
 
   // Refs so CoachMark can measure each element's on-screen position.
   const notifRef = useRef(null);
-  const cartRef = useRef(null);
+  const savedRef = useRef(null);
   const searchRef = useRef(null);
   const categoriesRef = useRef(null);
   const featuredRef = useRef(null);
@@ -106,33 +118,20 @@ export default function HomeScreen({ navigation, route }) {
   const coachSteps = useMemo(() => [
     { icon: 'storefront', title: 'Welcome to GumaCart!', text: 'The campus marketplace for SLSU Gumaca. Here is a quick tour of everything you can do. Tap Next to start.' },
     { ref: searchRef, icon: 'search', title: 'Search', text: 'Find items or sellers, then Sort & Filter by price, category and listing type.' },
-    { ref: cartRef, icon: 'cart', shape: 'circle', title: 'Your cart', text: 'Items you plan to buy go here; at checkout your order is sent to each seller in chat. To just keep an eye on something, tap ♡ to save it (Profile → Saved Items).' },
-    { ref: notifRef, icon: 'notifications', shape: 'circle', title: 'Notifications', text: 'Messages, new followers, reviews, and updates when an item you want is reserved or sold.' },
+    { ref: savedRef, icon: 'heart', shape: 'circle', title: 'Saved items', text: 'Tap ♡ on any item to save it for later. Your saved items are kept here, and you\'re told if the price drops.' },
+    { ref: notifRef, icon: 'notifications', shape: 'circle', title: 'Notifications', text: 'Messages, reviews, price drops, and updates when an item you want is reserved or sold.' },
     { ref: categoriesRef, icon: 'grid', title: 'Categories', text: 'Jump straight to Food & Drinks, Clothes, Academic and more.' },
-    { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, add to cart, or chat with the seller.', optional: true },
+    { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, save it, or chat with the seller.', optional: true },
     { ref: typeChipsRef, icon: 'pricetags', title: 'Listing types', text: 'Show only For Sale, Wanted, Barter or Free items.', optional: true },
     { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add up to 6 photos and a quantity.' },
     { ref: tabTarget(2), icon: 'shield-checkmark', shape: 'circle', title: 'Get verified first', text: 'Before your first post, send your student ID once. An admin approves it, usually within 1–2 days.' },
     { ref: tabTarget(3), icon: 'chatbubbles', title: 'Messages', text: 'Chat with buyers and sellers. Send up to 10 photos at once, react or reply with a long-press, and see when it\'s Seen.' },
     { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it sold. Interested buyers are notified automatically.' },
-    { ref: tabTarget(4), icon: 'star', title: 'Ratings & followers', text: 'Buyers rate sellers after a sale, and people can follow you. Good ratings help your items get Featured.' },
+    { ref: tabTarget(4), icon: 'star', title: 'Ratings', text: 'Buyers rate sellers after a sale. Good ratings help your items get Featured.' },
     { icon: 'flag', title: 'Stay safe', text: 'Meet in public places on campus and check items before paying. See something wrong? Tap the 🚩 flag on any listing or profile to report it.' },
     { ref: tabTarget(4), icon: 'settings', title: 'Settings', text: 'In Profile → Settings: edit your course and year, switch to dark mode, choose notifications, and replay this tour anytime.' },
   ], []);
 
-  // ── Firestore: cart ──
-  const loadCartCount = async () => {
-    if (!user?.uid) return;
-    try {
-      const snap = await getDocs(collection(db, 'users', user.uid, 'cart'));
-      setCartCount(snap.size);
-    } catch (e) {}
-  };
-
-  useEffect(() => {
-    loadCartCount();
-    return navigation.addListener('focus', loadCartCount);
-  }, [navigation]);
 
   // ── Firestore: unread notification count for the bell badge ──
   useEffect(() => {
@@ -169,7 +168,6 @@ export default function HomeScreen({ navigation, route }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCartCount();
     setRefreshing(false);
   };
 
@@ -294,6 +292,23 @@ export default function HomeScreen({ navigation, route }) {
             ))}
           </ScrollView>
 
+          {/* ── FROM YOUR COURSE ── */}
+          {courseListings.length > 0 && (
+            <>
+              <View style={styles.sectionHeader}>
+                <View style={styles.sectionTitleRow}>
+                  <View style={[styles.sectionIcon, { backgroundColor: '#7C3AED2E' }]}><Ionicons name="school" size={15} color="#7C3AED" /></View>
+                  <Text style={styles.sectionTitle}>From {myCourse} students</Text>
+                </View>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+                {courseListings.map((item) => (
+                  <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={150} onPress={openProduct} />
+                ))}
+              </ScrollView>
+            </>
+          )}
+
           {/* ── ALL LISTINGS ── */}
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
@@ -342,10 +357,10 @@ export default function HomeScreen({ navigation, route }) {
             </View>
           </View>
           <View style={styles.headerRight}>
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel={cartCount > 0 ? `Cart, ${cartCount} items` : "Cart"} ref={cartRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Cart')}>
-              <Ionicons name="cart-outline" size={22} color="#fff" />
-              {cartCount > 0 && (
-                <View style={styles.badge}><Text style={styles.badgeText}>{cartCount > 9 ? '9+' : cartCount}</Text></View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel={savedCount > 0 ? `Saved items, ${savedCount}` : "Saved items"} ref={savedRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Saved')}>
+              <Ionicons name="heart-outline" size={22} color="#fff" />
+              {savedCount > 0 && (
+                <View style={styles.badge}><Text style={styles.badgeText}>{savedCount > 9 ? '9+' : savedCount}</Text></View>
               )}
             </TouchableOpacity>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel={notifCount ? `Notifications, ${notifCount} unread` : "Notifications"} ref={notifRef} collapsable={false} style={styles.iconBtn} onPress={() => navigation.navigate('Notifications')}>

@@ -305,8 +305,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   helpRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 8 },
   helpText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: COLORS.textMuted },
   input: { flex: 1, fontSize: 15, color: COLORS.textPrimary, paddingVertical: 0 },
-  signupBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 28 },
-  signupBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   termsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
   terms: { fontSize: 12.5, color: COLORS.textMuted, lineHeight: 18 },
   termsLink: { fontSize: 12.5, color: COLORS.primary, fontWeight: '700', lineHeight: 18 },

@@ -154,7 +154,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   // Hero
   heroBanner: { margin: 16, backgroundColor: COLORS.primary, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
   heroPhoto: { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 420 },
-  heroCircle: { position: "absolute", right: -50, top: -50, width: 180, height: 180, borderRadius: 90, backgroundColor: COLORS.primaryLight, opacity: 0.5 },
   heroLogo: { width: 72, height: 72, borderRadius: 18, marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
   heroAppName: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", marginBottom: 6, letterSpacing: -0.3 },
   heroTagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 14, textAlign: "center" },
@@ -173,21 +172,18 @@ const createStyles = (COLORS) => StyleSheet.create({
   // Mission
   missionCard: { backgroundColor: COLORS.primaryPale, borderRadius: 18, padding: 18, flexDirection: "row", alignItems: "flex-start", gap: 14 },
   missionIconCircle: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.surface, alignItems: "center", justifyContent: "center" },
-  missionIcon: { fontSize: 22 },
   missionText: { flex: 1, fontSize: 14, color: COLORS.primaryDark, lineHeight: 22, fontWeight: "500" },
 
   // Pillars
   pillarsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   pillarCard: { width: "47.5%", backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderTopWidth: 3, padding: 14, ...SHADOWS.sm },
   pillarIconBox: { width: 42, height: 42, borderRadius: 12, alignItems: "center", justifyContent: "center", marginBottom: 10 },
-  pillarIcon: { fontSize: 21 },
   pillarTitle: { fontSize: 15, fontFamily: FONTS.heading, marginBottom: 4 },
   pillarDesc: { fontSize: 12, color: COLORS.textSecondary, lineHeight: 18 },
 
   // Makers
   makerCard: { backgroundColor: COLORS.surface, borderRadius: 18, padding: 16, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", gap: 14, ...SHADOWS.sm },
   makerAvatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
-  makerAvatarText: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff" },
   makerPhoto: { width: 64, height: 64, borderRadius: 32 },
   makerInfo: { flex: 1 },
   makerName: { fontSize: 16, fontFamily: FONTS.heading, color: COLORS.textPrimary, marginBottom: 6 },

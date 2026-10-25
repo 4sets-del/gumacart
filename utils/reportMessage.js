@@ -56,6 +56,7 @@ export function messageSummary(m) {
   if (!m) return '';
   if (m.type === 'image') return '📷 Photo';
   if (m.type === 'video') return '🎥 Video';
+  if (m.type === 'audio') return '🎤 Voice message';
   if (m.type === 'listing') return `🛍️ ${m.listingName || 'Listing'}`;
   if (m.type === 'offer') return `💸 Offer ₱${Number(m.amount || 0).toLocaleString()}`;
   if (m.type === 'meetup') return `📍 Meet-up at ${m.place || 'campus'}`;

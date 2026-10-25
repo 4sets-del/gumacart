@@ -6,9 +6,9 @@ import {
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
-import { collection, getDocs, doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
-import { ProductRow } from "../components/ProductCard";
+import { ProductRow, SaveButton } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
 import { getUserBasics } from "../utils/userCache";
 import { academicLabel } from "../constants/school";
@@ -18,7 +18,6 @@ import { useTheme } from '../context/ThemeContext';
 import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
 import { useActiveListings } from "../utils/useListings";
 import { useSellerRatings } from "../utils/sellerRatings";
-import { addToCart, removeFromCart } from "../utils/cart";
 
 const SORT_OPTIONS = [
   { id: "relevant",  label: "Most Relevant" },
@@ -75,7 +74,6 @@ export default function SearchScreen({ navigation, route }) {
   const [sheetVisible, setSheetVisible]   = useState(false);
   const [draftSort, setDraftSort]         = useState(sortBy);
   const [draftFilters, setDraftFilters]   = useState(filters);
-  const [cartIds, setCartIds]             = useState([]);
   const [searchHistory, setSearchHistory] = useState([]);
   const alerts = useSearchAlerts();
   const inputRef = useRef(null);
@@ -129,29 +127,6 @@ export default function SearchScreen({ navigation, route }) {
     return () => { cancelled = true; };
   }, [sellersRequested, sellerCounts]);
 
-  // Cart membership, so the cart button on each row shows its state.
-  const loadCartIds = async () => {
-    try {
-      const snap = await getDocs(collection(db, "users", user.uid, "cart"));
-      setCartIds(snap.docs.map((d) => d.id));
-    } catch (e) {}
-  };
-  useEffect(() => {
-    loadCartIds();
-    return navigation.addListener("focus", loadCartIds);
-  }, [navigation]);
-
-  const toggleCart = async (item) => {
-    const inCart = cartIds.includes(item.id);
-    setCartIds((prev) => toggleIn(prev, item.id));
-    try {
-      if (inCart) await removeFromCart(user.uid, item.id);
-      else await addToCart(user.uid, item);
-    } catch (e) {
-      setCartIds((prev) => toggleIn(prev, item.id));
-      Alert.alert("Error", "Could not update cart.");
-    }
-  };
 
   // Auto focus when opened as a plain search, not from a category.
   useEffect(() => {
@@ -410,17 +385,12 @@ export default function SearchScreen({ navigation, route }) {
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
-              const inCart = cartIds.includes(item.id);
               return (
                 <ProductRow
                   item={item}
                   rating={ratings[item.sellerId]}
                   onPress={() => navigation.navigate("ProductDetail", { product: item })}
-                  right={
-                    <TouchableOpacity accessibilityRole="button" accessibilityLabel={inCart ? "Remove from cart" : "Add to cart"} style={styles.cartBtn} onPress={() => toggleCart(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                      <Ionicons name={inCart ? "cart" : "cart-outline"} size={21} color={inCart ? COLORS.primary : COLORS.textMuted} />
-                    </TouchableOpacity>
-                  }
+                  right={<SaveButton item={item} size={22} plain style={styles.cartBtn} />}
                 />
               );
             }}

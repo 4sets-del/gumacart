@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, KeyboardAvoidingView, Image, Platform,
 } from 'react-native';
-import { MEETUP_SPOTS } from '../constants/school';
-import CoachMark from '../components/CoachMark';
-import { useScreenTour } from '../utils/useScreenTour';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { MEETUP_SPOTS, canPostType } from '../constants/school';
+import { useAuth } from '../context/AuthContext';
 import PostTypeSheet, { postTypeMeta } from '../components/PostTypeSheet';
 import KeyboardScrollView from '../components/KeyboardScrollView';
 import { Alert } from '../components/AppAlert';
@@ -63,6 +63,43 @@ export default function CreateListingScreen({ navigation, route }) {
   const location = spotChoice === "Other" ? otherPlace.trim() : spotChoice;
   // Existing images are remote URLs; newly picked ones are local file URIs.
   const [images, setImages]                 = useState(editListing?.images || (editListing?.image ? [editListing.image] : []));
+
+  // ── Draft: a new post is saved on the phone as it's typed, so leaving
+  // halfway doesn't lose it. Editing an existing listing doesn't use drafts.
+  const draftKey = `gumacart:draft:${auth.currentUser?.uid}`;
+  const [savedDraft, setSavedDraft] = useState(null); // offered when the form opens
+  const draftReady = useRef(isEditing); // don't overwrite the draft before it's been offered
+  useEffect(() => {
+    if (isEditing) return;
+    AsyncStorage.getItem(draftKey).then((raw) => {
+      const d = raw ? JSON.parse(raw) : null;
+      if (d && (d.title || d.description || d.images?.length)) setSavedDraft(d);
+      else draftReady.current = true;
+    }).catch(() => { draftReady.current = true; });
+  }, [isEditing, draftKey]);
+  useEffect(() => {
+    if (isEditing || !draftReady.current) return;
+    const id = setTimeout(() => {
+      const empty = !title && !description && images.length === 0;
+      if (empty) AsyncStorage.removeItem(draftKey).catch(() => {});
+      else AsyncStorage.setItem(draftKey, JSON.stringify({
+        listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images, savedAt: Date.now(),
+      })).catch(() => {});
+    }, 600);
+    return () => clearTimeout(id);
+  }, [isEditing, draftKey, listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images]);
+  const restoreDraft = () => {
+    const d = savedDraft;
+    setListingType(d.listingType || listingType); setTitle(d.title || ""); setDescription(d.description || "");
+    setPrice(d.price || ""); setQuantity(d.quantity || 1); setCategory(d.category || ""); setCondition(d.condition || "");
+    setSpotChoice(d.spotChoice || ""); setOtherPlace(d.otherPlace || ""); setImages(d.images || []);
+    setTypeChosen(true); setTypePicker(false);
+    setSavedDraft(null); draftReady.current = true;
+  };
+  const discardDraft = () => {
+    AsyncStorage.removeItem(draftKey).catch(() => {});
+    setSavedDraft(null); draftReady.current = true;
+  };
   const [loading, setLoading]               = useState(false);
 
   const typeInfo = postTypeMeta(COLORS, listingType);
@@ -71,40 +108,26 @@ export default function CreateListingScreen({ navigation, route }) {
   const [typePicker, setTypePicker] = useState(!isEditing && !route?.params?.type);
   const [typeChosen, setTypeChosen] = useState(isEditing || !!route?.params?.type);
 
-  // First-time mini tour of the form (after the type has been picked).
-  const rootRef = useRef(null);
-  const typeTagRef = useRef(null);
-  const photosRef = useRef(null);
-  const titleRef = useRef(null);
-  const [tourVisible, finishTour] = useScreenTour('create', !typePicker);
-  const tourSteps = useMemo(() => [
-    { ref: typeTagRef, icon: 'swap-horizontal', title: 'Listing type', text: 'This is what you\'re posting. Tap Change to switch between For Sale, Looking For, Barter and Donate.' },
-    { ref: photosRef, icon: 'camera', title: 'Photos', text: 'Add up to 6 clear, bright photos. The first one is the cover buyers see first.' },
-    { ref: titleRef, icon: 'create', title: 'Title & details', text: 'Use a clear title, then describe the condition and anything buyers should know.' },
-    { icon: 'eye', title: 'Price, meet-up & preview', text: 'Below, set the price (and quantity), choose a campus meet-up spot, and check the live preview. An admin approves new posts before they go live.' },
-  ], []);
+  const { userProfile } = useAuth();
 
+  // Selling, bartering and donating need a verified student ID ("Looking
+  // For" doesn't). The pickers grey out locked types, so this only shows if
+  // the form was opened with one anyway (e.g. editing an older listing).
+  const allowedType = canPostType(userProfile, listingType);
+  const verifyPrompted = useRef(false);
   useEffect(() => {
-    const checkVerification = async () => {
-      try {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        const userData = userDoc.data();
-        if (userData?.verificationStatus !== "verified" && userData?.role !== "admin") {
-          Alert.alert(
-            "Verification Required",
-            "You need to be a verified SLSU student before you can create a listing.",
-            [
-              { text: "Verify Now", onPress: () => navigation.replace("Verification") },
-              { text: "Cancel", onPress: () => navigation.goBack() },
-            ],
-          );
-        }
-      } catch (e) {
-        console.log("Verification check error:", e.message);
-      }
-    };
-    checkVerification();
-  }, []);
+    if (typePicker || allowedType || !userProfile || verifyPrompted.current) return;
+    verifyPrompted.current = true;
+    Alert.alert(
+      "Verification Required",
+      "Verify your student ID to sell, barter or donate. You can still post a \"Looking For\" request.",
+      [
+        { text: "Verify Now", onPress: () => navigation.replace("Verification") },
+        { text: "Post a request", onPress: () => setListingType("buy") },
+        { text: "Cancel", style: "cancel", onPress: () => navigation.goBack() },
+      ],
+    );
+  }, [typePicker, allowedType, userProfile, navigation]);
 
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -154,7 +177,9 @@ export default function CreateListingScreen({ navigation, route }) {
   if (!description.trim()) errors.description = "Describe your item.";
   if (listingType === "sell" && !(Number(price) > 0)) errors.price = "Enter a price greater than 0.";
   if (!category) errors.category = "Pick a category.";
-  if (!condition) errors.condition = "Pick a condition.";
+  // Condition matters for used goods; it's optional for food and donations.
+  const conditionOptional = listingType === "donate" || normalizeCategory(category) === "Food & Drinks";
+  if (!condition && !conditionOptional) errors.condition = "Pick a condition.";
   if (!spotChoice) errors.location = "Pick a meet-up location.";
   else if (!location) errors.location = "Type where to meet (e.g. Canteen).";
   const shownErrors = triedSubmit ? errors : {};
@@ -164,8 +189,8 @@ export default function CreateListingScreen({ navigation, route }) {
   const handleSubmit = async () => {
     const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
     const userData = userDoc.data();
-    if (userData?.verificationStatus !== "verified" && userData?.role !== "admin") {
-      Alert.alert("Not Verified", "You need to verify your student ID before posting listings.", [
+    if (!canPostType(userData, listingType)) {
+      Alert.alert("Not Verified", "Verify your student ID to sell, barter or donate. You can still post a \"Looking For\" request.", [
         { text: "Verify Now", onPress: () => navigation.navigate("Verification") },
         { text: "Cancel", style: "cancel" },
       ]);
@@ -202,7 +227,20 @@ export default function CreateListingScreen({ navigation, route }) {
         image: imageUrls[0], images: imageUrls,
       };
 
-      if (isEditing) {
+      // Lowering only the price of a live listing needs no new review: it
+      // stays up, and people who saved it get a price-drop alert.
+      const same = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+      const onlyPriceDropped = isEditing && editListing.status === "active"
+        && payload.price < (editListing.price || 0)
+        && ["type", "name", "description", "quantity", "category", "condition", "location"].every((k) => same(payload[k], editListing[k]))
+        && same(payload.images, editListing.images || (editListing.image ? [editListing.image] : []));
+
+      if (onlyPriceDropped) {
+        await updateDoc(doc(db, "listings", editListing.id), { price: payload.price, updatedAt: serverTimestamp() });
+        Alert.alert("Price updated", "Your listing stays live with the new price. People who saved it will be notified.", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      } else if (isEditing) {
         // Edited listings go back for admin review
         await updateDoc(doc(db, "listings", editListing.id), {
           ...payload,
@@ -219,6 +257,7 @@ export default function CreateListingScreen({ navigation, route }) {
           [{ text: "OK", onPress: () => navigation.navigate("Main", { screen: "Home" }) }]
         );
       } else {
+        AsyncStorage.removeItem(draftKey).catch(() => {}); // posted: the draft is done
         await addDoc(collection(db, "listings"), {
           ...payload,
           sellerId: auth.currentUser.uid,
@@ -241,13 +280,14 @@ export default function CreateListingScreen({ navigation, route }) {
   const showQuantity = listingType === 'sell' || listingType === 'donate';
 
   return (
-    <View style={styles.safe} ref={rootRef} collapsable={false}>
-      <CoachMark visible={tourVisible} steps={tourSteps} onFinish={finishTour} originRef={rootRef} />
+    <View style={styles.safe}>
       <PostTypeSheet
         visible={typePicker}
         onClose={() => setTypePicker(false)}
         onPick={(t) => { setListingType(t); setTypeChosen(true); setTypePicker(false); }}
         selected={typeChosen ? listingType : undefined}
+        profile={userProfile}
+        onVerify={() => { setTypePicker(false); navigation.navigate("Verification"); }}
         title={isEditing ? "Change listing type" : "What do you want to post?"}
       />
       <ScreenHeader
@@ -259,10 +299,20 @@ export default function CreateListingScreen({ navigation, route }) {
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={20}>
         <KeyboardScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
 
+          {savedDraft ? (
+            <View style={styles.draftBar}>
+              <Ionicons name="document-text" size={18} color={COLORS.primary} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.draftTitle}>Continue your unfinished post?</Text>
+                <Text style={styles.draftSub} numberOfLines={1}>{savedDraft.title || "Untitled"}{savedDraft.images?.length ? ` · ${savedDraft.images.length} photo${savedDraft.images.length !== 1 ? "s" : ""}` : ""}</Text>
+              </View>
+              <TouchableOpacity onPress={discardDraft} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}><Text style={styles.draftDiscard}>Discard</Text></TouchableOpacity>
+              <TouchableOpacity onPress={restoreDraft} style={styles.draftContinue}><Text style={styles.draftContinueText}>Continue</Text></TouchableOpacity>
+            </View>
+          ) : null}
+
           {/* Listing type: chosen on the Post sheet; "Change" reopens it. */}
           <TouchableOpacity
-            ref={typeTagRef}
-            collapsable={false}
             style={[styles.typeTag, { backgroundColor: typeInfo.bg, borderColor: typeInfo.color + '55' }]}
             activeOpacity={0.85}
             onPress={() => setTypePicker(true)}
@@ -286,7 +336,7 @@ export default function CreateListingScreen({ navigation, route }) {
             <Text style={styles.sectionLabel}>Photos</Text>
             <Text style={[styles.required, images.length >= MAX_PHOTOS && { color: COLORS.primary }]}>{images.length}/{MAX_PHOTOS}</Text>
           </View>
-          <ScrollView ref={photosRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
             {images.map((uri, index) => (
               <View key={index} style={styles.photoThumb}>
                 <Image source={{ uri }} style={styles.photoThumbImg} />
@@ -309,7 +359,7 @@ export default function CreateListingScreen({ navigation, route }) {
 
           {/* Title */}
           <Text style={styles.sectionLabel}>Title</Text>
-          <View style={styles.inputWrapper} ref={titleRef} collapsable={false}>
+          <View style={styles.inputWrapper}>
             <TextInput
               style={styles.input}
               placeholder="Item name"
@@ -397,14 +447,17 @@ export default function CreateListingScreen({ navigation, route }) {
           <FieldError msg={shownErrors.category} />
 
           {/* Condition */}
-          <Text style={styles.sectionLabel}>Condition</Text>
+          <View style={styles.sectionLabelRow}>
+            <Text style={[styles.sectionLabel, { marginTop: 0, marginBottom: 0 }]}>Condition</Text>
+            {conditionOptional ? <Text style={styles.required}>optional</Text> : null}
+          </View>
           <View style={styles.conditionRow}>
             {CONDITIONS.map((c) => (
               <TouchableOpacity
                 key={c}
                 activeOpacity={0.8}
                 style={[styles.conditionBtn, condition === c && styles.conditionBtnActive]}
-                onPress={() => setCondition(c)}
+                onPress={() => setCondition(condition === c && conditionOptional ? "" : c)}
               >
                 <Text style={[styles.conditionLabel, condition === c && styles.conditionLabelActive]}>{c}</Text>
               </TouchableOpacity>
@@ -505,6 +558,12 @@ const createStyles = (COLORS) => StyleSheet.create({
   sectionLabelRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 18, marginBottom: 10 },
   sectionLabel: { fontSize: 14.5, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 10, marginTop: 18 },
   required: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
+  draftBar: { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4, marginBottom: 6, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryPale, borderWidth: 1, borderColor: COLORS.primary + "40" },
+  draftTitle: { fontSize: 13.5, fontWeight: "800", color: COLORS.textPrimary },
+  draftSub: { fontSize: 12, color: COLORS.textSecondary, marginTop: 1 },
+  draftDiscard: { fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
+  draftContinue: { backgroundColor: COLORS.primary, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  draftContinueText: { color: "#fff", fontWeight: "800", fontSize: 13 },
   chatNote: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 18, padding: 12, borderRadius: RADIUS.md, backgroundColor: COLORS.primaryPale },
   chatNoteText: { flex: 1, fontSize: 12.5, lineHeight: 17, color: COLORS.textSecondary },
   typeTag: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 18, padding: 12, borderRadius: RADIUS.lg, borderWidth: 1.5 },
@@ -544,10 +603,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   previewInfo: { flex: 1, flexDirection: "row", gap: 8, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 12 },
   fieldError: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 6 },
   fieldErrorText: { fontSize: 12.5, color: COLORS.error, fontWeight: "600" },
-  previewHint: { flexDirection: "row", alignItems: "center", marginTop: 24, backgroundColor: COLORS.surfaceAlt, borderRadius: RADIUS.md, padding: 14 },
   previewDot: { width: 10, height: 10, borderRadius: 5, marginRight: 10 },
   previewHintText: { fontSize: 13, color: COLORS.textSecondary, flex: 1 },
-  submitBtn: { borderRadius: RADIUS.md, height: 52, alignItems: "center", justifyContent: "center", marginTop: 14, backgroundColor: COLORS.primary },
-  submitLoading: { flexDirection: "row", alignItems: "center" },
-  submitBtnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
 });

@@ -7,7 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { VideoView, useVideoPlayer } from 'expo-video';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, limit, Timestamp,
+  collection, addDoc, query, orderBy, onSnapshot, serverTimestamp, doc, updateDoc, increment, deleteDoc, getDoc, limit,
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
@@ -17,46 +17,19 @@ import { uploadFile } from "../utils/upload";
 import { colorForName, FONTS } from "../constants/theme";
 import { academicLabel } from "../constants/school";
 import Sheet, { SheetOption } from "../components/Sheet";
+import { VoiceRecorder, VoiceBubble } from "../components/VoiceMessage";
 import ZoomableImage from "../components/ZoomableImage";
-import CoachMark from "../components/CoachMark";
-import { useScreenTour } from "../utils/useScreenTour";
+import * as Haptics from "expo-haptics";
+import { markSoldTo } from "../utils/sales";
+import { usePresence } from "../utils/presence";
+import { dismissChatNotification } from "../utils/notifications";
 import { useBlocked, blockUser, unblockUser, hasBlockedMe } from "../utils/blocking";
 import ReportSheet from "../components/ReportSheet";
 import { reportMessage, messageSummary, MESSAGE_REPORT_REASONS } from "../utils/reportMessage";
-import OfferSheet from "../components/OfferSheet";
-import MeetupSheet from "../components/MeetupSheet";
 import { useActiveListings } from "../utils/useListings";
 import { useTheme } from '../context/ThemeContext';
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 
-
-const peso = (n) => `₱${Number(n || 0).toLocaleString()}`;
-
-// "Mon, Oct 26 · 2:30 PM"
-function meetupWhen(ts) {
-  const d = ts?.toDate ? ts.toDate() : new Date(ts);
-  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} · ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
-}
-
-// A meet-up still waiting for an answer whose time is already over.
-function meetupPassed(msg) {
-  const ms = msg.at?.toMillis ? msg.at.toMillis() : new Date(msg.at).getTime();
-  return msg.type === "meetup" && (msg.status || "pending") === "pending" && ms < Date.now();
-}
-
-const OFFER_STATUS = {
-  pending: { label: "Waiting for reply", icon: "time-outline", tone: "warning" },
-  accepted: { label: "Accepted", icon: "checkmark-circle", tone: "primary" },
-  declined: { label: "Declined", icon: "close-circle", tone: "error" },
-  withdrawn: { label: "Withdrawn", icon: "remove-circle", tone: "muted" },
-};
-const MEETUP_STATUS = {
-  pending: { label: "Waiting for confirmation", icon: "time-outline", tone: "warning" },
-  confirmed: { label: "Confirmed", icon: "checkmark-circle", tone: "primary" },
-  declined: { label: "Declined", icon: "close-circle", tone: "error" },
-  cancelled: { label: "Cancelled", icon: "remove-circle", tone: "muted" },
-  passed: { label: "Time passed, not confirmed", icon: "time", tone: "muted" },
-};
 
 // Emoji users can react with
 const REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
@@ -189,11 +162,34 @@ export default function ChatScreen({ route, navigation }) {
 
   // "Seen": when the other person last read this chat (live).
   const [otherReadMs, setOtherReadMs] = useState(0);
+
+  // "typing…": each side stamps typing.{uid} on the conversation while typing
+  // (at most every 3s); it counts as typing for 6s after the last stamp.
+  const [otherTypingMs, setOtherTypingMs] = useState(0);
+  const [, setTypingTick] = useState(0);
+  const otherTyping = otherTypingMs > 0 && Date.now() - otherTypingMs < 6000;
+  useEffect(() => {
+    if (!otherTyping) return;
+    const id = setTimeout(() => setTypingTick((t) => t + 1), 6000 - (Date.now() - otherTypingMs) + 50);
+    return () => clearTimeout(id);
+  }, [otherTyping, otherTypingMs]);
+  const lastTypingSent = useRef(0);
+  const onType = (value) => {
+    setText(value);
+    if (!value.trim() || !conversationId) return;
+    if (Date.now() - lastTypingSent.current < 3000) return;
+    lastTypingSent.current = Date.now();
+    updateDoc(doc(db, "conversations", conversationId), { [`typing.${user.uid}`]: serverTimestamp() }).catch(() => {});
+  };
+  const presence = usePresence(otherUserId);
   useEffect(() => {
     if (!conversationId || !otherUserId) return;
     return onSnapshot(
       doc(db, "conversations", conversationId),
-      (snap) => setOtherReadMs(snap.data()?.lastReadAt?.[otherUserId]?.toMillis?.() || 0),
+      (snap) => {
+        setOtherReadMs(snap.data()?.lastReadAt?.[otherUserId]?.toMillis?.() || 0);
+        setOtherTypingMs(snap.data()?.typing?.[otherUserId]?.toMillis?.() || 0);
+      },
       () => {},
     );
   }, [conversationId, otherUserId]);
@@ -235,7 +231,7 @@ export default function ChatScreen({ route, navigation }) {
       const replyPayload = replyTo && withReply ? {
         replyTo: {
           id: replyTo.id,
-          text: replyTo.text || (replyTo.type === "image" ? "📷 Photo" : replyTo.type === "video" ? "🎥 Video" : ""),
+          text: replyTo.text || (replyTo.type === "image" ? "📷 Photo" : replyTo.type === "video" ? "🎥 Video" : replyTo.type === "audio" ? "🎤 Voice message" : ""),
           senderName: replyTo.senderName || "",
           type: replyTo.type || "text",
         },
@@ -250,7 +246,7 @@ export default function ChatScreen({ route, navigation }) {
         createdAt: serverTimestamp(),
       });
       await updateDoc(convoRef, {
-        lastMessage: msgData.text || (msgData.type === "image" ? "📷 Photo" : "🎥 Video"),
+        lastMessage: msgData.text || (msgData.type === "image" ? "📷 Photo" : msgData.type === "audio" ? "🎤 Voice message" : "🎥 Video"),
         lastMessageTime: serverTimestamp(),
         [`unreadCount.${otherUserId}`]: increment(1),
       });
@@ -286,9 +282,49 @@ export default function ChatScreen({ route, navigation }) {
     }
   };
 
+  // ── Editing my own text messages (like Messenger: within 15 minutes) ──
+  const EDIT_WINDOW_MS = 15 * 60 * 1000;
+  const [editingMsg, setEditingMsg] = useState(null);
+  const canEdit = (m) => m?.senderId === user.uid && (m.type || "text") === "text"
+    && Date.now() - (m.createdAt?.toMillis?.() || 0) < EDIT_WINDOW_MS;
+  const startEdit = (m) => {
+    setActionMsg(null);
+    setReplyTo(null);
+    setEditingMsg(m);
+    setText(m.text || "");
+  };
+  const cancelEdit = () => { setEditingMsg(null); setText(""); };
+  const saveEdit = async () => {
+    const newText = text.trim();
+    const m = editingMsg;
+    if (!newText || !m) return;
+    if (newText === m.text) { cancelEdit(); return; }
+    if (!canEdit(m)) {
+      Alert.alert("Can't edit anymore", "Messages can only be edited within 15 minutes of sending.");
+      cancelEdit();
+      return;
+    }
+    setSending(true);
+    try {
+      await updateDoc(doc(db, "conversations", conversationId, "messages", m.id), { text: newText, editedAt: serverTimestamp() });
+      // Keep the inbox preview right if it was the latest message.
+      if (messages[messages.length - 1]?.id === m.id) {
+        await updateDoc(doc(db, "conversations", conversationId), { lastMessage: newText });
+      }
+      cancelEdit();
+    } catch (e) {
+      Alert.alert("Error", "Could not edit the message.");
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSendText = () => {
+    if (editingMsg) { saveEdit(); return; }
     if (!text.trim()) return;
     sendMessage({ text: text.trim(), type: "text" }, { clearComposer: true });
+    lastTypingSent.current = 0;
+    updateDoc(doc(db, "conversations", conversationId), { [`typing.${user.uid}`]: null }).catch(() => {});
   };
 
   const pickMedia = async (type) => {
@@ -326,17 +362,9 @@ export default function ChatScreen({ route, navigation }) {
     if (failed) Alert.alert("Upload failed", failed === assets.length ? "Failed to upload media." : `${failed} of ${assets.length} couldn't be sent.`);
   };
 
-  // First-time mini tour of the chat.
-  const tourOriginRef = useRef(null);
-  const headerInfoRef = useRef(null);
-  const attachRef = useRef(null);
-  const [tourVisible, finishTour] = useScreenTour('chat');
-  const tourSteps = useMemo(() => [
-    { ref: attachRef, icon: 'add-circle', shape: 'circle', title: 'More than messages', text: 'Tap here to send photos (up to 10), Make an Offer on an item, or Plan a Meet-up with a time and campus spot.' },
-    { icon: 'happy', title: 'React & reply', text: 'Long-press any message to react with an emoji, reply to it, or delete your own message.' },
-    { ref: headerInfoRef, icon: 'person', title: 'Who you\'re talking to', text: 'Tap their name to see their profile, ratings and other items.' },
-    { icon: 'shield-checkmark', title: 'Stay safe', text: 'Agree on a public spot on campus, and check the item before you pay.' },
-  ], []);
+  // Opening the chat clears its notification from the phone's tray.
+  useEffect(() => { dismissChatNotification(conversationId); }, [conversationId]);
+
 
   // ── Blocking ──
   const [menuOpen, setMenuOpen] = useState(false);
@@ -379,128 +407,81 @@ export default function ChatScreen({ route, navigation }) {
     }
   };
 
-  // ── Offers & meet-ups ──
-  const [offerOpen, setOfferOpen] = useState(false);
-  const [meetupOpen, setMeetupOpen] = useState(false);
-  const [sendingCard, setSendingCard] = useState(false);
+  // ── Voice messages ──
+  const [recording, setRecording] = useState(false);
+  const sendVoice = async (uri, durationMs) => {
+    setRecording(false);
+    setUploadingMedia({ done: 0, total: 1 });
+    try {
+      const mediaUrl = await uploadFile(uri, `chats/${conversationId}/${Date.now()}.m4a`, { compress: false, contentType: "audio/mp4" });
+      await sendMessage({ text: "", type: "audio", mediaUrl, durationMs: Math.round(durationMs) });
+    } catch (e) {
+      Alert.alert("Error", "Could not send the voice message.");
+    } finally {
+      setUploadingMedia(false);
+    }
+  };
+
+  // Live listings (to find my items when marking one sold from the chat).
   const { listings: activeListings } = useActiveListings({ includeOwn: true });
 
-  // The other person's items you can make an offer on (priced, for sale),
-  // with the ones already talked about in this chat first.
-  const offerItems = useMemo(() => {
-    const mentioned = new Set(messages.filter((m) => m.listingId).map((m) => m.listingId));
+  // Who's selling in this chat, from the items talked about in it
+  // (product cards / replies that mention a listing).
+  const chatListings = useMemo(() => {
+    const ids = new Set(messages.filter((m) => m.listingId).map((m) => m.listingId));
+    return activeListings.filter((l) => ids.has(l.id));
+  }, [messages, activeListings]);
+  const iAmSeller = chatListings.some((l) => l.sellerId === user.uid);
+
+  // ── Mark as sold from the chat (for my items) ──
+  const myListings = useMemo(() => {
+    const talked = new Set(chatListings.map((l) => l.id));
     return activeListings
-      .filter((l) => l.sellerId === otherUserId && (l.type || "sell") === "sell" && l.price > 0)
-      .sort((a, b) => (mentioned.has(b.id) ? 1 : 0) - (mentioned.has(a.id) ? 1 : 0));
-  }, [activeListings, messages, otherUserId]);
-
-  const openOffer = () => {
-    if (offerItems.length === 0) {
-      Alert.alert("No items to offer on", `${otherUserName} has no items for sale right now.`);
-      return;
-    }
-    setOfferOpen(true);
+      .filter((l) => l.sellerId === user.uid && l.status === "active")
+      .sort((a, b) => talked.has(b.id) - talked.has(a.id));
+  }, [activeListings, chatListings, user.uid]);
+  const talkedAboutMine = myListings.filter((l) => chatListings.some((c) => c.id === l.id));
+  const [soldPicker, setSoldPicker] = useState(false);
+  const confirmSold = (listing) => {
+    setSoldPicker(false);
+    const stock = Math.max(1, Number(listing.quantity) || 1);
+    Alert.alert(
+      stock > 1 ? "Sold one to them?" : "Mark as sold?",
+      stock > 1
+        ? `One "${listing.name}" sold to ${otherUserName} (${stock - 1} left after this). They'll be asked to rate you.`
+        : `"${listing.name}" will be marked sold to ${otherUserName}. They'll be asked to rate you, and others who were interested are told.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: stock > 1 ? "Sold one" : "Mark sold", icon: "bag-check", onPress: async () => {
+          try {
+            await markSoldTo(listing, otherUserId);
+            await sendMessage({ type: "text", text: `✅ Marked "${listing.name}" as sold to you. Salamat po!` }, { withReply: false });
+          } catch (e) {
+            Alert.alert("Error", "Could not mark it as sold.");
+          }
+        } },
+      ],
+    );
+  };
+  const openSold = () => {
+    setMenuOpen(false);
+    if (talkedAboutMine.length === 1) confirmSold(talkedAboutMine[0]);
+    else setSoldPicker(true);
   };
 
-  const sendOffer = async (item, amount) => {
-    setSendingCard(true);
-    await sendMessage({
-      type: "offer",
-      text: `💸 Offer: ${peso(amount)} for "${item.name}"`,
-      listingId: item.id,
-      listingName: item.name || "",
-      listingImage: item.images?.[0] || item.image || null,
-      listingPrice: item.price || 0,
-      amount,
-      status: "pending",
-    }, { withReply: false });
-    setSendingCard(false);
-    setOfferOpen(false);
-  };
-
-  const sendMeetup = async (place, date) => {
-    setSendingCard(true);
-    await sendMessage({
-      type: "meetup",
-      text: `📍 Meet-up: ${place}, ${meetupWhen(date)}`,
-      place,
-      at: Timestamp.fromDate(date),
-      status: "pending",
-      reminderSent: false,
-    }, { withReply: false });
-    setSendingCard(false);
-    setMeetupOpen(false);
-  };
-
-  const setCardStatus = (msg, status) =>
-    updateDoc(doc(db, "conversations", conversationId, "messages", msg.id), { status, respondedAt: serverTimestamp() });
-
-  // Ids of offer / meet-up cards being answered, so a double tap can't
-  // send the reply twice.
-  const responding = useRef(new Set());
-
-  const respondOffer = async (msg, accept) => {
-    if (responding.current.has(msg.id)) return;
-    const listing = activeListings.find((l) => l.id === msg.listingId);
-    if (accept && !listing) {
-      Alert.alert("No longer available", `"${msg.listingName}" has been sold or removed, so this offer can't be accepted.`);
-      return;
-    }
-    responding.current.add(msg.id);
-    try {
-      await setCardStatus(msg, accept ? "accepted" : "declined");
-      await sendMessage({
-        type: "text",
-        text: accept
-          ? `✅ Accepted your offer of ${peso(msg.amount)} for "${msg.listingName}"`
-          : `Sorry, I can't accept ${peso(msg.amount)} for "${msg.listingName}".`,
-      }, { withReply: false });
-      // Seller accepted: offer to hold the item for this buyer.
-      if (accept && listing && listing.sellerId === user.uid && !listing.reserved && (listing.quantity || 1) <= 1) {
-        Alert.alert("Reserve it for them?", `Hold "${msg.listingName}" for ${otherUserName} so others know it's taken.`, [
-          { text: "Not now", style: "cancel" },
-          {
-            text: "Reserve",
-            onPress: () => updateDoc(doc(db, "listings", listing.id), {
-              reserved: true, reservedFor: otherUserId, reservedAt: serverTimestamp(), reserveReminderSent: false,
-            }).catch(() => Alert.alert("Error", "Could not reserve the item.")),
-          },
-        ]);
-      }
-    } catch (e) {
-      Alert.alert("Error", "Could not update the offer.");
-    } finally {
-      responding.current.delete(msg.id);
-    }
-  };
-
-  const respondMeetup = async (msg, status) => {
-    if (responding.current.has(msg.id)) return;
-    if (status === "confirmed" && meetupPassed(msg)) {
-      Alert.alert("Time has passed", "This meet-up time is already over. Plan a new one from the 📎 menu.");
-      return;
-    }
-    responding.current.add(msg.id);
-    try {
-      await setCardStatus(msg, status);
-      if (status === "confirmed") {
-        await sendMessage({ type: "text", text: `👍 See you at ${msg.place}, ${meetupWhen(msg.at)}!` }, { withReply: false });
-      } else if (status === "declined") {
-        await sendMessage({ type: "text", text: "I can't make that meet-up. Can we pick another time?" }, { withReply: false });
-      }
-    } catch (e) {
-      Alert.alert("Error", "Could not update the meet-up.");
-    } finally {
-      responding.current.delete(msg.id);
-    }
+  // ── Quick replies: tap to send a common message instead of typing ──
+  const quickReplies = iAmSeller
+    ? ["Available pa po ✅", "Saan po tayo magkikita?", "Kailan po kayo free?", "Sold na po, sorry 🙏", "Salamat po! 😊"]
+    : ["Available pa po?", "Magkano po last price?", "Saan po tayo magkikita?", "Kailan po kayo free?", "Sige po, kukunin ko", "Salamat po! 😊"];
+  const sendQuick = (t) => {
+    Haptics.selectionAsync().catch(() => {});
+    sendMessage({ text: t, type: "text" });
   };
 
   const showMediaOptions = () => {
     Alert.alert("Send", "Choose what to send", [
       { text: "Take Photo/Video", icon: "camera", onPress: () => pickMedia("camera") },
       { text: `Choose from Gallery (up to ${MAX_MEDIA})`, icon: "images", onPress: () => pickMedia("gallery") },
-      { text: "Make an Offer", icon: "pricetag", onPress: openOffer },
-      { text: "Plan a Meet-up", icon: "location", onPress: () => setMeetupOpen(true) },
       { text: "Cancel", style: "cancel" },
     ]);
   };
@@ -554,68 +535,6 @@ export default function ChatScreen({ route, navigation }) {
     );
   };
 
-  // Offer / meet-up card: summary, status, and the buttons that apply to you.
-  const renderActionCard = (msg, isMe) => {
-    const isOffer = msg.type === "offer";
-    const passed = meetupPassed(msg);
-    const st = passed ? MEETUP_STATUS.passed : (isOffer ? OFFER_STATUS : MEETUP_STATUS)[msg.status] || (isOffer ? OFFER_STATUS : MEETUP_STATUS).pending;
-    const toneColor = { warning: COLORS.warning, primary: COLORS.primary, error: COLORS.error, muted: COLORS.textMuted }[st.tone];
-    const pending = (msg.status === "pending" || !msg.status) && !passed;
-    return (
-      <View>
-        <View style={[styles.cardHead, { backgroundColor: isOffer ? COLORS.warningLight : COLORS.infoLight }]}>
-          <Ionicons name={isOffer ? "pricetag" : "location"} size={16} color={isOffer ? COLORS.warning : COLORS.info} />
-          <Text style={[styles.cardHeadText, { color: isOffer ? COLORS.warning : COLORS.info }]}>
-            {isOffer ? (isMe ? "Your offer" : `${otherUserName.split(" ")[0]}'s offer`) : (isMe ? "You proposed a meet-up" : "Meet-up request")}
-          </Text>
-        </View>
-        {isOffer ? (
-          <TouchableOpacity style={styles.actionBody} activeOpacity={0.85} onPress={() => navigation.navigate("ProductDetail", { id: msg.listingId })}>
-            <View style={styles.offerRow}>
-              {msg.listingImage ? <CachedImage source={{ uri: msg.listingImage }} style={styles.offerThumb} contentFit="cover" cachePolicy="memory-disk" /> : null}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.cardName} numberOfLines={1}>{msg.listingName}</Text>
-                <Text style={styles.offerAsking}>Asking {peso(msg.listingPrice)}</Text>
-              </View>
-            </View>
-            <Text style={styles.offerAmount}>{peso(msg.amount)}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.actionBody}>
-            <Text style={styles.cardName}>{msg.place}</Text>
-            <View style={styles.meetupWhenRow}>
-              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
-              <Text style={styles.meetupWhen}>{meetupWhen(msg.at)}</Text>
-            </View>
-          </View>
-        )}
-        <View style={styles.cardStatus}>
-          <Ionicons name={st.icon} size={14} color={toneColor} />
-          <Text style={[styles.cardStatusText, { color: toneColor }]}>{st.label}</Text>
-          <Text style={styles.cardTime}>{timeLabel(msg.createdAt)}</Text>
-        </View>
-        {pending ? (
-          <View style={styles.cardActions}>
-            {isMe ? (
-              <TouchableOpacity style={[styles.cardBtn, styles.cardBtnGhost]} onPress={() => setCardStatus(msg, isOffer ? "withdrawn" : "cancelled").catch(() => {})}>
-                <Text style={styles.cardBtnGhostText}>{isOffer ? "Withdraw" : "Cancel"}</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <TouchableOpacity style={[styles.cardBtn, styles.cardBtnGhost]} onPress={() => (isOffer ? respondOffer(msg, false) : respondMeetup(msg, "declined"))}>
-                  <Text style={styles.cardBtnGhostText}>Decline</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.cardBtn, { backgroundColor: COLORS.primary }]} onPress={() => (isOffer ? respondOffer(msg, true) : respondMeetup(msg, "confirmed"))}>
-                  <Text style={styles.cardBtnText}>{isOffer ? "Accept" : "Confirm"}</Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        ) : null}
-      </View>
-    );
-  };
-
   const renderMessage = (msg) => {
     const isMe = msg.senderId === user.uid;
     const reactionEntries = Object.entries(msg.reactions || {}).filter(([, uids]) => uids?.length);
@@ -633,7 +552,7 @@ export default function ChatScreen({ route, navigation }) {
             styles.msgBubble, isMe ? styles.msgBubbleMe : styles.msgBubbleThem,
             // Photos and videos show on their own, without a colored frame.
             isBareMedia(msg) && styles.msgBubbleBare,
-            (msg.type === "listing" || msg.type === "offer" || msg.type === "meetup") && styles.msgBubbleCard,
+            msg.type === "listing" && styles.msgBubbleCard,
           ]}>
 
             {/* Reply preview inside the bubble */}
@@ -648,9 +567,7 @@ export default function ChatScreen({ route, navigation }) {
               </View>
             ) : null}
 
-            {msg.type === "offer" || msg.type === "meetup" ? (
-              renderActionCard(msg, isMe)
-            ) : msg.type === "listing" ? (
+            {msg.type === "listing" ? (
               <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate("ProductDetail", { id: msg.listingId })}>
                 {msg.listingImage ? (
                   <CachedImage source={{ uri: msg.listingImage }} style={styles.cardImage} contentFit="cover" transition={150} cachePolicy="memory-disk" />
@@ -677,6 +594,11 @@ export default function ChatScreen({ route, navigation }) {
                   <Text style={styles.mediaTimeText}>{timeLabel(msg.createdAt)}</Text>
                 </View>
               </TouchableOpacity>
+            ) : msg.type === "audio" && msg.mediaUrl ? (
+              <>
+                <VoiceBubble uri={msg.mediaUrl} durationMs={msg.durationMs} isMe={isMe} />
+                <Text style={[styles.msgTime, isMe ? styles.msgTimeMe : styles.msgTimeThem]}>{timeLabel(msg.createdAt)}</Text>
+              </>
             ) : msg.type === "video" && msg.mediaUrl ? (
               <TouchableOpacity style={styles.msgVideoBox} onPress={() => { setViewerMedia(msg.mediaUrl); setViewerType("video"); setViewerVisible(true); }}>
                 <View style={styles.msgVideoPlay}><Ionicons name="play" size={22} color="#fff" /></View>
@@ -689,7 +611,7 @@ export default function ChatScreen({ route, navigation }) {
               <>
                 <Text style={[styles.msgText, isMe && styles.msgTextMe]}>{msg.text}</Text>
                 <Text style={[styles.msgTime, isMe ? styles.msgTimeMe : styles.msgTimeThem]}>
-                  {timeLabel(msg.createdAt)}
+                  {msg.editedAt ? "edited · " : ""}{timeLabel(msg.createdAt)}
                 </Text>
               </>
             )}
@@ -727,8 +649,6 @@ export default function ChatScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      <View ref={tourOriginRef} collapsable={false} pointerEvents="none" style={styles.tourOrigin} />
-      <CoachMark visible={tourVisible} steps={tourSteps} onFinish={finishTour} originRef={tourOriginRef} />
       <StatusBar barStyle={COLORS.statusBar} />
 
       <View style={styles.header}>
@@ -737,18 +657,23 @@ export default function ChatScreen({ route, navigation }) {
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerInfo}
-          ref={headerInfoRef}
-          collapsable={false}
           activeOpacity={0.8}
           onPress={() => navigation.navigate("SellerProfile", { sellerId: otherUserId, sellerName: otherUserName })}
         >
           {renderAvatar(false)}
           <View style={{ flex: 1 }}>
             <Text style={styles.headerName} numberOfLines={1}>{otherUserName}</Text>
-            {listingName ? (
+            {otherTyping ? (
+              <Text style={[styles.headerOnline, styles.headerTyping]} numberOfLines={1}>typing…</Text>
+            ) : presence.active ? (
+              <View style={styles.activeRow}>
+                <View style={styles.activeDot} />
+                <Text style={styles.headerOnline} numberOfLines={1}>Active now</Text>
+              </View>
+            ) : listingName ? (
               <Text style={styles.headerListing} numberOfLines={1}>{listingName}</Text>
             ) : (
-              <Text style={styles.headerOnline} numberOfLines={1}>{otherUserLabel}</Text>
+              <Text style={styles.headerOnline} numberOfLines={1}>{presence.label ? `${presence.label} · ${otherUserLabel}` : otherUserLabel}</Text>
             )}
           </View>
         </TouchableOpacity>
@@ -760,6 +685,31 @@ export default function ChatScreen({ route, navigation }) {
           <Ionicons name="ellipsis-vertical" size={20} color={COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
+
+      {/* The item this chat is about (if it's mine): mark it sold here. */}
+      {talkedAboutMine.length > 0 && !iBlocked && !blockedByThem ? (
+        <View style={styles.soldBar}>
+          <Ionicons name="bag-handle" size={16} color={COLORS.primary} />
+          <Text style={styles.soldBarText} numberOfLines={1}>
+            {talkedAboutMine.length === 1 ? talkedAboutMine[0].name : `${talkedAboutMine.length} of your items`}
+          </Text>
+          <TouchableOpacity style={styles.soldBarBtn} onPress={openSold} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Mark as sold">
+            <Text style={styles.soldBarBtnText}>Mark as sold</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
+
+      <Sheet visible={soldPicker} onClose={() => setSoldPicker(false)} title="Which item did they get?" subtitle={`Marked sold to ${otherUserName}`} icon="bag-check" footer={null}>
+        {myListings.map((l) => (
+          <SheetOption
+            key={l.id}
+            icon="pricetag"
+            label={l.name}
+            sub={`${chatListings.some((c) => c.id === l.id) ? "Talked about in this chat · " : ""}${(Number(l.quantity) || 1) > 1 ? `${l.quantity} in stock` : "1 item"}`}
+            onPress={() => confirmSold(l)}
+          />
+        ))}
+      </Sheet>
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}>
         <ScrollView
@@ -820,6 +770,18 @@ export default function ChatScreen({ route, navigation }) {
         </ScrollView>
 
         {/* Reply bar shows what you're replying to */}
+        {editingMsg ? (
+          <View style={styles.replyBar}>
+            <View style={[styles.replyBarLine, { backgroundColor: COLORS.warning }]} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.replyBarName, { color: COLORS.warning }]} numberOfLines={1}>Editing message</Text>
+              <Text style={styles.replyBarText} numberOfLines={1}>{editingMsg.text}</Text>
+            </View>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel editing" onPress={cancelEdit} activeOpacity={0.7} style={styles.replyBarClose}>
+              <Ionicons name="close" size={18} color={COLORS.textMuted} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
         {replyTo && (
           <View style={styles.replyBar}>
             <View style={styles.replyBarLine} />
@@ -828,7 +790,7 @@ export default function ChatScreen({ route, navigation }) {
                 Replying to {replyTo.senderId === user.uid ? "yourself" : (replyTo.senderName || otherUserName)}
               </Text>
               <Text style={styles.replyBarText} numberOfLines={1}>
-                {replyTo.text || (replyTo.type === "image" ? "📷 Photo" : "🎥 Video")}
+                {replyTo.text || (replyTo.type === "image" ? "📷 Photo" : replyTo.type === "audio" ? "🎤 Voice message" : "🎥 Video")}
               </Text>
             </View>
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReplyTo(null)} activeOpacity={0.7} style={styles.replyBarClose}>
@@ -837,7 +799,18 @@ export default function ChatScreen({ route, navigation }) {
           </View>
         )}
 
-        {iBlocked || blockedByThem ? (
+        {!recording && !iBlocked && !blockedByThem && !text.trim() && !editingMsg ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="always" style={styles.quickBar} contentContainerStyle={styles.quickRow}>
+            {quickReplies.map((t) => (
+              <TouchableOpacity key={t} style={styles.quickChip} activeOpacity={0.8} onPress={() => sendQuick(t)} disabled={sending} accessibilityRole="button" accessibilityLabel={`Send: ${t}`}>
+                <Text style={styles.quickText}>{t}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        ) : null}
+        {recording && !iBlocked && !blockedByThem ? (
+          <VoiceRecorder onSend={sendVoice} onCancel={() => setRecording(false)} bottomInset={insets.bottom} />
+        ) : iBlocked || blockedByThem ? (
           <View style={[styles.blockedBar, { paddingBottom: 14 + insets.bottom }]}>
             <Ionicons name="ban" size={18} color={COLORS.textMuted} />
             <Text style={styles.blockedText}>
@@ -850,8 +823,8 @@ export default function ChatScreen({ route, navigation }) {
             ) : null}
           </View>
         ) : (
-          <View style={[styles.inputBar, { paddingBottom: 10 + insets.bottom }]}>
-            <TouchableOpacity ref={attachRef} collapsable={false} accessibilityRole="button" accessibilityLabel="Send photos, an offer or a meet-up" style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
+          <View style={[styles.inputBar, !text.trim() && styles.inputBarJoined, { paddingBottom: 10 + insets.bottom }]}>
+            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send photos or videos" style={styles.mediaBtn} activeOpacity={0.7} onPress={showMediaOptions}>
               <Ionicons name="attach" size={24} color={COLORS.textSecondary} />
             </TouchableOpacity>
             <TextInput
@@ -859,21 +832,31 @@ export default function ChatScreen({ route, navigation }) {
               placeholder="Type a message..."
               placeholderTextColor={COLORS.textMuted}
               value={text}
-              onChangeText={setText}
+              onChangeText={onType}
               multiline
               maxLength={1000}
             />
-            <TouchableOpacity accessibilityRole="button" accessibilityLabel="Send message"
-              style={[styles.sendBtn, (!text.trim() || sending) && styles.sendBtnDisabled]}
-              activeOpacity={0.8}
-              onPress={handleSendText}
-              disabled={!text.trim() || sending}
-            >
-              {sending
-                ? <ActivityIndicator color="#fff" size="small" />
-                : <Ionicons name="send" size={18} color="#fff" />
-              }
-            </TouchableOpacity>
+            {text.trim() || sending || editingMsg ? (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={editingMsg ? "Save edit" : "Send message"}
+                style={[styles.sendBtn, (sending || (editingMsg && !text.trim())) && styles.sendBtnDisabled]}
+                activeOpacity={0.8}
+                onPress={handleSendText}
+                disabled={sending || (editingMsg && !text.trim())}
+              >
+                {sending
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Ionicons name={editingMsg ? "checkmark" : "send"} size={editingMsg ? 22 : 18} color="#fff" />
+                }
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Record a voice message"
+                style={styles.sendBtn}
+                activeOpacity={0.8}
+                onPress={() => { Keyboard.dismiss(); setRecording(true); }}
+              >
+                <Ionicons name="mic" size={20} color="#fff" />
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </KeyboardAvoidingView>
@@ -919,13 +902,11 @@ export default function ChatScreen({ route, navigation }) {
       </Modal>
 
       {/* Long-press action sheet: react / reply / delete */}
-      <OfferSheet visible={offerOpen} onClose={() => setOfferOpen(false)} items={offerItems} onSend={sendOffer} sending={sendingCard} />
-      <MeetupSheet visible={meetupOpen} onClose={() => setMeetupOpen(false)} onSend={sendMeetup} sending={sendingCard} />
       <Sheet
         visible={!!actionMsg}
         onClose={() => setActionMsg(null)}
         title="Message"
-        subtitle={actionMsg ? (actionMsg.type === "image" ? "📷 Photo" : actionMsg.type === "video" ? "🎥 Video" : actionMsg.type === "listing" ? `🛍️ ${actionMsg.listingName}` : actionMsg.text) : ""}
+        subtitle={actionMsg ? messageSummary(actionMsg) : ""}
         icon="chatbubble-ellipses"
         footer={null}
       >
@@ -945,7 +926,10 @@ export default function ChatScreen({ route, navigation }) {
             );
           })}
         </View>
-        <SheetOption icon="arrow-undo" label="Reply" onPress={() => { setReplyTo(actionMsg); setActionMsg(null); }} />
+        <SheetOption icon="arrow-undo" label="Reply" onPress={() => { if (editingMsg) cancelEdit(); setReplyTo(actionMsg); setActionMsg(null); }} />
+        {canEdit(actionMsg) ? (
+          <SheetOption icon="create" label="Edit" sub="You can edit within 15 minutes of sending" onPress={() => startEdit(actionMsg)} />
+        ) : null}
         {actionMsg?.senderId === user.uid ? (
           <SheetOption icon="trash" tone="danger" label="Delete for everyone" onPress={() => deleteMessage(actionMsg)} />
         ) : actionMsg ? (
@@ -960,6 +944,9 @@ export default function ChatScreen({ route, navigation }) {
         ) : (
           <SheetOption icon="ban" tone="danger" label="Block" sub="They can't message you, and you won't see their listings" onPress={confirmBlock} />
         )}
+        {myListings.length > 0 && !iBlocked && !blockedByThem ? (
+          <SheetOption icon="bag-check" label={`Mark an item as sold to ${otherUserName.split(" ")[0]}`} sub="They'll be asked to rate you" onPress={openSold} />
+        ) : null}
         <SheetOption icon="flag" tone="danger" label="Report a message" sub="Long-press the message you want to report" onPress={() => { setMenuOpen(false); Alert.alert("Report a message", "Press and hold the message you want to report, then choose Report message."); }} />
       </Sheet>
 
@@ -996,6 +983,9 @@ const createStyles = (COLORS) => StyleSheet.create({
   headerName: { fontSize: 16, fontWeight: "700", color: COLORS.textPrimary },
   headerListing: { fontSize: 12, color: COLORS.primary, marginTop: 1, maxWidth: 200 },
   headerOnline: { fontSize: 12, color: COLORS.primary, marginTop: 1 },
+  headerTyping: { fontStyle: "italic" },
+  activeRow: { flexDirection: "row", alignItems: "center", gap: 5, marginTop: 1 },
+  activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
   messagesList: { flex: 1, backgroundColor: COLORS.surface },
   messagesContent: { paddingHorizontal: 14, paddingTop: 16, paddingBottom: 8, flexGrow: 1 },
 
@@ -1037,6 +1027,15 @@ const createStyles = (COLORS) => StyleSheet.create({
   cardPrice: { fontSize: 15, fontWeight: "800", color: COLORS.primary, marginTop: 2 },
   cardLink: { flexDirection: "row", alignItems: "center", gap: 2, marginTop: 6 },
   cardLinkText: { fontSize: 13, fontWeight: "700", color: COLORS.primary },
+  soldBar: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 14, paddingVertical: 8, backgroundColor: COLORS.primaryPale, borderBottomWidth: 1, borderBottomColor: COLORS.border },
+  soldBarText: { flex: 1, fontSize: 13, fontWeight: "700", color: COLORS.textPrimary },
+  soldBarBtn: { backgroundColor: COLORS.primary, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  soldBarBtnText: { color: "#fff", fontSize: 12.5, fontWeight: "800" },
+  quickBar: { flexGrow: 0, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
+  quickRow: { gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  quickChip: { height: 34, paddingHorizontal: 14, borderRadius: 17, justifyContent: "center", backgroundColor: COLORS.primaryPale, borderWidth: 1, borderColor: COLORS.primary + "40" },
+  inputBarJoined: { borderTopWidth: 0, paddingTop: 2 },
+  quickText: { fontSize: 13.5, fontWeight: "600", color: COLORS.primary },
   blockedBar: { flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingTop: 14, backgroundColor: COLORS.surface, borderTopWidth: 1, borderTopColor: COLORS.border },
   blockedText: { flex: 1, fontSize: 13.5, color: COLORS.textSecondary, lineHeight: 19 },
   unblockBtn: { backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
@@ -1045,23 +1044,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   reportPreviewLabel: { fontSize: 11.5, fontWeight: "800", color: COLORS.error, textTransform: "uppercase", letterSpacing: 0.5 },
   reportPreviewText: { fontSize: 14.5, color: COLORS.textPrimary, marginTop: 4, lineHeight: 20 },
   reportPreviewHint: { fontSize: 12, color: COLORS.textMuted, marginTop: 8, lineHeight: 17 },
-  cardHead: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
-  cardHeadText: { fontSize: 12.5, fontWeight: "800" },
-  actionBody: { paddingHorizontal: 12, paddingTop: 10, gap: 4 },
-  offerRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  offerThumb: { width: 40, height: 40, borderRadius: 8 },
-  offerAsking: { fontSize: 12, color: COLORS.textMuted, textDecorationLine: "line-through" },
-  offerAmount: { fontSize: 24, fontFamily: FONTS.heading, color: COLORS.primary, marginTop: 4 },
-  meetupWhenRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  meetupWhen: { fontSize: 13.5, color: COLORS.textSecondary, fontWeight: "600" },
-  cardStatus: { flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 10 },
-  cardStatusText: { flex: 1, fontSize: 12.5, fontWeight: "700" },
-  cardTime: { fontSize: 10, color: COLORS.textMuted },
-  cardActions: { flexDirection: "row", gap: 8, paddingHorizontal: 12, paddingBottom: 12 },
-  cardBtn: { flex: 1, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" },
-  cardBtnGhost: { backgroundColor: COLORS.surfaceAlt },
-  cardBtnText: { color: "#fff", fontWeight: "800", fontSize: 13.5 },
-  cardBtnGhostText: { color: COLORS.textSecondary, fontWeight: "700", fontSize: 13.5 },
   cardMessage: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 0 },
   msgVideoPlay: { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center", marginBottom: 6 },
   msgVideoText: { color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: "600" },
@@ -1074,7 +1056,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   viewerTopBar: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 20, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingTop: STATUSBAR_TOP + 10, paddingBottom: 12, paddingHorizontal: 14, backgroundColor: "rgba(0,0,0,0.4)" },
   viewerBackBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   viewerTitle: { color: "#fff", fontSize: 16, fontWeight: "700" },
-  tourOrigin: { position: "absolute", top: 0, left: 0, width: 1, height: 1 },
   viewerImage: { width: "100%", height: "100%" },
   viewerVideo: { width: "100%", height: "100%", backgroundColor: "#000" },
 

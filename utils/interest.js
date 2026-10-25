@@ -1,8 +1,8 @@
 import { doc, setDoc, serverTimestamp, collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { auth, db } from '../firebaseConfig';
 
-// People interested in a listing (they messaged the seller from it or added
-// it to their cart). Stored per listing so the seller can pick a buyer and
+// People interested in a listing (they messaged the seller about it or
+// saved it). Stored per listing so the seller can pick a buyer and
 // the server can tell everyone when it's reserved, available again or sold.
 export function markInterested(listing) {
   const user = auth.currentUser;

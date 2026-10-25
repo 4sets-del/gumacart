@@ -13,6 +13,7 @@ import { useBlocked } from './blocking';
 // so no composite index is needed; sorting by date happens here instead.
 
 let cache = null;          // latest sorted array of active listings
+const byId = new Map();    // listing id -> object, reused while unchanged
 let loaded = false;
 // Snapshot handed to React; replaced (never mutated) whenever data changes.
 let snapshot = { cache: null, loaded: false };
@@ -41,6 +42,14 @@ function saveToPhone(items) {
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(slim)).catch(() => {});
 }
 
+// View and save counters change often; write the phone copy at most every
+// few seconds instead of on every update.
+let saveTimer = null;
+function saveToPhoneSoon(items) {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveToPhone(items), 3000);
+}
+
 async function restoreFromPhone() {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -58,11 +67,16 @@ function start() {
   unsubscribe = onSnapshot(
     query(collection(db, 'listings'), where('status', '==', 'active')),
     (snap) => {
-      cache = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => millis(b) - millis(a));
+      // Apply only what changed: untouched listings keep the same object, so
+      // memoized cards don't redraw when someone else's listing gets a view.
+      if (!loaded) byId.clear();
+      snap.docChanges().forEach((c) => {
+        if (c.type === 'removed') byId.delete(c.doc.id);
+        else byId.set(c.doc.id, { id: c.doc.id, ...c.doc.data() });
+      });
+      cache = [...byId.values()].sort((a, b) => millis(b) - millis(a));
       loaded = true;
-      saveToPhone(cache);
+      saveToPhoneSoon(cache);
       notify();
     },
     (e) => {
@@ -78,6 +92,7 @@ function start() {
 function stop() {
   unsubscribe?.();
   unsubscribe = null;
+  byId.clear();
   cache = null;
   loaded = false;
   snapshot = { cache: null, loaded: false };

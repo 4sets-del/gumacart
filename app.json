@@ -58,7 +58,14 @@
       "expo-image-picker",
       "expo-font",
       "expo-video",
-      "expo-image"
+      "expo-image",
+      "expo-sharing",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow GumaCart to use the microphone to record voice messages."
+        }
+      ]
     ],
     "extra": {
       "eas": {

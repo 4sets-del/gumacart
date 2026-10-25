@@ -101,6 +101,14 @@ export default function MyListingsScreen({ navigation }) {
                   </View>
                 }
               >
+                {item.status !== 'pending' && item.status !== 'rejected' ? (
+                  <View style={styles.stats}>
+                    <Ionicons name="eye-outline" size={13} color={COLORS.textMuted} />
+                    <Text style={styles.statsText}>{item.viewCount || 0}</Text>
+                    <Ionicons name="heart-outline" size={13} color={COLORS.textMuted} style={{ marginLeft: 8 }} />
+                    <Text style={styles.statsText}>{Math.max(0, item.saveCount || 0)}</Text>
+                  </View>
+                ) : null}
                 {item.status === 'rejected' && (
                   <Text style={styles.rejectText} numberOfLines={2}>
                     {item.rejectionReason ? `Reason: ${item.rejectionReason}. ` : ''}Tap to edit and re-submit.
@@ -133,6 +141,8 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   list: { paddingHorizontal: SPACING.lg, paddingTop: SPACING.sm, paddingBottom: 20, flexGrow: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  stats: { flexDirection: "row", alignItems: "center", gap: 3 },
+  statsText: { fontSize: 12, fontWeight: "600", color: COLORS.textMuted },
   pill: { alignSelf: 'flex-start', borderRadius: RADIUS.full, paddingHorizontal: 9, paddingVertical: 4 },
   pillText: { fontSize: 10.5, fontWeight: '700' },
   rejectText: { fontSize: 11.5, color: COLORS.error, marginTop: 2 },
@@ -142,6 +152,4 @@ const createStyles = (COLORS) => StyleSheet.create({
   emptySub: { fontSize: 13, color: COLORS.textMuted },
 
   footer: { paddingHorizontal: SPACING.lg, paddingTop: 12, borderTopWidth: 1, borderTopColor: COLORS.border },
-  addBtn: { flexDirection: 'row', gap: 6, height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: 'center', justifyContent: 'center' },
-  addBtnText: { color: '#fff', fontSize: 15.5, fontWeight: '700' },
 });

@@ -7,10 +7,10 @@ Only `@slsu.edu.ph` accounts can use the app (admins are the one exception), and
 ## Features
 
 - **Listings:** For Sale, Looking For, Barter, Donate; up to 6 photos, quantity, condition, campus meet-up spot. New and edited listings are approved by an admin. Listings expire after 30 days and can be renewed.
-- **Browse:** Home (featured and latest), categories, search with sort and filters, "Notify me" search alerts, saved items ❤️.
-- **Chat:** product cards, photos and videos (up to 10 at once), reactions, replies, read receipts, **Make an Offer**, **Plan a Meet-up** (with a reminder an hour before).
-- **Selling:** cart checkout through chat, reserve an item for one buyer, mark sold (or "sold one" for stock), ratings and reviews, followers.
-- **Safety:** SLSU-only accounts, student ID verification, reports, bans with appeals, admin panel.
+- **Browse:** Home (featured, from your course, latest), categories, search with sort and filters, "Notify me" search alerts, saved items ❤️ with price-drop alerts, similar items.
+- **Chat:** product cards, photos and videos (up to 10 at once), voice messages, quick replies, reactions, replies, read receipts, typing and "Active now", mark an item sold right from the chat.
+- **Selling:** reserve an item for one buyer, mark sold (or "sold one" for stock), ratings from buyers who bought from you, "Usually replies within…", stats (views, saves, interested), drafts, share as image.
+- **Safety:** SLSU-only accounts, student ID verification to sell / barter / donate, report listings, users and chat messages, block users, bans with appeals, admin panel with insights and feedback.
 - **App:** push notifications with per-type settings, light and dark mode, an interactive tour (Settings → App Tour), offline cache.
 
 ## Tech stack

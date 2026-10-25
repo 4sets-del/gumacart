@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Share, Dimensions, Modal, FlatList, Platform, ActivityIndicator,
 } from 'react-native';
@@ -6,8 +6,7 @@ import { Alert } from '../components/AppAlert';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  doc, deleteDoc, getDoc, setDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs,
-  orderBy, limit, onSnapshot,
+  doc, deleteDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs, orderBy, limit, onSnapshot, getCountFromServer,
 } from "firebase/firestore";
 import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
@@ -15,12 +14,16 @@ import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
 import { RADIUS, FONTS, colorForName } from "../constants/theme";
-import { SaveButton } from "../components/ProductCard";
+import { SaveButton, ProductCard } from "../components/ProductCard";
+import { useActiveListings } from "../utils/useListings";
 import { renewListing, LISTING_LIFETIME_DAYS } from "../utils/renewListing";
 import ZoomableImage from "../components/ZoomableImage";
-import CoachMark from "../components/CoachMark";
-import { useScreenTour } from "../utils/useScreenTour";
+import { useReplyTime } from "../utils/replyTime";
+import { ensureConversation } from "../utils/chat";
 import { messagingBlockedReason } from "../utils/blocking";
+import ShareCard from "../components/ShareCard";
+import { captureRef } from "react-native-view-shot";
+import * as Sharing from "expo-sharing";
 import ReportSheet from "../components/ReportSheet";
 import Sheet from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
@@ -33,7 +36,6 @@ import { academicLabel } from "../constants/school";
 import { markInterested, getInterested } from "../utils/interest";
 import { normalizeCategory, priceLabel, typeMeta, listingImage } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
-import { addToCart, removeFromCart } from "../utils/cart";
 
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -66,7 +68,6 @@ export default function ProductDetailScreen({ route, navigation }) {
     },
     () => {},
   ), [initialProduct.id]);
-  const [inCart, setInCart] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [marking, setMarking] = useState(false);
   const isSold = product.status === "sold";
@@ -95,31 +96,35 @@ export default function ProductDetailScreen({ route, navigation }) {
   const galleryRef = useRef(null);
   const sellerRating = useSellerRatings([product])[product.sellerId];
 
-  // First-time mini tours: one for buyers, one for the seller's own listing.
-  const tourOriginRef = useRef(null);
-  const headerActionsRef = useRef(null);
-  const imageRef = useRef(null);
-  const sellerCardRef = useRef(null);
-  const chatBtnRef = useRef(null);
-  const buyerBarRef = useRef(null);
-  const ownerBarRef = useRef(null);
-  const loadedListing = !!product.sellerId && !removed;
-  const [buyerTour, finishBuyerTour] = useScreenTour('product', loadedListing && !isOwner && !unavailable);
-  const [ownerTour, finishOwnerTour] = useScreenTour('productOwner', loadedListing && isOwner);
-  const buyerSteps = useMemo(() => [
-    { ref: imageRef, icon: 'images', title: 'Photos', text: 'Swipe through the photos. Tap one to view it full-screen, then pinch or double-tap to zoom.' },
-    { ref: headerActionsRef, icon: 'heart', title: 'Save, report, share', text: 'Tap ♡ to save it for later (Profile → Saved Items), 🚩 to report a problem, or share it with a friend.' },
-    { ref: sellerCardRef, icon: 'person', title: 'Know your seller', text: 'See their course, ratings and reviews before you buy.', optional: true },
-    { ref: chatBtnRef, icon: 'chatbubbles', title: 'Message the seller', text: 'Ask questions here. In the chat you can also Make an Offer and Plan a Meet-up on campus.' },
-    { ref: buyerBarRef, icon: 'cart', title: 'Add to Cart', text: 'Save it in your cart and check out with the seller when you\'re ready. If it\'s reserved, you can ask to be next.' },
-  ], []);
-  const ownerSteps = useMemo(() => [
-    { ref: ownerBarRef, icon: 'construct', title: 'Manage your listing', text: 'Edit it, Reserve it for one buyer, Mark it as sold (or "Sold one" if you have several), or delete it.' },
-    { icon: 'notifications', title: 'Buyers stay informed', text: 'People who were interested are notified when you reserve or sell. Reservations auto-release after 4 days, and listings expire after 30 days unless you renew them.' },
-  ], []);
+  // Seller stats: how many people messaged about or carted this listing.
+  const [interestedCount, setInterestedCount] = useState(null);
+  useEffect(() => {
+    if (!isOwner || !product.id) return;
+    getCountFromServer(collection(db, "listings", product.id, "interested"))
+      .then((r) => setInterestedCount(r.data().count))
+      .catch(() => {});
+  }, [isOwner, product.id]);
+
+  // "Similar items": live listings in the same category, closest in price
+  // (same kind of post first), not including this one.
+  const { listings: activeListings } = useActiveListings();
+  const similar = useMemo(() => {
+    const cat = normalizeCategory(product.category);
+    if (!cat) return [];
+    const price = Number(product.price) || 0;
+    return activeListings
+      .filter((l) => l.id !== product.id && normalizeCategory(l.category) === cat)
+      .sort((a, b) => ((a.type || 'sell') !== (product.type || 'sell')) - ((b.type || 'sell') !== (product.type || 'sell'))
+        || Math.abs((Number(a.price) || 0) - price) - Math.abs((Number(b.price) || 0) - price))
+      .slice(0, 6);
+  }, [activeListings, product.id, product.category, product.price, product.type]);
+  const similarRatings = useSellerRatings(similar);
+  const openSimilar = useCallback((item) => navigation.push("ProductDetail", { product: item }), [navigation]);
+
 
   // Seller's course and year for the seller card (cached per user).
   const [sellerLabel, setSellerLabel] = useState("SLSU Student");
+  const sellerReplyTime = useReplyTime(product.sellerId);
   useEffect(() => {
     if (!product.sellerId) return;
     let alive = true;
@@ -136,26 +141,6 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   useEffect(() => { recordView(product); }, [product.id, product.sellerId]);
 
-  useEffect(() => {
-    const checkCart = async () => {
-      try {
-        const cartDoc = await getDoc(doc(db, "users", currentUser.uid, "cart", product.id));
-        setInCart(cartDoc.exists());
-      } catch (e) {}
-    };
-    checkCart();
-  }, []);
-
-  const toggleCart = async () => {
-    try {
-      if (inCart) { await removeFromCart(currentUser.uid, product.id); setInCart(false); }
-      else {
-        await addToCart(currentUser.uid, product);
-        setInCart(true);
-        Alert.alert("Added to Cart", `"${product.name}" has been saved to your cart.`);
-      }
-    } catch (e) { Alert.alert("Error", "Could not update cart."); }
-  };
 
   const openFullscreen = (index) => {
     setFullscreenIndex(index);
@@ -233,7 +218,7 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   // Shares a link that opens this listing in the app, instead of the
   // seller's phone number.
-  const handleShare = async () => {
+  const shareLink = async () => {
     try {
       const url = Linking.createURL(`listing/${product.id}`);
       await Share.share({
@@ -242,18 +227,37 @@ export default function ProductDetailScreen({ route, navigation }) {
     } catch (e) {}
   };
 
+  // "Share as image": a designed card (photo, price, GumaCart brand) saved as
+  // a picture, for Facebook / Messenger groups. The card is drawn off screen.
+  const shareCardRef = useRef(null);
+  const [cardPhotoReady, setCardPhotoReady] = useState(false);
+  const shareImage = async () => {
+    try {
+      if (!(await Sharing.isAvailableAsync())) { shareLink(); return; }
+      // Give the card's photo a moment to load the first time.
+      for (let i = 0; i < 20 && !cardPhotoReady && listingImage(product); i++) await new Promise((r) => setTimeout(r, 100));
+      const uri = await captureRef(shareCardRef, { format: "png", quality: 0.95 });
+      await Sharing.shareAsync(uri, { mimeType: "image/png", dialogTitle: `Share "${product.name}"` });
+    } catch (e) {
+      Alert.alert("Couldn't make the image", "Sharing the link instead.");
+      shareLink();
+    }
+  };
+  const handleShare = () => {
+    Alert.alert("Share listing", "Choose how to share it", [
+      { text: "Share as image", icon: "image", onPress: shareImage },
+      { text: "Share link", icon: "link", onPress: shareLink },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
   const handleMessageSeller = async () => {
     const blockedReason = await messagingBlockedReason(product.sellerId, product.sellerName || "this seller");
     if (blockedReason) { Alert.alert("Can't send a message", blockedReason); return; }
     markInterested(product);
     try {
-      const ids = [currentUser.uid, product.sellerId].sort();
-      const conversationId = `${ids[0]}_${ids[1]}`;
+      const conversationId = await ensureConversation(currentUser, product.sellerId);
       const convoRef = doc(db, "conversations", conversationId);
-      const convoDoc = await getDoc(convoRef);
-      if (!convoDoc.exists()) {
-        await setDoc(convoRef, { participants: [currentUser.uid, product.sellerId], lastMessage: "", lastMessageTime: serverTimestamp(), unreadCount: { [currentUser.uid]: 0, [product.sellerId]: 0 }, createdAt: serverTimestamp() });
-      }
       const msgsRef = collection(db, "conversations", conversationId, "messages");
       // One product card per listing (not repeated if they tap again later).
       const existingSnap = await getDocs(query(msgsRef, where("senderId", "==", currentUser.uid), where("listingId", "==", product.id), limit(1)));
@@ -410,10 +414,10 @@ export default function ProductDetailScreen({ route, navigation }) {
 
   return (
     <SafeAreaView style={styles.safe} edges={['left','right']}>
-      {/* Marks the top-left of the screen for the mini tour's measurements. */}
-      <View ref={tourOriginRef} collapsable={false} pointerEvents="none" style={styles.tourOrigin} />
-      <CoachMark visible={buyerTour} steps={buyerSteps} onFinish={finishBuyerTour} originRef={tourOriginRef} />
-      <CoachMark visible={ownerTour && !buyerTour} steps={ownerSteps} onFinish={finishOwnerTour} originRef={tourOriginRef} />
+      {/* Off-screen card captured by "Share as image". */}
+      <View style={styles.offscreen} pointerEvents="none">
+        <ShareCard ref={shareCardRef} item={product} sellerLabel={sellerLabel} onImageLoad={() => setCardPhotoReady(true)} />
+      </View>
       <StatusBarScrim />
 
       <View style={[styles.header, { paddingTop: STATUSBAR_TOP + 8 }]}>
@@ -421,13 +425,12 @@ export default function ProductDetailScreen({ route, navigation }) {
           <Ionicons name="arrow-back" size={21} color="#fff" />
         </TouchableOpacity>
         <View style={{ flex: 1 }} />
-        <View style={{ flexDirection: "row", gap: 8 }} ref={headerActionsRef} collapsable={false}>
+        <View style={{ flexDirection: "row", gap: 8 }}>
           {!isOwner && (
             <TouchableOpacity accessibilityRole="button" accessibilityLabel="Report listing" style={styles.headerBtn} activeOpacity={0.7} onPress={openReport}>
               <Ionicons name="flag-outline" size={18} color="#fff" />
             </TouchableOpacity>
           )}
-          {!isOwner && product.sellerId ? <SaveButton item={product} size={19} style={styles.headerBtn} /> : null}
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Share listing" style={styles.headerBtn} activeOpacity={0.7} onPress={handleShare}>
             <Ionicons name="share-social-outline" size={19} color="#fff" />
           </TouchableOpacity>
@@ -435,7 +438,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.imageContainer} ref={imageRef} collapsable={false}>
+        <View style={styles.imageContainer}>
           {images.length > 0 ? (
             <FlatList
               ref={galleryRef}
@@ -484,6 +487,24 @@ export default function ProductDetailScreen({ route, navigation }) {
         )}
 
         <View style={styles.content}>
+          {/* Seller-only stats: how much attention this listing gets. */}
+          {isOwner && product.status !== "pending" && product.status !== "rejected" ? (
+            <View style={styles.statsCard}>
+              {[
+                ["eye", "Views", product.viewCount || 0, "#2563EB"],
+                ["heart", "Saves", Math.max(0, product.saveCount || 0), COLORS.error],
+                ["chatbubbles", "Interested", interestedCount ?? "–", "#7C3AED"],
+              ].map(([icon, label, value, color]) => (
+                <View key={label} style={styles.statTile}>
+                  <Ionicons name={icon} size={16} color={color} />
+                  <Text style={styles.statNum}>{value}</Text>
+                  <Text style={styles.statLabel}>{label}</Text>
+                </View>
+              ))}
+              <Text style={styles.statsNote}>Only you can see these numbers.</Text>
+            </View>
+          ) : null}
+
           {isOwner && product.status === "expired" ? (
             <View style={styles.expiredBox}>
               <Ionicons name="hourglass" size={18} color={COLORS.warning} />
@@ -575,8 +596,6 @@ export default function ProductDetailScreen({ route, navigation }) {
 
           <TouchableOpacity
             style={styles.sellerCard}
-            ref={sellerCardRef}
-            collapsable={false}
             onPress={() => navigation.navigate("SellerProfile", { sellerId: product.sellerId, sellerName: product.sellerName })}
             activeOpacity={0.85}
           >
@@ -591,6 +610,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <View style={{ flex: 1 }}>
                 <Text style={styles.sellerName} numberOfLines={1}>{product.sellerName || "Anonymous"}</Text>
                 <Text style={styles.sellerSub} numberOfLines={1}>{sellerLabel}</Text>
+                {sellerReplyTime ? <Text style={styles.sellerReply} numberOfLines={1}>⚡ {sellerReplyTime}</Text> : null}
               </View>
             </View>
             <View style={styles.viewProfileBtn}>
@@ -598,6 +618,17 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Ionicons name="chevron-forward" size={13} color={COLORS.primary} />
             </View>
           </TouchableOpacity>
+
+          {similar.length > 0 ? (
+            <>
+              <Text style={styles.sectionTitle}>Similar items</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.similarRow}>
+                {similar.map((item) => (
+                  <ProductCard key={item.id} item={item} rating={similarRatings[item.sellerId]} width={150} onPress={openSimilar} />
+                ))}
+              </ScrollView>
+            </>
+          ) : null}
 
           <View style={{ height: 24 }} />
         </View>
@@ -636,7 +667,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       </Modal>
 
       {unavailable && !isOwner ? null : isOwner ? (
-        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]} ref={ownerBarRef} collapsable={false}>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
           <TouchableOpacity style={styles.editBtn} activeOpacity={0.85} onPress={() => navigation.navigate("CreateListing", { editListing: product })} disabled={marking || deleting}>
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
@@ -662,10 +693,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
       ) : (
-        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]} ref={buyerBarRef} collapsable={false}>
-          <TouchableOpacity ref={chatBtnRef} collapsable={false} accessibilityRole="button" accessibilityLabel="Message seller" style={styles.chatBtn} activeOpacity={0.8} onPress={handleMessageSeller}>
-            <Ionicons name="chatbubble-ellipses-outline" size={22} color={COLORS.primary} />
-          </TouchableOpacity>
+        <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>
+          <SaveButton item={product} size={22} plain style={styles.chatBtn} />
           {isSold ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
               <Text style={styles.primaryBtnText}>Ask if Still Available</Text>
@@ -681,14 +710,7 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={[styles.primaryBtnText, { color: COLORS.warning }]}>Reserved · Ask to be next</Text>
             </TouchableOpacity>
           ) : (
-            inCart ? (
-              <TouchableOpacity style={[styles.primaryBtn, styles.inCartBtn]} activeOpacity={0.85} onPress={toggleCart}>
-                <Ionicons name="checkmark" size={19} color={COLORS.primary} style={{ marginRight: 8 }} />
-                <Text style={[styles.primaryBtnText, { color: COLORS.primary }]}>In Cart</Text>
-              </TouchableOpacity>
-            ) : (
-              <GradientButton title="Add to Cart" icon="cart-outline" onPress={toggleCart} style={{ flex: 1 }} />
-            )
+            <GradientButton title="Message Seller" icon="chatbubble-ellipses-outline" onPress={handleMessageSeller} style={{ flex: 1 }} />
           )}
         </View>
       )}
@@ -771,7 +793,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.surface },
   header: { position: "absolute", top: 0, left: 0, right: 0, zIndex: 10, flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 10 },
   headerBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "rgba(0,0,0,0.32)", alignItems: "center", justifyContent: "center" },
-  tourOrigin: { position: "absolute", top: 0, left: 0, width: 1, height: 1 },
+  offscreen: { position: "absolute", left: -10000, top: 0 },
   imageContainer: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT, backgroundColor: COLORS.surfaceAlt },
   galleryImage: { width: SCREEN_WIDTH, height: IMAGE_HEIGHT },
   imagePlaceholder: { flex: 1, alignItems: "center", justifyContent: "center" },
@@ -812,6 +834,13 @@ const createStyles = (COLORS) => StyleSheet.create({
   sellerLeft: { flexDirection: "row", alignItems: "center", gap: 12, flex: 1, minWidth: 0, marginRight: 10 },
   sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
   sellerName: { fontSize: 15, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
+  statsCard: { flexDirection: "row", flexWrap: "wrap", backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, borderWidth: 1, borderColor: COLORS.border, paddingTop: 12, marginBottom: 14 },
+  statTile: { flex: 1, alignItems: "center", gap: 2 },
+  statNum: { fontSize: 18, fontFamily: FONTS.heading, color: COLORS.textPrimary },
+  statLabel: { fontSize: 11.5, color: COLORS.textMuted, fontWeight: "600" },
+  statsNote: { width: "100%", textAlign: "center", fontSize: 11, color: COLORS.textMuted, paddingVertical: 8 },
+  similarRow: { gap: 10, paddingVertical: 4, paddingRight: 4 },
+  sellerReply: { fontSize: 11.5, fontWeight: "700", color: COLORS.primary, marginTop: 2 },
   sellerSub: { fontSize: 12, color: COLORS.primary, fontWeight: "500" },
   viewProfileBtn: { flexDirection: "row", alignItems: "center", gap: 2, backgroundColor: COLORS.primaryPale, borderRadius: RADIUS.full, paddingHorizontal: 12, paddingVertical: 7 },
   viewProfileText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
@@ -842,7 +871,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   chatBtn: { width: 52, height: 52, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtn: { flex: 1, flexDirection: "row", height: 52, borderRadius: RADIUS.md, backgroundColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   primaryBtnText: { fontSize: 15.5, fontWeight: "700", color: "#fff" },
-  inCartBtn: { backgroundColor: COLORS.primaryPale },
   editBtn: { width: 58, height: 52, gap: 1, borderRadius: RADIUS.md, borderWidth: 1.5, borderColor: COLORS.primary, alignItems: "center", justifyContent: "center" },
   editBtnText: { fontSize: 10.5, fontWeight: "700", color: COLORS.primary },
   markActiveBtn: { backgroundColor: COLORS.info },

@@ -23,7 +23,8 @@ function Rating({ rating, size = 11 }) {
 }
 
 // Heart button to save / un-save a listing (kept in sync app-wide).
-export function SaveButton({ item, size = 16, style }) {
+// `plain` is for light backgrounds (list rows); the default sits on photos.
+export function SaveButton({ item, size = 16, style, plain = false }) {
   const { COLORS, styles } = useTheme(createStyles);
   const { ids } = useWishlist();
   const saved = ids.has(item.id);
@@ -36,7 +37,7 @@ export function SaveButton({ item, size = 16, style }) {
       accessibilityRole="button"
       accessibilityLabel={saved ? 'Remove from saved' : 'Save item'}
     >
-      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={size} color={saved ? COLORS.error : '#fff'} />
+      <Ionicons name={saved ? 'heart' : 'heart-outline'} size={size} color={saved ? COLORS.error : plain ? COLORS.textMuted : '#fff'} />
     </TouchableOpacity>
   );
 }

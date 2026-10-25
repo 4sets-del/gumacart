@@ -343,8 +343,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   stepCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.surfaceAlt, alignItems: "center", justifyContent: "center", marginBottom: 6, borderWidth: 2, borderColor: COLORS.border },
   stepCircleActive: { backgroundColor: COLORS.primaryPale, borderColor: COLORS.primary },
   stepCircleDone: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  stepNum: { fontSize: 14, fontWeight: "700", color: COLORS.textMuted },
-  stepNumActive: { color: COLORS.primary },
   stepLabel: { fontSize: 10.5, color: COLORS.textMuted, textAlign: "center", fontWeight: "500" },
   stepLabelActive: { color: COLORS.primary, fontWeight: "700" },
   stepLine: { flex: 1, height: 2, backgroundColor: COLORS.border, marginBottom: 20 },

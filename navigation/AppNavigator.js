@@ -25,14 +25,12 @@ import AboutScreen from '../screens/AboutScreen';
 import MessagesScreen from '../screens/MessagesScreen';
 import CreateListingScreen from '../screens/CreateListingScreen';
 import ChatScreen from '../screens/ChatScreen';
-import CartScreen from '../screens/CartScreen';
 import ProductDetailScreen from '../screens/ProductDetailScreen';
 import VerificationScreen from '../screens/VerificationScreen';
 import AdminPanelScreen from '../screens/AdminPanelScreen';
 import SellerProfileScreen from '../screens/SellerProfileScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import SearchScreen from '../screens/SearchScreen';
-import FollowingScreen from '../screens/FollowingScreen';
 import EmailVerificationScreen from '../screens/EmailVerificationScreen';
 import BannedScreen from '../screens/BannedScreen';
 import SplashScreen from '../screens/SplashScreen';
@@ -43,6 +41,7 @@ import SavedScreen from '../screens/SavedScreen';
 import PrivacyScreen from '../screens/PrivacyScreen';
 import PostTypeSheet from '../components/PostTypeSheet';
 import { tabBarRef } from '../utils/tourTargets';
+import { usePresenceHeartbeat } from '../utils/presence';
 import SchoolEmailRequiredScreen from '../screens/SchoolEmailRequiredScreen';
 import { addNotificationResponseListener } from '../utils/notifications';
 import { auth, db } from '../firebaseConfig';
@@ -110,6 +109,7 @@ function MainTabs() {
   const unread = useUnreadConversationCount();
   const navigation = useNavigation();
   const [postSheet, setPostSheet] = useState(false);
+  const { userProfile } = useAuth();
   // Room for icon + label, plus the phone's gesture/navigation bar.
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 8);
@@ -175,6 +175,8 @@ function MainTabs() {
       </Tab.Navigator>
       <PostTypeSheet
         visible={postSheet}
+        profile={userProfile}
+        onVerify={() => { setPostSheet(false); navigation.navigate('Verification'); }}
         onClose={() => setPostSheet(false)}
         onPick={(type) => { setPostSheet(false); navigation.navigate('CreateListing', { type }); }}
       />
@@ -189,7 +191,6 @@ function AppStack() {
       <Stack.Screen name="ProductDetail" component={ProductDetailScreen} />
       <Stack.Screen name="Chat"          component={ChatScreen} />
       <Stack.Screen name="SellerProfile" component={SellerProfileScreen} />
-      <Stack.Screen name="Cart"          component={CartScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="Settings"      component={SettingsScreen} />
       <Stack.Screen name="MyListings"    component={MyListingsScreen} />
@@ -199,7 +200,6 @@ function AppStack() {
       <Stack.Screen name="Privacy"       component={PrivacyScreen} />
       <Stack.Screen name="AdminPanel"    component={AdminPanelScreen} />
       <Stack.Screen name="CreateListing" component={CreateListingScreen} />
-      <Stack.Screen name="Following"     component={FollowingScreen} />
       <Stack.Screen name="Search"        component={SearchScreen} />
       <Stack.Screen name="Verification"  component={VerificationScreen} />
     </Stack.Navigator>
@@ -245,6 +245,8 @@ function BannedStack() {
 
 export default function AppNavigator() {
   const { user, loading, emailVerified, isBanned, schoolAccess } = useAuth();
+  // Keeps "Active now" fresh for others while this person has the app open.
+  usePresenceHeartbeat(user && emailVerified && schoolAccess && !isBanned ? user.uid : null);
   const navigationRef = useRef(null);
   const { COLORS, isDark } = useTheme();
 

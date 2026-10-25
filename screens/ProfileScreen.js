@@ -13,6 +13,7 @@ import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
 import { SPACING, RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
+import { getUserBasics } from "../utils/userCache";
 import { useWishlist } from "../utils/wishlist";
 import { academicLabel } from "../constants/school";
 import { useTheme } from '../context/ThemeContext';
@@ -49,13 +50,22 @@ export default function ProfileScreen({ navigation }) {
   const isFocused = useIsFocused();
   const [listingCount, setListingCount] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
   const savedCount = useWishlist().items.length;
   const [profilePhoto, setProfilePhoto] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [userData, setUserData] = useState(null);
   const [reviews, setReviews] = useState([]);
-  const [followerCount, setFollowerCount] = useState(0);
+  // Reviewers' current name and photo (reviews only store the name).
+  const [reviewers, setReviewers] = useState({});
+  useEffect(() => {
+    const ids = [...new Set(reviews.map((r) => r.reviewerId).filter(Boolean))];
+    if (!ids.length) return;
+    let cancelled = false;
+    Promise.all(ids.map(async (id) => [id, await getUserBasics(id)])).then((entries) => {
+      if (!cancelled) setReviewers(Object.fromEntries(entries));
+    });
+    return () => { cancelled = true; };
+  }, [reviews]);
   const user = auth.currentUser;
   const isAdmin = userData?.role === "admin";
 
@@ -80,13 +90,6 @@ export default function ProfileScreen({ navigation }) {
     }
   };
 
-  const loadCartCount = async () => {
-    try {
-      const snapshot = await getDocs(collection(db, "users", user.uid, "cart"));
-      setCartCount(snapshot.size);
-    } catch (e) {}
-  };
-
   const loadReviews = async () => {
     try {
       const snap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", user.uid)));
@@ -99,18 +102,11 @@ export default function ProfileScreen({ navigation }) {
     } catch (e) { console.log("Reviews load error:", e.message); }
   };
 
-  const loadFollowers = async () => {
-    try {
-      const snap = await getDocs(collection(db, "users", user.uid, "followers"));
-      setFollowerCount(snap.size);
-    } catch (e) {}
-  };
-
-  const loadAll = () => Promise.all([loadUserData(), loadListingCount(), loadCartCount(), loadReviews(), loadFollowers()]);
+  const loadAll = () => Promise.all([loadUserData(), loadListingCount(), loadReviews()]);
 
   useEffect(() => {
     loadAll();
-    return navigation.addListener("focus", () => { loadUserData(); loadListingCount(); loadCartCount(); loadFollowers(); });
+    return navigation.addListener("focus", () => { loadUserData(); loadListingCount(); });
   }, [navigation]);
 
   const onRefresh = async () => {
@@ -282,7 +278,6 @@ export default function ProfileScreen({ navigation }) {
               { label: "Listings", value: listingCount, color: COLORS.primary },
               { label: "Rating", value: avgRating > 0 ? avgRating.toFixed(1) : "—", color: "#F59E0B" },
               { label: "Reviews", value: reviews.length, color: "#2563EB" },
-              { label: "Followers", value: followerCount, color: "#7C3AED", onPress: () => navigation.navigate("Following", { initialTab: "followers" }) },
             ].map((stat, i) => (
               <TouchableOpacity key={stat.label} style={[styles.statItem, i > 0 && styles.statDivider]} activeOpacity={stat.onPress ? 0.7 : 1} onPress={stat.onPress}>
                 <Text style={[styles.statNumber, { color: stat.color }]}>{stat.value}</Text>
@@ -296,9 +291,7 @@ export default function ProfileScreen({ navigation }) {
         <View style={styles.menu}>
           <MenuItem icon="pricetags" color="#16A34A" label="My Listings" onPress={() => navigation.navigate("MyListings")} />
           <MenuItem icon="heart" color="#E11D48" label="Saved Items" badge={savedCount > 0 ? savedCount : null} onPress={() => navigation.navigate("Saved")} />
-          <MenuItem icon="cart" color="#F59E0B" label="My Cart" badge={cartCount > 0 ? cartCount : null} onPress={() => navigation.navigate("Cart")} />
           <MenuItem icon="chatbubble-ellipses" color="#2563EB" label="Messages" onPress={() => navigation.navigate("Main", { screen: "Messages" })} />
-          <MenuItem icon="people" color="#7C3AED" label="Followers & Following" onPress={() => navigation.navigate("Following")} />
           <MenuItem icon="notifications" color="#E11D48" label="Notifications" onPress={() => navigation.navigate("Notifications")} />
           {isAdmin && <MenuItem icon="key" color="#0D9488" label="Admin Panel" onPress={() => navigation.navigate("AdminPanel")} />}
           <MenuItem icon="settings" color="#64748B" label="Settings" onPress={() => navigation.navigate("Settings")} />
@@ -317,13 +310,26 @@ export default function ProfileScreen({ navigation }) {
             reviews.slice(0, 5).map((review) => (
               <View key={review.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
-                  <View style={[styles.reviewAvatar, { backgroundColor: colorForName(review.reviewerName) }]}>
-                    <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase() || "?"}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.reviewerName}>{review.reviewerName}</Text>
-                    <StarRating rating={review.rating} size={12} />
-                  </View>
+                  <TouchableOpacity
+                    style={styles.reviewWho}
+                    activeOpacity={0.75}
+                    disabled={!review.reviewerId}
+                    onPress={() => navigation.navigate("SellerProfile", { sellerId: review.reviewerId, sellerName: reviewers[review.reviewerId]?.name || review.reviewerName })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Open ${review.reviewerName}'s profile`}
+                  >
+                    {reviewers[review.reviewerId]?.photoURL ? (
+                      <Image source={{ uri: reviewers[review.reviewerId].photoURL }} style={styles.reviewAvatar} />
+                    ) : (
+                      <View style={[styles.reviewAvatar, { backgroundColor: colorForName(review.reviewerName) }]}>
+                        <Text style={styles.reviewAvatarText}>{review.reviewerName?.[0]?.toUpperCase() || "?"}</Text>
+                      </View>
+                    )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.reviewerName}>{reviewers[review.reviewerId]?.name || review.reviewerName}</Text>
+                      <StarRating rating={review.rating} size={12} />
+                    </View>
+                  </TouchableOpacity>
                   <Text style={styles.reviewDate}>{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : "Recently"}</Text>
                 </View>
                 {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
@@ -384,6 +390,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   reviewHeader: { flexDirection: "row", alignItems: "center", marginBottom: 8 },
   reviewAvatar: { width: 32, height: 32, borderRadius: 16, alignItems: "center", justifyContent: "center", marginRight: 10 },
   reviewAvatarText: { fontSize: 14, fontWeight: "700", color: "#fff" },
+  reviewWho: { flex: 1, flexDirection: "row", alignItems: "center" },
   reviewerName: { fontSize: 13, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 2 },
   reviewDate: { fontSize: 10.5, color: COLORS.textMuted },
   reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 19 },
