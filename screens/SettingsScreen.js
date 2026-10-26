@@ -26,7 +26,7 @@ import { useBlocked, unblockUser } from "../utils/blocking";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, SHADOWS, FONTS, GRADIENTS, colorForName } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
-import { normalizeCourse } from '../constants/school';
+import { normalizeCourse, isValidAge, MIN_AGE, MAX_AGE } from '../constants/school';
 
 
 export default function SettingsScreen({ navigation }) {
@@ -142,6 +142,7 @@ export default function SettingsScreen({ navigation }) {
 
   const handleSaveProfile = async () => {
     if (!name.trim()) { Alert.alert("Required", "Please enter your name."); return; }
+    if (age && !isValidAge(age)) { Alert.alert("Invalid age", `Please enter an age from ${MIN_AGE} to ${MAX_AGE}.`); return; }
     setSavingProfile(true);
     try {
       await updateProfile(user, { displayName: name.trim() });

@@ -12,7 +12,7 @@ import { auth, db } from '../firebaseConfig';
 import { RADIUS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
-import { SCHOOL_DOMAIN, isSchoolEmail } from '../constants/school';
+import { SCHOOL_DOMAIN, isSchoolEmail, isValidAge, MIN_AGE, MAX_AGE } from '../constants/school';
 import AcademicFields from '../components/AcademicFields';
 
 export default function SignupScreen({ navigation }) {
@@ -38,7 +38,7 @@ export default function SignupScreen({ navigation }) {
   const passwordRef = useRef(null);
 
   const handleSignup = async () => {
-    if (!name || !address || !age || !email || !password) {
+    if (!name.trim() || !address.trim() || !age || !email || !password) {
       Alert.alert('Missing fields', 'Please fill in all fields.');
       return;
     }
@@ -50,8 +50,8 @@ export default function SignupScreen({ navigation }) {
       Alert.alert('Year level', 'Please choose your year level.');
       return;
     }
-    if (isNaN(age) || Number(age) < 12 || Number(age) > 100) {
-      Alert.alert('Invalid age', 'Please enter a valid age.');
+    if (!isValidAge(age)) {
+      Alert.alert('Invalid age', `Please enter an age from ${MIN_AGE} to ${MAX_AGE}.`);
       return;
     }
     if (!isSchoolEmail(email)) {
@@ -83,9 +83,9 @@ export default function SignupScreen({ navigation }) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
       const user = userCredential.user;
-      await updateProfile(user, { displayName: name });
+      await updateProfile(user, { displayName: name.trim() });
       await setDoc(doc(db, 'users', user.uid), {
-        uid: user.uid, name, address,
+        uid: user.uid, name: name.trim(), address: address.trim(),
         age: Number(age), email: email.trim().toLowerCase(),
         createdAt: serverTimestamp(),
         role: 'student',

@@ -32,6 +32,11 @@ export function normalizeCourse(code) {
 
 export const YEAR_LEVELS = [1, 2, 3, 4];
 
+// Allowed ages on Sign Up and Edit Profile (students and faculty).
+export const MIN_AGE = 12;
+export const MAX_AGE = 100;
+export const isValidAge = (age) => Number.isInteger(Number(age)) && Number(age) >= MIN_AGE && Number(age) <= MAX_AGE;
+
 export function yearLabel(year) {
   const n = Number(year);
   if (!n) return '';
