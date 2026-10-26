@@ -11,7 +11,7 @@ import { auth, db } from "../firebaseConfig";
 import { ProductRow, SaveButton } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
 import { getUserBasics, useUserBasicsMap } from "../utils/userCache";
-import { academicLabel } from "../constants/school";
+import { academicLabel, COURSES } from "../constants/school";
 import { useSearchAlerts, findAlert, addAlert, removeAlert, keywordsOf } from "../utils/searchAlerts";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
@@ -27,7 +27,7 @@ const SORT_OPTIONS = [
   { id: "rating",    label: "Highest Rated" },
 ];
 
-const EMPTY_FILTERS = { categories: [], types: [], minPrice: "", maxPrice: "", posted: "any" };
+const EMPTY_FILTERS = { categories: [], types: [], courses: [], minPrice: "", maxPrice: "", posted: "any" };
 
 // "Posted within" choices: how far back a listing's posting time may be.
 const POSTED_WITHIN = [
@@ -64,16 +64,20 @@ export default function SearchScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const initialCategory = route?.params?.category || null;
   const [searchText, setSearchText]       = useState("");
-  // "See All" on Home's "From <course> students" row: only listings by
-  // sellers in that course, shown as a removable chip.
-  const [courseFilter, setCourseFilter]   = useState(route?.params?.course || null);
+  // "See All" on Home's "From <course> students" row opens with that course
+  // already picked in the Course filter.
+  const initialCourse = route?.params?.course || null;
   const [activeTab, setActiveTab]         = useState("listings"); // "listings" | "sellers"
   const { listings, loading: loadingListings } = useActiveListings();
   const ratings = useSellerRatings(listings);
   const [sellers, setSellers]             = useState([]);
   const [loadingSellers, setLoadingSellers] = useState(true);
   const [sortBy, setSortBy]               = useState("relevant");
-  const [filters, setFilters]             = useState({ ...EMPTY_FILTERS, categories: initialCategory ? [initialCategory] : [] });
+  const [filters, setFilters]             = useState({
+    ...EMPTY_FILTERS,
+    categories: initialCategory ? [initialCategory] : [],
+    courses: initialCourse ? [initialCourse] : [],
+  });
   const [sheetVisible, setSheetVisible]   = useState(false);
   const [draftSort, setDraftSort]         = useState(sortBy);
   const [draftFilters, setDraftFilters]   = useState(filters);
@@ -143,7 +147,8 @@ export default function SearchScreen({ navigation, route }) {
   const min = parseFloat(filters.minPrice);
   const max = parseFloat(filters.maxPrice);
 
-  const courseSellers = useUserBasicsMap(courseFilter ? listings.map((l) => l.sellerId) : []);
+  // A listing's course is its seller's (from the shared profile cache).
+  const courseSellers = useUserBasicsMap(filters.courses.length ? listings.map((l) => l.sellerId) : []);
 
   const filteredListings = listings.filter((l) => {
     const matchSearch = !term ||
@@ -158,7 +163,7 @@ export default function SearchScreen({ navigation, route }) {
     const matchMax = isNaN(max) || (price !== null && price <= max);
     const within = POSTED_WITHIN.find((p) => p.id === (filters.posted || "any"))?.ms;
     const matchPosted = !within || postedMs(l) >= Date.now() - within;
-    const matchCourse = !courseFilter || courseSellers[l.sellerId]?.course === courseFilter;
+    const matchCourse = filters.courses.length === 0 || filters.courses.includes(courseSellers[l.sellerId]?.course);
     return matchSearch && matchCat && matchType && matchMin && matchMax && matchPosted && matchCourse;
   });
 
@@ -188,7 +193,7 @@ export default function SearchScreen({ navigation, route }) {
   const filteredSellers = sellers.filter((s) =>
     !term || (s.name || "").toLowerCase().includes(term) || (s.email || "").toLowerCase().includes(term));
 
-  const filterCount = filters.categories.length + filters.types.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0) + ((filters.posted || "any") !== "any" ? 1 : 0);
+  const filterCount = filters.categories.length + filters.types.length + filters.courses.length + (filters.minPrice ? 1 : 0) + (filters.maxPrice ? 1 : 0) + ((filters.posted || "any") !== "any" ? 1 : 0);
   const isDefault = sortBy === "relevant" && filterCount === 0;
 
   const openSheet = () => {
@@ -293,19 +298,6 @@ export default function SearchScreen({ navigation, route }) {
       {activeTab === "listings" && (
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
-            {courseFilter ? (
-              <TouchableOpacity
-                style={[styles.chip, styles.chipOn, { flexDirection: "row", gap: 5 }]}
-                activeOpacity={0.8}
-                onPress={() => setCourseFilter(null)}
-                accessibilityRole="button"
-                accessibilityLabel={`Showing ${courseFilter} students only. Tap to show everyone.`}
-              >
-                <Ionicons name="school" size={14} color="#fff" />
-                <Text style={[styles.chipText, styles.chipTextOn]}>{courseFilter} students</Text>
-                <Ionicons name="close" size={14} color="#fff" />
-              </TouchableOpacity>
-            ) : null}
             {QUICK_CHIPS.map((chip) => (
               <TouchableOpacity key={chip.id} style={[styles.chip, chip.active && styles.chipOn]} activeOpacity={0.8} onPress={chip.onPress}>
                 <Text style={[styles.chipText, chip.active && styles.chipTextOn]}>{chip.label}</Text>
@@ -316,10 +308,11 @@ export default function SearchScreen({ navigation, route }) {
               <Text style={[styles.chipText, filterCount > 0 && styles.chipTextOn]}>Filter{filterCount > 0 ? ` (${filterCount})` : ""}</Text>
             </TouchableOpacity>
           </ScrollView>
-          {(filters.categories.length > 0 || (filters.posted || "any") !== "any") && (
+          {(filters.categories.length > 0 || filters.courses.length > 0 || (filters.posted || "any") !== "any") && (
             <Text style={styles.activeCats} numberOfLines={1}>
               {[
                 filters.categories.length > 0 ? `In ${filters.categories.join(", ")}` : null,
+                filters.courses.length > 0 ? `From ${filters.courses.join(", ")} students` : null,
                 (filters.posted || "any") !== "any" ? `Posted ${POSTED_WITHIN.find((p) => p.id === filters.posted)?.label.toLowerCase()}` : null,
               ].filter(Boolean).join(" · ")}
             </Text>
@@ -482,6 +475,23 @@ export default function SearchScreen({ navigation, route }) {
               emoji={c.emoji}
               selected={draftFilters.categories.includes(c.name)}
               onPress={() => setDraftFilters((f) => ({ ...f, categories: toggleIn(f.categories, c.name) }))}
+            />
+          ))}
+        </View>
+
+        <SheetSection title="Seller's course" />
+        <View style={styles.chipWrap}>
+          <Chip
+            label="All"
+            selected={draftFilters.courses.length === 0}
+            onPress={() => setDraftFilters((f) => ({ ...f, courses: [] }))}
+          />
+          {COURSES.filter((c) => c.code !== "Other").map((c) => (
+            <Chip
+              key={c.code}
+              label={c.code}
+              selected={draftFilters.courses.includes(c.code)}
+              onPress={() => setDraftFilters((f) => ({ ...f, courses: toggleIn(f.courses, c.code) }))}
             />
           ))}
         </View>

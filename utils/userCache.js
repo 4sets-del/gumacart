@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { normalizeCourse } from '../constants/school';
 
 // Short-lived cache of other users' public profile basics, so lists like the
 // Messages inbox doesn't re-download every profile each time.
@@ -26,7 +27,7 @@ export function getUserBasics(uid) {
         totalReviews: data.totalReviews || 0,
         verificationStatus: data.verificationStatus || null,
         role: data.role || null,
-        course: data.course || null,
+        course: normalizeCourse(data.course),
         yearLevel: data.yearLevel || null,
       };
     })

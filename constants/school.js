@@ -14,13 +14,21 @@ export function hasSchoolAccess(user, profile) {
 // Courses (with majors) offered at SLSU Gumaca. The short code is what shows
 // on profiles, listings and chats; edit this list if the offerings change.
 export const COURSES = [
-  { code: 'BSBA-HR', name: 'BS Business Administration', major: 'Human Resource Development Management' },
+  { code: 'BSBA-HRM', name: 'BS Business Administration', major: 'Human Resource Management' },
   { code: 'BSN', name: 'BS Nursing' },
-  { code: 'BSIT-CT', name: 'BS Industrial Technology', major: 'Computer Technology' },
+  { code: 'BSIT-CPT', name: 'BS Industrial Technology', major: 'Computer Technology' },
   { code: 'BSEd-SS', name: 'Bachelor of Secondary Education', major: 'Social Studies' },
   { code: 'BSEd-Math', name: 'Bachelor of Secondary Education', major: 'Mathematics' },
   { code: 'Other', name: 'Other / Not listed' },
 ];
+
+// Codes that were renamed; profiles saved before keep the old code and are
+// read as the new one.
+const RENAMED_COURSES = { 'BSBA-HR': 'BSBA-HRM', 'BSIT-CT': 'BSIT-CPT' };
+
+export function normalizeCourse(code) {
+  return RENAMED_COURSES[code] || code || null;
+}
 
 export const YEAR_LEVELS = [1, 2, 3, 4];
 
@@ -33,16 +41,17 @@ export function yearLabel(year) {
 
 // Full name, e.g. "BS Industrial Technology, major in Computer Technology".
 export function courseName(code) {
-  const c = COURSES.find((x) => x.code === code);
+  const c = COURSES.find((x) => x.code === normalizeCourse(code));
   if (!c) return '';
   return c.major ? `${c.name}, major in ${c.major}` : c.name;
 }
 
-// One line describing someone, e.g. "BSIT-CT · 3rd Year", "BSN · Faculty",
+// One line describing someone, e.g. "BSIT-CPT · 3rd Year", "BSN · Faculty",
 // or "SLSU Student" for accounts that haven't filled these in yet.
 export function academicLabel(profile) {
   const isFaculty = profile?.role === 'faculty';
-  const course = profile?.course && profile.course !== 'Other' ? profile.course : '';
+  const code = normalizeCourse(profile?.course);
+  const course = code && code !== 'Other' ? code : '';
   const second = isFaculty ? 'Faculty' : yearLabel(profile?.yearLevel);
   const parts = [course, second].filter(Boolean);
   if (!course) return isFaculty ? 'SLSU Faculty' : parts.length ? `SLSU · ${parts.join(' · ')}` : 'SLSU Student';

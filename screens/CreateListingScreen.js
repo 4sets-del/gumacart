@@ -14,7 +14,7 @@ import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
-import { CATEGORIES, normalizeCategory } from "../constants/listings";
+import { CATEGORIES, normalizeCategory, MAX_PRICE } from "../constants/listings";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, FONTS } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
@@ -181,6 +181,7 @@ export default function CreateListingScreen({ navigation, route }) {
   if (!title.trim()) errors.title = "Enter a title.";
   if (!description.trim()) errors.description = "Describe your item.";
   if (listingType === "sell" && !(Number(price) > 0)) errors.price = "Enter a price greater than 0.";
+  else if (Number(price) > MAX_PRICE) errors.price = `The most you can enter is ₱${MAX_PRICE.toLocaleString()}.`;
   if (!category) errors.category = "Pick a category.";
   // Condition matters for used goods; it's optional for food and donations.
   const conditionOptional = listingType === "donate" || normalizeCategory(category) === "Food & Drinks";
@@ -226,7 +227,8 @@ export default function CreateListingScreen({ navigation, route }) {
       const payload = {
         type: listingType, title: title.trim(), name: title.trim(),
         description: description.trim(),
-        price: listingType === "sell" ? Number(price) : 0,
+        // Sale price, or the optional budget of a "Looking For" post.
+        price: showPrice ? Number(price) || 0 : 0,
         quantity: showQuantity ? quantity : 1,
         category, condition, location,
         image: imageUrls[0], images: imageUrls,
@@ -402,11 +404,12 @@ export default function CreateListingScreen({ navigation, route }) {
                 <Text style={styles.pesoSign}>₱</Text>
                 <TextInput
                   style={[styles.input, { flex: 1 }]}
-                  placeholder="0.00"
+                  placeholder="0"
                   placeholderTextColor={COLORS.textMuted}
                   value={price}
-                  onChangeText={setPrice}
-                  keyboardType="numeric"
+                  onChangeText={(v) => setPrice(v.replace(/[^0-9]/g, ""))}
+                  keyboardType="number-pad"
+                  maxLength={String(MAX_PRICE).length}
                 />
               </View>
             </>

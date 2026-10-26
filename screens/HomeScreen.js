@@ -27,6 +27,7 @@ import SkeletonCard from '../components/SkeletonCard';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SPACING, RADIUS, GRADIENTS, SHADOWS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
+import { normalizeCourse } from '../constants/school';
 import { CATEGORIES, categoryTint } from '../constants/listings';
 import { useActiveListings } from '../utils/useListings';
 import { useSellerRatings } from '../utils/sellerRatings';
@@ -67,9 +68,13 @@ export default function HomeScreen({ navigation, route }) {
 
   const user = auth.currentUser;
 
-  // "From your course": listings by sellers in the same course as you.
+  // "From your course": listings by sellers in the same course as you. The
+  // row only shows once there are enough to fill it; fewer looks unfinished
+  // (Search → Filter → Seller's course always works).
+  const MIN_COURSE_LISTINGS = 6;
   const { userProfile } = useAuth();
-  const myCourse = userProfile?.course && userProfile.course !== 'Other' ? userProfile.course : null;
+  const ownCourse = normalizeCourse(userProfile?.course);
+  const myCourse = ownCourse && ownCourse !== 'Other' ? ownCourse : null;
   const sellerProfiles = useUserBasicsMap(myCourse ? listings.map((l) => l.sellerId) : []);
   const courseListings = useMemo(
     () => (myCourse ? listings.filter((l) => sellerProfiles[l.sellerId]?.course === myCourse).slice(0, 10) : []),
@@ -293,7 +298,7 @@ export default function HomeScreen({ navigation, route }) {
           </ScrollView>
 
           {/* ── FROM YOUR COURSE ── */}
-          {courseListings.length > 0 && (
+          {courseListings.length >= MIN_COURSE_LISTINGS && (
             <>
               <View style={styles.sectionHeader}>
                 <View style={styles.sectionTitleRow}>

@@ -62,6 +62,10 @@ export function listingTitle(item) {
   return item?.name || item?.title || 'Untitled';
 }
 
+// Highest price (or "Looking For" budget) a listing may have: enough for
+// laptops and phones, and it keeps joke prices off the marketplace.
+export const MAX_PRICE = 1000000;
+
 // Text + color for the price line of a listing card.
 export function priceLabel(item) {
   if (item.type === 'donate') return { text: 'FREE', color: palette().donate };

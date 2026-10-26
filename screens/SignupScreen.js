@@ -177,6 +177,7 @@ export default function SignupScreen({ navigation }) {
                 placeholderTextColor={COLORS.textMuted}
                 value={name}
                 onChangeText={setName}
+                maxLength={40}
                 returnKeyType="next"
                 onSubmitEditing={() => addressRef.current?.focus()}
               />

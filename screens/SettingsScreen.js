@@ -26,6 +26,7 @@ import { useBlocked, unblockUser } from "../utils/blocking";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, SHADOWS, FONTS, GRADIENTS, colorForName } from "../constants/theme";
 import { useTheme } from '../context/ThemeContext';
+import { normalizeCourse } from '../constants/school';
 
 
 export default function SettingsScreen({ navigation }) {
@@ -88,7 +89,7 @@ export default function SettingsScreen({ navigation }) {
       setName(data?.name || user?.displayName || "");
       setAddress(data?.address || "");
       setAge(data?.age ? String(data.age) : "");
-      setCourse(data?.course || null);
+      setCourse(normalizeCourse(data?.course));
       setYearLevel(data?.yearLevel || null);
       setIsFaculty(data?.role === "faculty");
       setPhotoURL(data?.photoURL || user?.photoURL || null);
@@ -358,7 +359,7 @@ export default function SettingsScreen({ navigation }) {
         <Text style={styles.photoHint}>{uploadingPhoto ? "Uploading..." : "Tap to change photo"}</Text>
 
         <SheetSection title="Personal info" />
-        <FormField label="Name" icon="person-outline" value={name} onChangeText={setName} placeholder="Your full name" />
+        <FormField label="Name" icon="person-outline" value={name} onChangeText={setName} placeholder="Your full name" maxLength={40} />
         <View style={styles.fieldRow}>
           <FormField style={{ flex: 2 }} label="Address" icon="location-outline" value={address} onChangeText={setAddress} placeholder="Your address" />
           <FormField style={{ flex: 1 }} label="Age" icon="calendar-outline" value={age} onChangeText={setAge} placeholder="Age" keyboardType="numeric" maxLength={3} />

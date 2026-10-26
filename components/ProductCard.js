@@ -138,7 +138,7 @@ export const ProductRow = React.memo(function ProductRow({ item, rating, onPress
       <Thumb item={item} style={styles.rowThumb} emojiSize={30} />
       <View style={styles.rowBody}>
         <Text style={styles.rowTitle} numberOfLines={2}>{listingTitle(item)}</Text>
-        <Text style={[styles.rowPrice, { color: price.color }]}>{price.text}</Text>
+        <Text style={[styles.rowPrice, { color: price.color }]} numberOfLines={1}>{price.text}</Text>
         <Rating rating={rating} size={12} />
         {children}
       </View>
