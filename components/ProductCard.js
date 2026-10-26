@@ -6,7 +6,7 @@ import { RADIUS, SHADOWS, FONTS, colorForName } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import { useWishlist, toggleSaved } from '../utils/wishlist';
 import * as Haptics from 'expo-haptics';
-import { listingImage, listingTitle, priceLabel, typeMeta, categoryMeta, shortTimeAgo } from '../constants/listings';
+import { listingImage, listingTitle, priceLabel, typeMeta, categoryMeta, shortTimeAgo, listedMs } from '../constants/listings';
 
 function Rating({ rating, size = 11 }) {
   const { COLORS, styles } = useTheme(createStyles);
@@ -67,8 +67,8 @@ function Thumb({ item, style, emojiSize, details = false }) {
         </View>
       )}
       {details ? <SaveButton item={item} /> : null}
-      {details && item.createdAt ? (
-        <View style={styles.agePill}><Text style={styles.agePillText}>{shortTimeAgo(item.createdAt)}</Text></View>
+      {details && listedMs(item) ? (
+        <View style={styles.agePill}><Text style={styles.agePillText}>{shortTimeAgo(listedMs(item))}</Text></View>
       ) : null}
       {details && item.condition ? (
         <View style={styles.conditionPill}><Text style={styles.conditionText}>{item.condition}</Text></View>

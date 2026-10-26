@@ -35,13 +35,16 @@ constants/             theme (colors, fonts), listings, school (domain, courses,
                        meet-up spots), privacy policy text
 utils/                 Firestore helpers and shared stores (listings, wishlist,
                        search alerts, chat, uploads, notifications)
-functions/index.js     Cloud Functions (notifications, moderation, reservations,
-                       listing expiry, account cleanup)
+functions/             Cloud Functions (notifications, moderation, reservations,
+                       listing expiry, account cleanup, shared-link pages)
 firestore.rules        Firestore security rules
 firestore.indexes.json Composite / collection-group indexes
 storage.rules          Storage security rules
 scripts/               export-privacy.js (writes PRIVACY.md), make-splash.sh,
-                       remove-phone-numbers.js
+                       make-avatars.sh, remove-phone-numbers.js
+patches/               expo-notifications: notification picture from push data
+                       (applied by patch-package on npm install)
+hosting/               Firebase Hosting: icon, letter avatars, App Links file
 ```
 
 ## Running it
@@ -74,7 +77,7 @@ npx firebase-tools deploy --only functions,firestore:rules,firestore:indexes,sto
 
 - Cloud Functions need the Firebase **Blaze** plan. The scheduled ones (reservations, listing expiry) use Cloud Scheduler.
 - New indexes take a few minutes to build.
-- `hosting/` is the page behind shared listing links (`https://gumacartfinal.web.app/listing/<id>`). `hosting/.well-known/assetlinks.json` lets Android open those links straight in the app; it holds the APK signing fingerprint, so add the Play Store signing fingerprint there when publishing.
+- Shared listing links (`https://gumacartfinal.web.app/listing/<id>`) are pages built by the `listingPage` function (`functions/listingPage.js`), with the item's photo, name and price for link previews. `hosting/` holds the icon and letter avatars. `hosting/.well-known/assetlinks.json` lets Android open those links straight in the app; it holds the APK signing fingerprint, so add the Play Store signing fingerprint there when publishing.
 - If the deploy asks to delete indexes that aren't in `firestore.indexes.json`, answer **N**.
 
 ## Admin

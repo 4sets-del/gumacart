@@ -341,9 +341,17 @@ export default function AdminPanelScreen({ navigation, route }) {
     ]);
   };
 
-  const approveListing = async (listingId) => {
+  // listedAt is when the listing first goes live (its age on cards and in
+  // "Latest"). Re-approving an edit keeps the original, and listings approved
+  // before listedAt existed keep using their posting time.
+  const approveListing = async (listing) => {
+    const firstApproval = !listing.listedAt && !listing.approvedAt;
     try {
-      await updateDoc(doc(db, "listings", listingId), { status: "active", approvedAt: serverTimestamp() });
+      await updateDoc(doc(db, "listings", listing.id), {
+        status: "active",
+        approvedAt: serverTimestamp(),
+        ...(firstApproval ? { listedAt: serverTimestamp() } : {}),
+      });
       await loadListings();
     } catch (e) { Alert.alert("Error", "Could not approve listing."); }
   };
@@ -816,7 +824,7 @@ export default function AdminPanelScreen({ navigation, route }) {
 
                   {listing.status === "pending" ? (
                     <View style={styles.approveRow}>
-                      <TouchableOpacity style={styles.approveBtn} activeOpacity={0.85} onPress={() => approveListing(listing.id)}>
+                      <TouchableOpacity style={styles.approveBtn} activeOpacity={0.85} onPress={() => approveListing(listing)}>
                         <Ionicons name="checkmark" size={16} color="#fff" />
                         <Text style={styles.approveBtnText}>Approve</Text>
                       </TouchableOpacity>

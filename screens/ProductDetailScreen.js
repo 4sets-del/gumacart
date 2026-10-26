@@ -222,7 +222,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     try {
       const url = listingShareUrl(product.id);
       await Share.share({
-        message: `Check out "${product.name}" on SLSU-GumaCart (${priceLabel(product).text})\n${url}`,
+        message: `🛍️ ${product.name} · ${priceLabel(product).text}\nOn SLSU-GumaCart: ${url}`,
       });
     } catch (e) {}
   };

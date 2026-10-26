@@ -74,6 +74,17 @@ export function priceLabel(item) {
   return { text: item.price != null ? `₱${Number(item.price).toLocaleString()}` : '₱—', color: palette().primary };
 }
 
+// When a listing went live on the marketplace, in ms: its first approval or
+// last renewal (listedAt), so a listing approved days after it was written
+// still counts as new. Older listings fall back to when they were posted.
+// The on-phone cache stores plain numbers (listedAtMs / createdAtMs).
+// Null if unknown.
+export function listedMs(item) {
+  const ts = item?.listedAt || item?.createdAt;
+  if (ts?.toMillis) return ts.toMillis();
+  return item?.listedAtMs || item?.createdAtMs || null;
+}
+
 // Compact age for cards: "Just now", "5m", "3h", "2d", then a short date.
 export function shortTimeAgo(date) {
   if (!date) return '';
@@ -90,6 +101,6 @@ export function shortTimeAgo(date) {
 
 // Shared listing links are web links, so Messenger / Facebook make them
 // tappable. On Android they open the app (App Links: hosting/.well-known);
-// otherwise hosting/listing.html offers to open it.
+// otherwise the page from the listingPage function offers to open it.
 export const SHARE_LINK_BASE = 'https://gumacartfinal.web.app';
 export const listingShareUrl = (id) => `${SHARE_LINK_BASE}/listing/${id}`;

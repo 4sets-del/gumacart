@@ -151,10 +151,7 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
       badge: 1,
     };
     if (image) msg.richContent = { image };
-    if (groupTag) {
-      msg.tag = groupTag;
-      msg._displayInForeground = true;
-    }
+    if (groupTag) msg.tag = groupTag;
     return msg;
   });
 
@@ -622,8 +619,12 @@ exports.expireListings = functions
       const d = doc.data();
       if (d.reserved || !d.sellerId) continue;
       const itemName = d.name || d.title || "your listing";
+      // Counted from when it went live (see listedMs in constants/listings.js);
+      // the query on createdAt is a superset, as listedAt is never earlier.
+      const liveMs = (d.listedAt || d.createdAt).toMillis();
+      if (liveMs >= now - 27 * DAY) continue;
       const link = { nav: "listing", listingId: doc.id };
-      if (d.createdAt.toMillis() < now - 30 * DAY) {
+      if (liveMs < now - 30 * DAY) {
         await doc.ref.update({ status: "expired", expiredAt: FieldValue.serverTimestamp() });
         await notifyUser(d.sellerId, {
           storeType: "listing_expired", styleKey: "system", data: link,
@@ -826,4 +827,27 @@ exports.adminDeleteUser = functions
       await deleteUserData(uid);
     }
     return { ok: true };
+  });
+
+// Shared listing links: builds the page (with the item's photo, name and
+// price for link previews) for https://gumacartfinal.web.app/listing/<id>.
+const { renderListingPage } = require("./listingPage");
+
+exports.listingPage = functions
+  .region("asia-southeast1")
+  .https.onRequest(async (req, res) => {
+    const id = (req.path.split("/listing/")[1] || "").split("/")[0];
+    let item = null;
+    if (/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
+      try {
+        const snap = await db.collection("listings").doc(id).get();
+        if (snap.exists) item = snap.data();
+      } catch (e) {
+        console.error("listingPage:", e.message);
+      }
+    }
+    // Cached briefly at the edge, so a link shared in a big group chat
+    // doesn't read the listing for every preview.
+    res.set("Cache-Control", "public, max-age=300, s-maxage=600");
+    res.status(200).send(renderListingPage(item ? id : "", item));
   });

@@ -15,7 +15,7 @@ import { academicLabel } from "../constants/school";
 import { useSearchAlerts, findAlert, addAlert, removeAlert, keywordsOf } from "../utils/searchAlerts";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
 import { useTheme } from '../context/ThemeContext';
-import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle } from "../constants/listings";
+import { CATEGORIES, LISTING_TYPES, normalizeCategory, listingTitle, listedMs } from "../constants/listings";
 import { useActiveListings } from "../utils/useListings";
 import { useSellerRatings } from "../utils/sellerRatings";
 
@@ -36,7 +36,7 @@ const POSTED_WITHIN = [
   { id: "week", label: "This week", ms: 7 * 24 * 3600 * 1000 },
   { id: "month", label: "This month", ms: 30 * 24 * 3600 * 1000 },
 ];
-const postedMs = (l) => (l.createdAt?.toMillis ? l.createdAt.toMillis() : l.createdAtMs || Date.now());
+const postedMs = (l) => listedMs(l) || Date.now();
 
 function toggleIn(list, value) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];

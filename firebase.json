@@ -34,7 +34,10 @@
     "rewrites": [
       {
         "source": "/listing/**",
-        "destination": "/listing.html"
+        "function": {
+          "functionId": "listingPage",
+          "region": "asia-southeast1"
+        }
       }
     ],
     "headers": [

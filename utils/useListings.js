@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth, db } from '../firebaseConfig';
 import { useBlocked } from './blocking';
+import { listedMs } from '../constants/listings';
 
 // One shared Firestore listener for active listings, used by every screen
 // (Home, Categories, Search...). Before, each screen opened its own listener
@@ -27,7 +28,7 @@ const subscribers = new Set();
 
 // Pending server timestamps count as "now"; listings restored from the
 // on-phone copy carry a plain createdAtMs number instead.
-const millis = (item) => (item.createdAt?.toMillis ? item.createdAt.toMillis() : item.createdAtMs || Date.now());
+const millis = (item) => listedMs(item) || Date.now();
 
 // The newest listings are also saved on the phone so Home can show them
 // instantly on the next launch while Firestore connects.
@@ -35,9 +36,10 @@ const STORAGE_KEY = 'gumacart:lastListings';
 const SAVED_COUNT = 60;
 
 function saveToPhone(items) {
-  const slim = items.slice(0, SAVED_COUNT).map(({ createdAt, updatedAt, approvedAt, rejectedAt, ...rest }) => ({
+  const slim = items.slice(0, SAVED_COUNT).map(({ createdAt, listedAt, updatedAt, approvedAt, rejectedAt, ...rest }) => ({
     ...rest,
     createdAtMs: createdAt?.toMillis ? createdAt.toMillis() : null,
+    listedAtMs: listedAt?.toMillis ? listedAt.toMillis() : null,
   }));
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(slim)).catch(() => {});
 }

@@ -23,6 +23,7 @@ import ReportSheet from "../components/ReportSheet";
 import Sheet, { FormField, SheetOption } from "../components/Sheet";
 import { useBlocked, blockUser, unblockUser } from "../utils/blocking";
 import { useTheme } from '../context/ThemeContext';
+import { listedMs } from "../constants/listings";
 
 
 function StarRating({ rating, size = 20, onPress }) {
@@ -99,7 +100,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       const sellerDoc = await getDoc(doc(db, "users", sellerId));
       if (sellerDoc.exists()) setSeller(sellerDoc.data());
       const listingsSnap = await getDocs(query(collection(db, "listings"), where("sellerId", "==", sellerId)));
-      setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0)));
+      setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (listedMs(b) || 0) - (listedMs(a) || 0)));
       const reviewsSnap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", sellerId)));
       setReviews(reviewsSnap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.toDate?.() || 0) - (a.createdAt?.toDate?.() || 0)));
 
