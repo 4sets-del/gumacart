@@ -10,7 +10,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { ProductRow, SaveButton } from "../components/ProductCard";
 import { SPACING, RADIUS, colorForName, FONTS } from "../constants/theme";
-import { getUserBasics } from "../utils/userCache";
+import { getUserBasics, useUserBasicsMap } from "../utils/userCache";
 import { academicLabel } from "../constants/school";
 import { useSearchAlerts, findAlert, addAlert, removeAlert, keywordsOf } from "../utils/searchAlerts";
 import Sheet, { FormField, SheetSection } from "../components/Sheet";
@@ -64,6 +64,9 @@ export default function SearchScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const initialCategory = route?.params?.category || null;
   const [searchText, setSearchText]       = useState("");
+  // "See All" on Home's "From <course> students" row: only listings by
+  // sellers in that course, shown as a removable chip.
+  const [courseFilter, setCourseFilter]   = useState(route?.params?.course || null);
   const [activeTab, setActiveTab]         = useState("listings"); // "listings" | "sellers"
   const { listings, loading: loadingListings } = useActiveListings();
   const ratings = useSellerRatings(listings);
@@ -140,6 +143,8 @@ export default function SearchScreen({ navigation, route }) {
   const min = parseFloat(filters.minPrice);
   const max = parseFloat(filters.maxPrice);
 
+  const courseSellers = useUserBasicsMap(courseFilter ? listings.map((l) => l.sellerId) : []);
+
   const filteredListings = listings.filter((l) => {
     const matchSearch = !term ||
       listingTitle(l).toLowerCase().includes(term) ||
@@ -153,7 +158,8 @@ export default function SearchScreen({ navigation, route }) {
     const matchMax = isNaN(max) || (price !== null && price <= max);
     const within = POSTED_WITHIN.find((p) => p.id === (filters.posted || "any"))?.ms;
     const matchPosted = !within || postedMs(l) >= Date.now() - within;
-    return matchSearch && matchCat && matchType && matchMin && matchMax && matchPosted;
+    const matchCourse = !courseFilter || courseSellers[l.sellerId]?.course === courseFilter;
+    return matchSearch && matchCat && matchType && matchMin && matchMax && matchPosted && matchCourse;
   });
 
   const sortedListings = (() => {
@@ -287,6 +293,19 @@ export default function SearchScreen({ navigation, route }) {
       {activeTab === "listings" && (
         <View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow}>
+            {courseFilter ? (
+              <TouchableOpacity
+                style={[styles.chip, styles.chipOn, { flexDirection: "row", gap: 5 }]}
+                activeOpacity={0.8}
+                onPress={() => setCourseFilter(null)}
+                accessibilityRole="button"
+                accessibilityLabel={`Showing ${courseFilter} students only. Tap to show everyone.`}
+              >
+                <Ionicons name="school" size={14} color="#fff" />
+                <Text style={[styles.chipText, styles.chipTextOn]}>{courseFilter} students</Text>
+                <Ionicons name="close" size={14} color="#fff" />
+              </TouchableOpacity>
+            ) : null}
             {QUICK_CHIPS.map((chip) => (
               <TouchableOpacity key={chip.id} style={[styles.chip, chip.active && styles.chipOn]} activeOpacity={0.8} onPress={chip.onPress}>
                 <Text style={[styles.chipText, chip.active && styles.chipTextOn]}>{chip.label}</Text>

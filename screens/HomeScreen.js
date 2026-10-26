@@ -187,7 +187,7 @@ export default function HomeScreen({ navigation, route }) {
   const shownListings = typeFilter === 'all' ? listings : listings.filter((l) => (l.type || 'sell') === typeFilter);
 
 
-  // Everything above the "Latest Listings" grid. The grid itself is a
+  // Everything above the "All Listings" grid. The grid itself is a
   // virtualized FlatList, so only cards near the screen are drawn even when
   // the marketplace has hundreds of items.
   const listHeader = (
@@ -300,6 +300,9 @@ export default function HomeScreen({ navigation, route }) {
                   <View style={[styles.sectionIcon, { backgroundColor: '#7C3AED2E' }]}><Ionicons name="school" size={15} color="#7C3AED" /></View>
                   <Text style={styles.sectionTitle}>From {myCourse} students</Text>
                 </View>
+                <TouchableOpacity onPress={() => navigation.navigate('Search', { course: myCourse })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={styles.seeAll}>See All</Text>
+                </TouchableOpacity>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
                 {courseListings.map((item) => (
@@ -313,9 +316,9 @@ export default function HomeScreen({ navigation, route }) {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <View style={[styles.sectionIcon, { backgroundColor: '#2563EB2E' }]}><Ionicons name="sparkles" size={15} color="#2563EB" /></View>
-              <Text style={styles.sectionTitle}>Latest Listings</Text>
+              <Text style={styles.sectionTitle}>All Listings</Text>
             </View>
-            <Text style={styles.sectionCount}>{shownListings.length} items</Text>
+            <Text style={styles.sectionCount}>{shownListings.length} items · newest first</Text>
           </View>
           <ScrollView ref={typeChipsRef} collapsable={false} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.typeRow}>
             {TYPE_FILTERS(COLORS).map((t) => {

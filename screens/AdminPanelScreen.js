@@ -342,7 +342,7 @@ export default function AdminPanelScreen({ navigation, route }) {
   };
 
   // listedAt is when the listing first goes live (its age on cards and in
-  // "Latest"). Re-approving an edit keeps the original, and listings approved
+  // "All Listings"). Re-approving an edit keeps the original, and listings approved
   // before listedAt existed keep using their posting time.
   const approveListing = async (listing) => {
     const firstApproval = !listing.listedAt && !listing.approvedAt;
