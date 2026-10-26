@@ -11,6 +11,7 @@ import {
 } from "firebase/firestore";
 import { ref, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
@@ -335,13 +336,16 @@ export default function ChatScreen({ route, navigation }) {
 
     const result = type === "camera"
       ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images", "videos"], quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({
+      : await pickFromGallery({
           mediaTypes: ["images", "videos"], quality: 0.7,
           allowsMultipleSelection: true, selectionLimit: MAX_MEDIA, orderedSelection: true,
         });
     if (result.canceled || !result.assets?.length) return;
 
     const assets = result.assets.slice(0, MAX_MEDIA);
+    if (result.assets.length > MAX_MEDIA) {
+      Alert.alert("Too many picked", `You can send up to ${MAX_MEDIA} at once, so only the first ${MAX_MEDIA} will be sent.`);
+    }
     let failed = 0;
     setUploadingMedia({ done: 0, total: assets.length });
     // Sent one by one so they arrive in the order they were picked.

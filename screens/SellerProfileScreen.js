@@ -8,6 +8,7 @@ import {
   collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc,
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
@@ -134,7 +135,7 @@ export default function SellerProfileScreen({ route, navigation }) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission required", "Allow photo access to attach proof."); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
+      const result = await pickFromGallery({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
       if (!result.canceled && result.assets[0]) setProofImage(result.assets[0].uri);
     } catch (e) { Alert.alert("Error", "Could not open gallery."); }
   };

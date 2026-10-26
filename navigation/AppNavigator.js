@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as Linking from 'expo-linking';
+import { SHARE_LINK_BASE } from '../constants/listings';
 import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 
 import { useAuth } from '../context/AuthContext';
@@ -48,10 +49,11 @@ import { auth, db } from '../firebaseConfig';
 
 const Stack = createStackNavigator();
 
-// Shared links open the listing directly, e.g. gumacart://listing/abc123
+// Shared links open the listing directly, e.g.
+// https://gumacartfinal.web.app/listing/abc123 or gumacart://listing/abc123
 // (in Expo Go the link uses Expo's own exp:// prefix instead).
 const LINKING = {
-  prefixes: [Linking.createURL('/'), 'gumacart://'],
+  prefixes: [Linking.createURL('/'), 'gumacart://', SHARE_LINK_BASE],
   config: {
     screens: {
       ProductDetail: 'listing/:id',

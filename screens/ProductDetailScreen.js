@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { auth, db, storage } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
@@ -30,11 +31,10 @@ import { useTheme } from '../context/ThemeContext';
 import GradientButton from "../components/GradientButton";
 import StatusBarScrim from "../components/StatusBarScrim";
 import { recordView } from "../utils/views";
-import * as Linking from "expo-linking";
 import { getUserBasics } from "../utils/userCache";
 import { academicLabel } from "../constants/school";
 import { markInterested, getInterested } from "../utils/interest";
-import { normalizeCategory, priceLabel, typeMeta, listingImage } from "../constants/listings";
+import { normalizeCategory, priceLabel, typeMeta, listingImage, listingShareUrl } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
@@ -170,7 +170,7 @@ export default function ProductDetailScreen({ route, navigation }) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) { Alert.alert("Permission required", "Allow photo access to attach proof."); return; }
-      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
+      const result = await pickFromGallery({ mediaTypes: ["images"], allowsEditing: false, quality: 0.7 });
       if (!result.canceled && result.assets[0]) setProofImage(result.assets[0].uri);
     } catch (e) { Alert.alert("Error", "Could not open gallery."); }
   };
@@ -220,7 +220,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   // seller's phone number.
   const shareLink = async () => {
     try {
-      const url = Linking.createURL(`listing/${product.id}`);
+      const url = listingShareUrl(product.id);
       await Share.share({
         message: `Check out "${product.name}" on SLSU-GumaCart (${priceLabel(product).text})\n${url}`,
       });

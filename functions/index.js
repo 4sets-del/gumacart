@@ -4,6 +4,7 @@ const { initializeApp } = require("firebase-admin/app");
 const { getFirestore, FieldValue } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { getAuth } = require("firebase-admin/auth");
+const { getMessaging } = require("firebase-admin/messaging");
 
 initializeApp();
 const db = getFirestore();
@@ -49,8 +50,38 @@ async function sendExpoPush(messages) {
   }
 }
 
-// `image`: a person's profile photo URL. Android shows it as the round
-// picture beside the notification (like Messenger), via Expo's richContent.
+// Sends straight through Firebase Cloud Messaging to phones that registered
+// an FCM token (APKs from 2026-10-26 on). These are data-only messages in the
+// format the app's notification library reads (title / message / body = JSON
+// of the data), so the app draws the notification itself:
+//  - `tag` is its id, so a new message from the same chat replaces the card;
+//  - `image` (patches/expo-notifications…) is the round picture beside the
+//    text, which stays put when the card is expanded to show every line.
+// Expo's push service drops both. Returns tokens FCM reports as invalid.
+async function sendFcmPush(tokens, { title, body, data, tag, image, channelId, color }) {
+  const payload = {
+    title, message: body, body: JSON.stringify(data || {}), channelId, color,
+    ...(tag ? { tag } : {}),
+    ...(image ? { image } : {}),
+  };
+  const messages = tokens.map((token) => ({ token, data: payload, android: { priority: "high" } }));
+  try {
+    const res = await getMessaging().sendEach(messages);
+    return res.responses
+      .map((r, i) => {
+        const code = r.error?.code;
+        return code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token"
+          ? tokens[i] : null;
+      })
+      .filter(Boolean);
+  } catch (e) {
+    console.error("FCM push error:", e.message);
+    return [];
+  }
+}
+
+// `image`: a person's profile photo URL (or letter avatar), shown as the
+// picture on the notification.
 async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey, image }) {
   const style = NOTIF_STYLES[styleKey] || NOTIF_STYLES.system;
   const notifCol = db.collection("users").doc(userId).collection("notifications");
@@ -83,7 +114,8 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   if (!userSnap.exists) return;
   const userData = userSnap.data();
   const tokens = Array.isArray(userData.pushTokens) ? userData.pushTokens : [];
-  if (!tokens.length) return;
+  const fcmTokens = Array.isArray(userData.fcmTokens) ? userData.fcmTokens : [];
+  if (!tokens.length && !fcmTokens.length) return;
 
   // Settings → Notifications. Muted types are still saved to the in-app list
   // above; only the phone push is skipped.
@@ -93,6 +125,19 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   if (storeType !== "search_alert" && data?.nav === "listing" && prefs.listings === false) return;
   if (storeType === "message" && prefs.messages === false) return;
   if (storeType === "review" && prefs.reviews === false) return;
+
+  // Phones on a current APK register both tokens; FCM is used for them so
+  // nothing arrives twice. Expo push remains for older APKs.
+  if (fcmTokens.length) {
+    const dead = await sendFcmPush(fcmTokens, {
+      title: style.titlePrefix + title, body, data: { type: storeType, ...(data || {}) },
+      tag: groupTag, image, channelId: style.channelId, color: style.color,
+    });
+    if (dead.length) {
+      await db.collection("users").doc(userId).update({ fcmTokens: FieldValue.arrayRemove(...dead) });
+    }
+    return;
+  }
 
   const messages = tokens.map((token) => {
     const msg = {
@@ -119,11 +164,26 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   }
 }
 
-// A user's profile photo URL (or undefined), for notification pictures.
+// Letter avatars on Firebase Hosting (scripts/make-avatars.sh), for people
+// without a profile photo: the first letter of their name in the same color
+// the app gives them (colorForName / ACCENTS in constants/theme.js).
+const AVATAR_BASE = "https://gumacartfinal.web.app/avatars";
+const AVATAR_COLORS = 8;
+
+function letterAvatar(name = "") {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  const initial = (name.trim()[0] || "").toUpperCase();
+  const file = /^[A-Z0-9]$/.test(initial) ? initial : "other";
+  return `${AVATAR_BASE}/${Math.abs(hash) % AVATAR_COLORS}/${file}.png`;
+}
+
+// A user's profile photo URL, or their letter avatar, for notification pictures.
 async function photoOf(uid) {
   if (!uid) return undefined;
   try {
-    return (await db.collection("users").doc(uid).get()).get("photoURL") || undefined;
+    const user = await db.collection("users").doc(uid).get();
+    return user.get("photoURL") || letterAvatar(user.get("name") || "");
   } catch (e) {
     return undefined;
   }

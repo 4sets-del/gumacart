@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Constants from "expo-constants";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { uploadFile } from "../utils/upload";
 import { unregisterPushToken } from "../utils/notifications";
 import AcademicFields from "../components/AcademicFields";
@@ -117,7 +118,7 @@ export default function SettingsScreen({ navigation }) {
       const options = { mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 };
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync(options)
-        : await ImagePicker.launchImageLibraryAsync(options);
+        : await pickFromGallery(options);
       if (result.canceled || !result.assets?.[0]) return;
       setUploadingPhoto(true);
       const url = await uploadFile(result.assets[0].uri, `profiles/${user.uid}/avatar.jpg`, { maxSize: 600 });

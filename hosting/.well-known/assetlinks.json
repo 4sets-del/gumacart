@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.omargerez.gumacart",
+      "sha256_cert_fingerprints": [
+        "55:E2:BA:E3:B6:B2:73:EA:DC:9E:15:96:B7:95:D5:CC:F3:9C:FA:15:50:7C:47:3B:77:B5:05:EB:6B:EA:05:ED"
+      ]
+    }
+  }
+]

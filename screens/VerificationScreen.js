@@ -7,6 +7,7 @@ import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, updateDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import ScreenHeader from "../components/ScreenHeader";
@@ -56,7 +57,7 @@ export default function VerificationScreen({ navigation }) {
   const pickIdPhoto = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your photo library."); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, quality: 0.8 });
+    const result = await pickFromGallery({ mediaTypes: ["images"], allowsEditing: true, quality: 0.8 });
     if (!result.canceled) setIdPhoto(result.assets[0].uri);
   };
 

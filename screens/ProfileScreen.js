@@ -9,6 +9,7 @@ import { useIsFocused } from '@react-navigation/native';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { updateProfile } from "firebase/auth";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import { LinearGradient } from "expo-linear-gradient";
@@ -132,7 +133,7 @@ export default function ProfileScreen({ navigation }) {
       if (!permission.granted) { Alert.alert("Permission required"); return; }
       const result = source === "camera"
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 })
-        : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
+        : await pickFromGallery({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
       if (!result.canceled && result.assets[0]) await uploadPhoto(result.assets[0].uri);
     } catch (e) { Alert.alert("Error", "Could not open camera/gallery."); }
   };

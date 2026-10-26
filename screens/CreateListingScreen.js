@@ -13,6 +13,7 @@ import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteFiel
 import { auth, db } from "../firebaseConfig";
 import { uploadFile } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
+import { pickFromGallery } from "../utils/pickFromGallery";
 import { CATEGORIES, normalizeCategory } from "../constants/listings";
 import ScreenHeader from "../components/ScreenHeader";
 import { RADIUS, FONTS } from "../constants/theme";
@@ -132,14 +133,18 @@ export default function CreateListingScreen({ navigation, route }) {
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your photo library."); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await pickFromGallery({
       mediaTypes: ["images"], allowsMultipleSelection: true,
       selectionLimit: MAX_PHOTOS - images.length,
       quality: 0.7,
     });
     if (!result.canceled) {
-      const newUris = result.assets.map((a) => a.uri);
+      const room = MAX_PHOTOS - images.length;
+      const newUris = result.assets.slice(0, room).map((a) => a.uri);
       setImages((prev) => [...prev, ...newUris].slice(0, MAX_PHOTOS));
+      if (result.assets.length > room) {
+        Alert.alert("Photo limit", `A listing can have up to ${MAX_PHOTOS} photos, so only the first ${room} you picked were added.`);
+      }
     }
   };
 

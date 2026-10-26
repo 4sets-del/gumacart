@@ -87,3 +87,9 @@ export function shortTimeAgo(date) {
   if (days < 7) return `${days}d`;
   return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
+
+// Shared listing links are web links, so Messenger / Facebook make them
+// tappable. On Android they open the app (App Links: hosting/.well-known);
+// otherwise hosting/listing.html offers to open it.
+export const SHARE_LINK_BASE = 'https://gumacartfinal.web.app';
+export const listingShareUrl = (id) => `${SHARE_LINK_BASE}/listing/${id}`;

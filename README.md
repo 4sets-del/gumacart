@@ -69,11 +69,12 @@ The download link appears when the build finishes (expo.dev → GumaCart → Bui
 ## Deploying the backend
 
 ```bash
-npx firebase-tools deploy --only functions,firestore:rules,firestore:indexes,storage
+npx firebase-tools deploy --only functions,firestore:rules,firestore:indexes,storage,hosting
 ```
 
 - Cloud Functions need the Firebase **Blaze** plan. The scheduled ones (reservations, listing expiry) use Cloud Scheduler.
 - New indexes take a few minutes to build.
+- `hosting/` is the page behind shared listing links (`https://gumacartfinal.web.app/listing/<id>`). `hosting/.well-known/assetlinks.json` lets Android open those links straight in the app; it holds the APK signing fingerprint, so add the Play Store signing fingerprint there when publishing.
 - If the deploy asks to delete indexes that aren't in `firestore.indexes.json`, answer **N**.
 
 ## Admin

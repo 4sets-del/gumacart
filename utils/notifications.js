@@ -25,9 +25,10 @@ if (!isExpoGo) {
   }
 }
 
-// The push token registered for the signed-in user on this phone, so it can
-// be removed from their account when they log out.
+// The push tokens registered for the signed-in user on this phone, so they
+// can be removed from their account when they log out.
 let currentToken = null;
+let currentFcmToken = null;
 
 // Set debug=true to see alerts explaining exactly where registration stops.
 const DEBUG = false;
@@ -106,6 +107,21 @@ export async function registerForPushNotifications(userId) {
       { merge: true }
     );
 
+    // The phone's own Firebase token. The server sends through Firebase
+    // directly when it has one, so a new message replaces its chat's
+    // notification and shows the sender's picture (Expo's service drops both).
+    if (Platform.OS === 'android') {
+      try {
+        const { data: fcmToken } = await Notifications.getDevicePushTokenAsync();
+        if (fcmToken) {
+          currentFcmToken = fcmToken;
+          await setDoc(doc(db, 'users', userId), { fcmTokens: arrayUnion(fcmToken) }, { merge: true });
+        }
+      } catch (e) {
+        debugAlert('FCM token error: ' + (e?.message || e));
+      }
+    }
+
     debugAlert('Token saved to Firestore!');
     return token;
   } catch (e) {
@@ -117,13 +133,17 @@ export async function registerForPushNotifications(userId) {
 // Stop sending this account's notifications to this phone. Must run while
 // still signed in (the user doc is only writable by its owner).
 export async function unregisterPushToken(userId) {
-  if (!userId || !currentToken) return;
+  if (!userId || (!currentToken && !currentFcmToken)) return;
+  const update = {};
+  if (currentToken) update.pushTokens = arrayRemove(currentToken);
+  if (currentFcmToken) update.fcmTokens = arrayRemove(currentFcmToken);
   try {
-    await updateDoc(doc(db, 'users', userId), { pushTokens: arrayRemove(currentToken) });
+    await updateDoc(doc(db, 'users', userId), update);
   } catch (e) {
-    // Not fatal: the server also prunes tokens Expo reports as dead.
+    // Not fatal: the server also prunes tokens reported as dead.
   }
   currentToken = null;
+  currentFcmToken = null;
 }
 
 export function addNotificationResponseListener(handler) {
