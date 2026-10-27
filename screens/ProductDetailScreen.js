@@ -52,6 +52,10 @@ const INQUIRY_TEXT = {
   buy: "Hi! I have what you're looking for.",
 };
 
+// Listings can have any number of photos; past this many, a "3 / 25"
+// counter replaces the dots under the photo.
+const MAX_DOTS = 8;
+
 export default function ProductDetailScreen({ route, navigation }) {
   const { COLORS, styles } = useTheme(createStyles);
   // Start from the listing passed in, then stay live: price, photos and
@@ -464,7 +468,9 @@ export default function ProductDetailScreen({ route, navigation }) {
 
           {images.length > 1 && (
             <View style={styles.dotsRow}>
-              {images.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
+              {images.length > MAX_DOTS
+                ? <Text style={styles.photoCounter}>{activeImageIndex + 1} / {images.length}</Text>
+                : images.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
             </View>
           )}
           {isSold && (
@@ -662,7 +668,9 @@ export default function ProductDetailScreen({ route, navigation }) {
           />
           {images.length > 1 && (
             <View style={styles.fullscreenDots}>
-              {images.map((_, i) => <View key={i} style={[styles.dot, fullscreenIndex === i && styles.dotActive]} />)}
+              {images.length > MAX_DOTS
+                ? <Text style={styles.photoCounter}>{fullscreenIndex + 1} / {images.length}</Text>
+                : images.map((_, i) => <View key={i} style={[styles.dot, fullscreenIndex === i && styles.dotActive]} />)}
             </View>
           )}
         </View>
@@ -802,6 +810,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   dotsRow: { position: "absolute", bottom: 12, left: 0, right: 0, flexDirection: "row", justifyContent: "center", gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.55)" },
   dotActive: { backgroundColor: COLORS.surface, width: 18 },
+  photoCounter: { color: "#fff", fontSize: 12, fontWeight: "700", backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999, overflow: "hidden" },
   soldBanner: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.5)", alignItems: "center", justifyContent: "center" },
   soldBannerPill: { backgroundColor: COLORS.error, paddingHorizontal: 28, paddingVertical: 10, borderRadius: 12 },
   soldBannerText: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", letterSpacing: 4 },

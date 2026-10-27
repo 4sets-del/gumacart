@@ -794,10 +794,10 @@ async function deleteUserData(uid) {
   await db.recursiveDelete(userRef);
   await db.recursiveDelete(db.collection("wishlists").doc(uid));
 
-  // Uploaded files: profile photo, listing photos and student ID.
+  // Uploaded files: profile photo, listing photos, student ID and review photos.
   const bucket = getStorage().bucket();
   await Promise.all(
-    [`profiles/${uid}/`, `listings/${uid}/`, `verifications/${uid}/`].map((prefix) =>
+    [`profiles/${uid}/`, `listings/${uid}/`, `verifications/${uid}/`, `reviews/${uid}/`].map((prefix) =>
       bucket.deleteFiles({ prefix }).catch((e) => console.error("Storage cleanup", prefix, e.message)),
     ),
   );

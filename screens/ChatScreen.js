@@ -42,8 +42,6 @@ function timeLabel(date) {
   return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-// Most photos/videos that can be picked from the gallery at once.
-const MAX_MEDIA = 10;
 
 // A photo or video with nothing else in its bubble (no reply preview).
 function isBareMedia(msg) {
@@ -338,14 +336,11 @@ export default function ChatScreen({ route, navigation }) {
       ? await ImagePicker.launchCameraAsync({ mediaTypes: ["images", "videos"], quality: 0.7 })
       : await pickFromGallery({
           mediaTypes: ["images", "videos"], quality: 0.7,
-          allowsMultipleSelection: true, selectionLimit: MAX_MEDIA, orderedSelection: true,
+          allowsMultipleSelection: true, selectionLimit: 0, orderedSelection: true,
         });
     if (result.canceled || !result.assets?.length) return;
 
-    const assets = result.assets.slice(0, MAX_MEDIA);
-    if (result.assets.length > MAX_MEDIA) {
-      Alert.alert("Too many picked", `You can send up to ${MAX_MEDIA} at once, so only the first ${MAX_MEDIA} will be sent.`);
-    }
+    const assets = result.assets; // no limit on how many are sent at once
     let failed = 0;
     setUploadingMedia({ done: 0, total: assets.length });
     // Sent one by one so they arrive in the order they were picked.
@@ -485,7 +480,7 @@ export default function ChatScreen({ route, navigation }) {
   const showMediaOptions = () => {
     Alert.alert("Send", "Choose what to send", [
       { text: "Take Photo/Video", icon: "camera", onPress: () => pickMedia("camera") },
-      { text: `Choose from Gallery (up to ${MAX_MEDIA})`, icon: "images", onPress: () => pickMedia("gallery") },
+      { text: "Choose from Gallery", icon: "images", onPress: () => pickMedia("gallery") },
       { text: "Cancel", style: "cancel" },
     ]);
   };

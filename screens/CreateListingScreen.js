@@ -24,7 +24,6 @@ import { ProductCard } from "../components/ProductCard";
 
 
 
-const MAX_PHOTOS = 6;
 
 // Small red message shown under a field after a failed "Post" attempt.
 function FieldError({ msg }) {
@@ -133,33 +132,21 @@ export default function CreateListingScreen({ navigation, route }) {
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your photo library."); return; }
+    // No limit on how many photos a listing has.
     const result = await pickFromGallery({
-      mediaTypes: ["images"], allowsMultipleSelection: true,
-      selectionLimit: MAX_PHOTOS - images.length,
-      quality: 0.7,
+      mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 0, quality: 0.7,
     });
-    if (!result.canceled) {
-      const room = MAX_PHOTOS - images.length;
-      const newUris = result.assets.slice(0, room).map((a) => a.uri);
-      setImages((prev) => [...prev, ...newUris].slice(0, MAX_PHOTOS));
-      if (result.assets.length > room) {
-        Alert.alert("Photo limit", `A listing can have up to ${MAX_PHOTOS} photos, so only the first ${room} you picked were added.`);
-      }
-    }
+    if (!result.canceled) setImages((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
   };
 
   const takePhoto = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your camera."); return; }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [4, 3], quality: 0.7 });
-    if (!result.canceled) setImages((prev) => [...prev, result.assets[0].uri].slice(0, MAX_PHOTOS));
+    if (!result.canceled) setImages((prev) => [...prev, result.assets[0].uri]);
   };
 
   const showImageOptions = () => {
-    if (images.length >= MAX_PHOTOS) {
-      Alert.alert("Photo limit reached", `You can add up to ${MAX_PHOTOS} photos. Remove one to add another.`);
-      return;
-    }
     Alert.alert("Add Photo", "Choose an option", [
       { text: "Take Photo", onPress: takePhoto },
       { text: "Choose from Gallery", onPress: pickImages },
@@ -341,7 +328,7 @@ export default function CreateListingScreen({ navigation, route }) {
           {/* Photos */}
           <View style={styles.sectionLabelRow}>
             <Text style={styles.sectionLabel}>Photos</Text>
-            <Text style={[styles.required, images.length >= MAX_PHOTOS && { color: COLORS.primary }]}>{images.length}/{MAX_PHOTOS}</Text>
+            {images.length > 0 ? <Text style={[styles.required, { color: COLORS.primary }]}>{images.length} added</Text> : null}
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
             {images.map((uri, index) => (

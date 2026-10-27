@@ -18,6 +18,7 @@ export const PRIVACY_SECTIONS = [
       'Profile photo, if you add one.',
       'Listings: photos, title, description, price, quantity, category, condition and meet-up location. We do not ask for or show phone numbers; buyers and sellers talk through the in-app chat.',
       'Messages, including photos and videos you send in chat.',
+      'Reviews you write: the star rating, your comment, any photos you add, and the item you bought.',
       'Reviews and ratings you write, items you save, searches you ask to be notified about, people you block, reports, feedback and ban appeals.',
     ],
   },
@@ -64,7 +65,7 @@ export const PRIVACY_SECTIONS = [
     title: 'How long we keep it',
     points: [
       'We keep your information while your account exists.',
-      'When you delete your account (Settings → Delete account), we delete your login, profile, listings and their photos, profile photo, student ID photo, reviews you wrote or received, saved items, saved searches and notifications.',
+      'When you delete your account (Settings → Delete account), we delete your login, profile, listings and their photos, profile photo, student ID photo, reviews you wrote (and their photos) or received, saved items, saved searches and notifications.',
       'Conversations are kept so the other person still has their chat history; your messages in them remain.',
       'If an admin removes your account, the same deletion happens.',
     ],

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Image, } from 'react-native';
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Image, Modal, } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
@@ -9,7 +9,9 @@ import {
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
-import { auth, db } from "../firebaseConfig";
+import { auth, db, storage } from "../firebaseConfig";
+import { ref, deleteObject } from "firebase/storage";
+import ZoomableImage from "../components/ZoomableImage";
 import { uploadFile } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
@@ -68,6 +70,10 @@ export default function SellerProfileScreen({ route, navigation }) {
   const [customReason, setCustomReason] = useState("");
   const [uploadingReport, setUploadingReport] = useState(false);
   const [myRating, setMyRating] = useState(0);
+  // Photos on the review being written: uploaded URLs (when editing) or
+  // local picks (no limit). Tapping a review photo opens it.
+  const [reviewPhotos, setReviewPhotos] = useState([]);
+  const [photoViewer, setPhotoViewer] = useState(null);
   const [myReview, setMyReview] = useState("");
   const [submittingReview, setSubmittingReview] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState(null);
@@ -91,7 +97,7 @@ export default function SellerProfileScreen({ route, navigation }) {
     const { purchases, unrated } = myPurchases;
     if (unrated.length) {
       setRatingDeal(unrated.find((d) => d.id === dealId) || unrated[0]);
-      setEditingReviewId(null); setMyRating(0); setMyReview("");
+      setEditingReviewId(null); setMyRating(0); setMyReview(""); setReviewPhotos([]);
       setShowRatingModal(true);
       return;
     }
@@ -112,6 +118,7 @@ export default function SellerProfileScreen({ route, navigation }) {
     autoOpened.current = true;
     const unrated = myPurchases.unrated;
     setRatingDeal(unrated.find((d) => d.id === route.params?.dealId) || unrated[0]);
+    setReviewPhotos([]);
     setShowRatingModal(true);
   }, [openRating, loading, isOwnProfile, canRate, myPurchases, route.params?.dealId]);
 
@@ -203,6 +210,38 @@ export default function SellerProfileScreen({ route, navigation }) {
 
   const avgRating = reviews.length > 0 ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : seller?.avgRating || 0;
 
+  const isLocal = (uri) => !/^https?:/.test(uri);
+
+  const addReviewPhotos = (source) => async () => {
+    try {
+      const result = source === "camera"
+        ? await (async () => {
+            const perm = await ImagePicker.requestCameraPermissionsAsync();
+            if (!perm.granted) { Alert.alert("Permission needed", "Please allow camera access."); return { canceled: true }; }
+            return ImagePicker.launchCameraAsync({ mediaTypes: ["images"], quality: 0.7 });
+          })()
+        : await pickFromGallery({ mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 0, quality: 0.7 });
+      if (result.canceled || !result.assets?.length) return;
+      setReviewPhotos((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+    } catch (e) { Alert.alert("Error", "Could not open photos."); }
+  };
+
+  const pickReviewPhotos = () => {
+    Alert.alert("Add photos", "Show the item you received.", [
+      { text: "Take Photo", icon: "camera", onPress: addReviewPhotos("camera") },
+      { text: "Choose from Gallery", icon: "images", onPress: addReviewPhotos("gallery") },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  };
+
+  // Uploads new picks to reviews/<reviewer>/<review>/ (Storage); already
+  // uploaded photos are kept as they are.
+  const uploadReviewPhotos = (reviewId) => Promise.all(reviewPhotos.map((uri, i) => (isLocal(uri)
+    ? uploadFile(uri, `reviews/${currentUser.uid}/${reviewId}/${Date.now()}_${i}.jpg`, { maxSize: 1280 })
+    : uri)));
+
+  const deletePhotoFiles = (urls) => Promise.all((urls || []).map((u) => deleteObject(ref(storage, u)).catch(() => {})));
+
   // The seller's stored avgRating/totalReviews are recalculated by the
   // onReviewWrite Cloud Function; this screen shows the live average from
   // the reviews it loads.
@@ -211,8 +250,11 @@ export default function SellerProfileScreen({ route, navigation }) {
     setSubmittingReview(true);
     try {
       if (editingReviewId) {
-        await updateDoc(doc(db, "reviews", editingReviewId), { rating: myRating, comment: myReview.trim(), editedAt: serverTimestamp() });
-        setShowRatingModal(false); setEditingReviewId(null); setMyRating(0); setMyReview("");
+        const before = reviews.find((r) => r.id === editingReviewId)?.photos || [];
+        const photos = await uploadReviewPhotos(editingReviewId);
+        await updateDoc(doc(db, "reviews", editingReviewId), { rating: myRating, comment: myReview.trim(), photos, editedAt: serverTimestamp() });
+        deletePhotoFiles(before.filter((u) => !photos.includes(u))); // ones removed while editing
+        setShowRatingModal(false); setEditingReviewId(null); setMyRating(0); setMyReview(""); setReviewPhotos([]);
         await loadAll();
         Alert.alert("Review Updated!");
         return;
@@ -225,16 +267,17 @@ export default function SellerProfileScreen({ route, navigation }) {
         setShowRatingModal(false); refreshPurchases();
         return;
       }
+      const photos = await uploadReviewPhotos(ratingDeal.id);
       await setDoc(reviewRef, {
         sellerId, sellerName, reviewerId: currentUser.uid,
         reviewerName: currentUser.displayName || "Anonymous",
-        rating: myRating, comment: myReview.trim(), createdAt: serverTimestamp(),
+        rating: myRating, comment: myReview.trim(), photos, createdAt: serverTimestamp(),
         dealId: ratingDeal.id,
         listingId: ratingDeal.listingId || null,
         listingName: ratingDeal.listingName || null,
         listingImage: ratingDeal.listingImage || null,
       });
-      setShowRatingModal(false); setMyRating(0); setMyReview(""); setRatingDeal(null);
+      setShowRatingModal(false); setMyRating(0); setMyReview(""); setRatingDeal(null); setReviewPhotos([]);
       refreshPurchases();
       await loadAll();
       Alert.alert("Review Submitted!", "Thank you for your feedback.");
@@ -244,7 +287,8 @@ export default function SellerProfileScreen({ route, navigation }) {
   };
 
   const handleEditReview = (review) => {
-    setEditingReviewId(review.id); setMyRating(review.rating); setMyReview(review.comment || ""); setShowRatingModal(true);
+    setEditingReviewId(review.id); setMyRating(review.rating); setMyReview(review.comment || "");
+    setReviewPhotos(review.photos || []); setShowRatingModal(true);
   };
 
   const handleDeleteReview = (review) => {
@@ -253,6 +297,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       { text: "Delete", style: "destructive", onPress: async () => {
         try {
           await deleteDoc(doc(db, "reviews", review.id));
+          deletePhotoFiles(review.photos);
           refreshPurchases(); // that purchase can be rated again
           await loadAll();
         } catch (e) { Alert.alert("Error", "Failed to delete review."); }
@@ -443,6 +488,15 @@ export default function SellerProfileScreen({ route, navigation }) {
                   </View>
                 ) : null}
                 {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
+                {review.photos?.length ? (
+                  <View style={styles.reviewPhotos}>
+                    {review.photos.map((uri) => (
+                      <TouchableOpacity key={uri} activeOpacity={0.85} onPress={() => setPhotoViewer(uri)} accessibilityRole="imagebutton" accessibilityLabel="Open review photo">
+                        <Image source={{ uri }} style={styles.reviewPhoto} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                ) : null}
                 {review.reviewerId === currentUser?.uid && (
                   <View style={styles.reviewActions}>
                     <TouchableOpacity style={styles.reviewActionBtn} activeOpacity={0.7} onPress={() => handleEditReview(review)}>
@@ -548,7 +602,32 @@ export default function SellerProfileScreen({ route, navigation }) {
           maxLength={300}
           hint={`${myReview.length}/300`}
         />
+        <Text style={styles.photosLabel}>Photos (optional)</Text>
+        <View style={styles.reviewPhotos}>
+          {reviewPhotos.map((uri) => (
+            <View key={uri}>
+              <Image source={{ uri }} style={styles.reviewPhotoLarge} />
+              <TouchableOpacity style={styles.photoRemove} onPress={() => setReviewPhotos((p) => p.filter((x) => x !== uri))} accessibilityRole="button" accessibilityLabel="Remove photo" hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
+                <Ionicons name="close" size={13} color="#fff" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.photoAdd} activeOpacity={0.8} onPress={pickReviewPhotos} accessibilityRole="button" accessibilityLabel="Add photos">
+            <Ionicons name="camera-outline" size={22} color={COLORS.primary} />
+            <Text style={styles.photoAddText}>{reviewPhotos.length ? `${reviewPhotos.length} added` : "Add"}</Text>
+          </TouchableOpacity>
+        </View>
       </Sheet>
+
+      {/* Full-screen review photo (pinch to zoom). */}
+      <Modal visible={!!photoViewer} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setPhotoViewer(null)}>
+        <View style={styles.viewer}>
+          {photoViewer ? <ZoomableImage uri={photoViewer} style={StyleSheet.absoluteFill} /> : null}
+          <TouchableOpacity style={[styles.viewerClose, { top: insets.top + 10 }]} onPress={() => setPhotoViewer(null)} accessibilityRole="button" accessibilityLabel="Close photo">
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={sellerName} icon="person" footer={null}>
         <SheetOption icon="flag" tone="danger" label="Report user" sub="Scam, harassment, fake account…" onPress={() => { setMenuOpen(false); openReport(); }} />
@@ -650,6 +729,15 @@ const createStyles = (COLORS) => StyleSheet.create({
   reviewDate: { fontSize: 11, color: COLORS.textMuted },
   reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
   reviewItem: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  reviewPhotos: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  reviewPhoto: { width: 64, height: 64, borderRadius: RADIUS.sm, backgroundColor: COLORS.surfaceAlt },
+  reviewPhotoLarge: { width: 76, height: 76, borderRadius: RADIUS.md, backgroundColor: COLORS.surfaceAlt },
+  photosLabel: { marginTop: 14, fontSize: 13, fontWeight: "700", color: COLORS.textSecondary },
+  photoRemove: { position: "absolute", top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center" },
+  photoAdd: { width: 76, height: 76, borderRadius: RADIUS.md, borderWidth: 1.5, borderStyle: "dashed", borderColor: COLORS.primary, alignItems: "center", justifyContent: "center", gap: 2 },
+  photoAddText: { fontSize: 11.5, fontWeight: "700", color: COLORS.primary },
+  viewer: { flex: 1, backgroundColor: "#000" },
+  viewerClose: { position: "absolute", right: 16, width: 40, height: 40, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center" },
   reviewItemImg: { width: 24, height: 24, borderRadius: 6, backgroundColor: COLORS.surfaceAlt },
   reviewItemText: { flexShrink: 1, fontSize: 12.5, fontWeight: "600", color: COLORS.textSecondary },
   dealPicker: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
