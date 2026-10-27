@@ -1,7 +1,7 @@
 // The v1 API keeps the existing deployed (1st gen) functions as they are.
 const functions = require("firebase-functions/v1");
 const { initializeApp } = require("firebase-admin/app");
-const { getFirestore, FieldValue } = require("firebase-admin/firestore");
+const { getFirestore, FieldValue, FieldPath } = require("firebase-admin/firestore");
 const { getStorage } = require("firebase-admin/storage");
 const { getAuth } = require("firebase-admin/auth");
 const { getMessaging } = require("firebase-admin/messaging");
@@ -113,9 +113,14 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   const userSnap = await db.collection("users").doc(userId).get();
   if (!userSnap.exists) return;
   const userData = userSnap.data();
+  // Each phone has an Expo token; phones on a current APK also pair it with
+  // their Firebase token (fcmFor[expoToken] = fcmToken, utils/notifications.js).
+  // Paired phones get the direct Firebase push, the rest Expo's: one each.
   const tokens = Array.isArray(userData.pushTokens) ? userData.pushTokens : [];
-  const fcmTokens = Array.isArray(userData.fcmTokens) ? userData.fcmTokens : [];
-  if (!tokens.length && !fcmTokens.length) return;
+  const pairs = userData.fcmFor || {};
+  const fcmTargets = [...new Set(tokens.map((t) => pairs[t]).filter(Boolean))];
+  const expoTargets = tokens.filter((t) => !pairs[t]);
+  if (!fcmTargets.length && !expoTargets.length) return;
 
   // Settings → Notifications. Muted types are still saved to the in-app list
   // above; only the phone push is skipped.
@@ -126,20 +131,21 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   if (storeType === "message" && prefs.messages === false) return;
   if (storeType === "review" && prefs.reviews === false) return;
 
-  // Phones on a current APK register both tokens; FCM is used for them so
-  // nothing arrives twice. Expo push remains for older APKs.
-  if (fcmTokens.length) {
-    const dead = await sendFcmPush(fcmTokens, {
+  if (fcmTargets.length) {
+    const dead = await sendFcmPush(fcmTargets, {
       title: style.titlePrefix + title, body, data: { type: storeType, ...(data || {}) },
       tag: groupTag, image, channelId: style.channelId, color: style.color,
     });
-    if (dead.length) {
-      await db.collection("users").doc(userId).update({ fcmTokens: FieldValue.arrayRemove(...dead) });
+    // Unpair dead Firebase tokens; those phones fall back to Expo push.
+    const deadPairs = Object.keys(pairs).filter((t) => dead.includes(pairs[t]));
+    if (deadPairs.length) {
+      const args = deadPairs.flatMap((t) => [new FieldPath("fcmFor", t), FieldValue.delete()]);
+      await db.collection("users").doc(userId).update(...args);
     }
-    return;
   }
+  if (!expoTargets.length) return;
 
-  const messages = tokens.map((token) => {
+  const messages = expoTargets.map((token) => {
     const msg = {
       to: token,
       sound: "default",
