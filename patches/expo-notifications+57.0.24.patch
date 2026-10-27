@@ -61,3 +61,29 @@ index cdbc237..b27c4fa 100644
    }
  
    override val title = remoteMessage.notification?.title ?: notificationData.title
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
+index 626038b..8803516 100644
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
+@@ -11,6 +11,7 @@ import expo.modules.notifications.notifications.interfaces.NotificationListener
+ import expo.modules.notifications.notifications.model.Notification
+ import expo.modules.notifications.notifications.model.NotificationBehaviorRecord
+ import expo.modules.notifications.notifications.model.RemoteNotificationContent
++import expo.modules.notifications.service.NotificationsService
+ 
+ /**
+  * [NotificationListener] responsible for managing app's reaction to incoming
+@@ -99,6 +100,13 @@ open class NotificationsHandler : Module(), NotificationListener {
+       // We do not notify JS about data-only notifications, for consistency with iOS.
+       // onDidReceiveNotification is triggered
+       // and JS task will run if set up
++      // GumaCart patch: GumaCart's own pushes are data-only (so a chat's
++      // notification can be replaced and show the sender's picture); show
++      // them while the app is open too, as the library already does in the
++      // background, instead of dropping them.
++      if (!content.title.isNullOrEmpty() || !content.text.isNullOrEmpty()) {
++        NotificationsService.present(context, notification)
++      }
+       return
+     }
+     val task = SingleNotificationHandlerTask(
