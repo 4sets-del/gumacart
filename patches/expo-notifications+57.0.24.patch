@@ -1,16 +1,28 @@
 diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
-index cdbc237..18769ad 100644
+index cdbc237..b27c4fa 100644
 --- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
 +++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
-@@ -2,6 +2,7 @@ package expo.modules.notifications.notifications.model
+@@ -2,12 +2,18 @@ package expo.modules.notifications.notifications.model
  
  import android.content.Context
  import android.graphics.Bitmap
++import android.graphics.BitmapFactory
 +import android.net.Uri
  import android.os.Parcel
  import android.os.Parcelable
++import android.util.Log
  import com.google.firebase.messaging.RemoteMessage
-@@ -22,13 +23,17 @@ class RemoteNotificationContent(private val remoteMessage: RemoteMessage) : INot
+ import expo.modules.notifications.notifications.enums.NotificationPriority
+ import expo.modules.notifications.notifications.interfaces.INotificationContent
+-import expo.modules.notifications.notifications.presentation.builders.downloadImage
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.withContext
++import java.net.HttpURLConnection
++import java.net.URL
+ 
+ /**
+  * A POJO representing a remote notification content: title, message, body, etc.
+@@ -22,13 +28,35 @@ class RemoteNotificationContent(private val remoteMessage: RemoteMessage) : INot
  
    private val notificationData = NotificationData(remoteMessage.data)
  
@@ -22,7 +34,25 @@ index cdbc237..18769ad 100644
    override suspend fun getImage(context: Context): Bitmap? {
 -    val uri = remoteMessage.notification?.imageUrl
 -    return uri?.let { downloadImage(it) }
-+    return imageUri?.let { downloadImage(it) }
++    val uri = imageUri ?: return null
++    // Read the whole file, then decode; log why it failed (the library's
++    // downloadImage hides errors). adb logcat -s GumaCartPush
++    return withContext(Dispatchers.IO) {
++      try {
++        val connection = (URL(uri.toString()).openConnection() as HttpURLConnection).apply {
++          connectTimeout = 8000
++          readTimeout = 8000
++          instanceFollowRedirects = true
++        }
++        val bytes = connection.inputStream.use { it.readBytes() }
++        BitmapFactory.decodeByteArray(bytes, 0, bytes.size).also {
++          if (it == null) Log.w("GumaCartPush", "Could not decode the picture (${bytes.size} bytes, HTTP ${connection.responseCode})")
++        }
++      } catch (e: Exception) {
++        Log.w("GumaCartPush", "Picture download failed: $uri", e)
++        null
++      }
++    }
    }
  
    override fun containsImage(): Boolean {

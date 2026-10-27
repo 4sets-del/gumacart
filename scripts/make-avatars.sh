@@ -12,7 +12,7 @@ for color in '#16A34A' '#F59E0B' '#2563EB' '#7C3AED' '#E11D48' '#0D9488' '#EA580
   for ch in A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 0 1 2 3 4 5 6 7 8 9 other; do
     label=$ch; [ "$ch" = other ] && label='?'
     magick -size 192x192 xc:"$color" -font "$FONT" -pointsize 92 -fill white \
-      -gravity center -annotate +0+6 "$label" -strip -define png:compression-level=9 "$OUT/$i/$ch.png"
+      -gravity center -annotate +0+6 "$label" -depth 8 -strip -define png:compression-level=9 "PNG24:$OUT/$i/$ch.png"
   done
   i=$((i + 1))
 done
