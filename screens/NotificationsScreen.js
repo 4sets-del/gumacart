@@ -149,6 +149,7 @@ export default function NotificationsScreen({ navigation }) {
           sellerId: notif.profileId,
           sellerName: notif.profileName || 'User',
           openRating: notif.rate === '1',
+          dealId: notif.dealId,
         });
       } else {
         navigation.navigate("Main", { screen: "Profile" });

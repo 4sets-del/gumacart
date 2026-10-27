@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, ActivityIndicator, RefreshControl, Image, } from 'react-native';
 import { Alert } from '../components/AppAlert';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import {
-  collection, query, where, getDocs, doc, getDoc, addDoc, serverTimestamp, updateDoc, deleteDoc,
+  collection, query, where, getDocs, doc, getDoc, setDoc, addDoc, serverTimestamp, updateDoc, deleteDoc,
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
@@ -17,7 +17,7 @@ import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../
 import { academicLabel } from "../constants/school";
 import { useReplyTime } from "../utils/replyTime";
 import { ensureConversation } from "../utils/chat";
-import { hasCompletedDealWith } from "../utils/deals";
+import { purchasesFrom } from "../utils/deals";
 import { getUserBasics } from "../utils/userCache";
 import ReportSheet from "../components/ReportSheet";
 import Sheet, { FormField, SheetOption } from "../components/Sheet";
@@ -75,25 +75,45 @@ export default function SellerProfileScreen({ route, navigation }) {
   const currentUser = auth.currentUser;
   const isOwnProfile = currentUser?.uid === sellerId;
 
-  // Reviews come from real deals: you can rate someone after they marked an
-  // item as sold to you (editing your existing review always works).
-  const [canRate, setCanRate] = useState(false);
+  // Reviews come from real purchases: each item someone bought from this
+  // seller (a deal the seller marked sold to them) can be rated once.
+  const [myPurchases, setMyPurchases] = useState({ purchases: [], unrated: [] });
+  const [ratingDeal, setRatingDeal] = useState(null); // the purchase being rated
+  const canRate = myPurchases.unrated.length > 0;
   const replyTime = useReplyTime(sellerId);
+  const refreshPurchases = () => {
+    if (!isOwnProfile && sellerId) purchasesFrom(sellerId).then(setMyPurchases);
+  };
   useEffect(() => {
-    if (!isOwnProfile && sellerId) hasCompletedDealWith(sellerId).then(setCanRate);
+    if (!isOwnProfile && sellerId) purchasesFrom(sellerId).then(setMyPurchases);
   }, [sellerId, isOwnProfile]);
-  const startRating = () => {
-    if (canRate) { setShowRatingModal(true); return; }
+  const startRating = (dealId) => {
+    const { purchases, unrated } = myPurchases;
+    if (unrated.length) {
+      setRatingDeal(unrated.find((d) => d.id === dealId) || unrated[0]);
+      setEditingReviewId(null); setMyRating(0); setMyReview("");
+      setShowRatingModal(true);
+      return;
+    }
     Alert.alert(
-      "Rate after a deal",
-      `You can rate ${sellerName} after buying from them. Once they mark an item as sold to you, you'll get a notification to rate them.`,
+      purchases.length ? "All purchases rated" : "Rate after a purchase",
+      purchases.length
+        ? `You've rated every item you bought from ${sellerName}. You can edit your reviews below.`
+        : `Reviews come from buyers. Once ${sellerName} marks an item as sold to you, you'll get a notification to rate that purchase.`,
       [{ text: "OK" }],
     );
   };
 
+  // Opened from a "How was your purchase?" notification: rate that item
+  // (once; not again after submitting).
+  const autoOpened = useRef(false);
   useEffect(() => {
-    if (openRating && !loading && !isOwnProfile && canRate) setShowRatingModal(true);
-  }, [openRating, loading, isOwnProfile, canRate]);
+    if (!openRating || autoOpened.current || loading || isOwnProfile || !canRate) return;
+    autoOpened.current = true;
+    const unrated = myPurchases.unrated;
+    setRatingDeal(unrated.find((d) => d.id === route.params?.dealId) || unrated[0]);
+    setShowRatingModal(true);
+  }, [openRating, loading, isOwnProfile, canRate, myPurchases, route.params?.dealId]);
 
   const loadAll = async () => {
     try {
@@ -197,14 +217,25 @@ export default function SellerProfileScreen({ route, navigation }) {
         Alert.alert("Review Updated!");
         return;
       }
-      const existingSnap = await getDocs(query(collection(db, "reviews"), where("sellerId", "==", sellerId), where("reviewerId", "==", currentUser.uid)));
-      if (!existingSnap.empty) { Alert.alert("Already Reviewed", "You can edit your existing review instead."); setShowRatingModal(false); return; }
-      await addDoc(collection(db, "reviews"), {
+      if (!ratingDeal) return;
+      // One review per purchase: the review's id is the deal's id.
+      const reviewRef = doc(db, "reviews", ratingDeal.id);
+      if ((await getDoc(reviewRef)).exists()) {
+        Alert.alert("Already rated", "You've already rated this item. You can edit your review instead.");
+        setShowRatingModal(false); refreshPurchases();
+        return;
+      }
+      await setDoc(reviewRef, {
         sellerId, sellerName, reviewerId: currentUser.uid,
         reviewerName: currentUser.displayName || "Anonymous",
         rating: myRating, comment: myReview.trim(), createdAt: serverTimestamp(),
+        dealId: ratingDeal.id,
+        listingId: ratingDeal.listingId || null,
+        listingName: ratingDeal.listingName || null,
+        listingImage: ratingDeal.listingImage || null,
       });
-      setShowRatingModal(false); setMyRating(0); setMyReview("");
+      setShowRatingModal(false); setMyRating(0); setMyReview(""); setRatingDeal(null);
+      refreshPurchases();
       await loadAll();
       Alert.alert("Review Submitted!", "Thank you for your feedback.");
     } catch (e) {
@@ -222,6 +253,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       { text: "Delete", style: "destructive", onPress: async () => {
         try {
           await deleteDoc(doc(db, "reviews", review.id));
+          refreshPurchases(); // that purchase can be rated again
           await loadAll();
         } catch (e) { Alert.alert("Error", "Failed to delete review."); }
       }},
@@ -338,7 +370,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 <Ionicons name="chatbubble-ellipses-outline" size={18} color="#fff" style={{ marginRight: 6 }} />
                 <Text style={styles.messageBtnText}>Message</Text>
               </TouchableOpacity>
-              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={[styles.rateBtn, !canRate && { opacity: 0.5 }]} activeOpacity={0.85} onPress={startRating}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Rate seller" style={[styles.rateBtn, !canRate && { opacity: 0.5 }]} activeOpacity={0.85} onPress={() => startRating()}>
                 <Ionicons name="star" size={19} color={COLORS.star} />
               </TouchableOpacity>
             </View>
@@ -370,11 +402,13 @@ export default function SellerProfileScreen({ route, navigation }) {
                 <Ionicons name="star-outline" size={32} color={COLORS.primary} />
               </View>
               <Text style={styles.emptyText}>No reviews yet</Text>
-              {!isOwnProfile && (
-                <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={startRating}>
-                  <Text style={styles.emptyBtnText}>Be the first to review</Text>
+              {!isOwnProfile && canRate ? (
+                <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={() => startRating()}>
+                  <Text style={styles.emptyBtnText}>Rate your purchase</Text>
                 </TouchableOpacity>
-              )}
+              ) : !isOwnProfile ? (
+                <Text style={styles.emptyHint}>Buyers can rate {sellerName} after buying from them.</Text>
+              ) : null}
             </View>
           ) : (
             reviews.map((review) => (
@@ -402,6 +436,12 @@ export default function SellerProfileScreen({ route, navigation }) {
                   </TouchableOpacity>
                   <Text style={styles.reviewDate}>{review.createdAt?.toDate ? review.createdAt.toDate().toLocaleDateString() : "Recently"}</Text>
                 </View>
+                {review.listingName ? (
+                  <View style={styles.reviewItem}>
+                    {review.listingImage ? <Image source={{ uri: review.listingImage }} style={styles.reviewItemImg} /> : <Ionicons name="bag-handle-outline" size={14} color={COLORS.textMuted} />}
+                    <Text style={styles.reviewItemText} numberOfLines={1}>Bought: {review.listingName}</Text>
+                  </View>
+                ) : null}
                 {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
                 {review.reviewerId === currentUser?.uid && (
                   <View style={styles.reviewActions}>
@@ -464,13 +504,34 @@ export default function SellerProfileScreen({ route, navigation }) {
 
       <Sheet
         visible={showRatingModal}
-        onClose={() => { setShowRatingModal(false); setEditingReviewId(null); }}
+        onClose={() => { setShowRatingModal(false); setEditingReviewId(null); setRatingDeal(null); }}
         title={editingReviewId ? "Edit your review" : `Rate ${sellerName}`}
-        subtitle="How was your experience with this seller?"
+        subtitle={editingReviewId ? "How was your experience with this seller?" : "How was this purchase?"}
         icon="star"
         busy={submittingReview}
         action={{ title: editingReviewId ? "Update Review" : "Submit Review", icon: "send", onPress: handleSubmitReview, loading: submittingReview }}
       >
+        {/* Which purchase is being rated; with several unrated, pick one. */}
+        {!editingReviewId && ratingDeal ? (
+          myPurchases.unrated.length > 1 ? (
+            <View style={styles.dealPicker}>
+              {myPurchases.unrated.map((d) => {
+                const on = d.id === ratingDeal.id;
+                return (
+                  <TouchableOpacity key={d.id} style={[styles.dealChip, on && styles.dealChipOn]} activeOpacity={0.8} onPress={() => setRatingDeal(d)} accessibilityRole="radio" accessibilityState={{ selected: on }}>
+                    {d.listingImage ? <Image source={{ uri: d.listingImage }} style={styles.reviewItemImg} /> : null}
+                    <Text style={[styles.dealChipText, on && styles.dealChipTextOn]} numberOfLines={1}>{d.listingName || "Item"}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ) : (
+            <View style={[styles.reviewItem, styles.dealSingle]}>
+              {ratingDeal.listingImage ? <Image source={{ uri: ratingDeal.listingImage }} style={styles.reviewItemImg} /> : null}
+              <Text style={styles.reviewItemText} numberOfLines={1}>Bought: {ratingDeal.listingName || "Item"}</Text>
+            </View>
+          )
+        ) : null}
         <View style={styles.starSelector}>
           <StarRating rating={myRating} size={40} onPress={setMyRating} />
         </View>
@@ -588,6 +649,15 @@ const createStyles = (COLORS) => StyleSheet.create({
   reviewerName: { fontSize: 14, fontWeight: "700", color: COLORS.textPrimary, marginBottom: 3 },
   reviewDate: { fontSize: 11, color: COLORS.textMuted },
   reviewComment: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 20 },
+  reviewItem: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 },
+  reviewItemImg: { width: 24, height: 24, borderRadius: 6, backgroundColor: COLORS.surfaceAlt },
+  reviewItemText: { flexShrink: 1, fontSize: 12.5, fontWeight: "600", color: COLORS.textSecondary },
+  dealPicker: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 12 },
+  dealChip: { flexDirection: "row", alignItems: "center", gap: 6, maxWidth: "100%", paddingVertical: 6, paddingHorizontal: 10, borderRadius: RADIUS.full, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.surfaceAlt },
+  dealChipOn: { borderColor: COLORS.primary, backgroundColor: COLORS.primaryPale },
+  dealChipText: { flexShrink: 1, fontSize: 13, fontWeight: "600", color: COLORS.textSecondary },
+  dealChipTextOn: { color: COLORS.primary },
+  dealSingle: { marginTop: 12, alignSelf: "center" },
   reviewActions: { flexDirection: "row", gap: 18, marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border },
   reviewActionBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
   reviewActionText: { fontSize: 12, color: COLORS.primary, fontWeight: "700" },
@@ -598,6 +668,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   emptyState: { alignItems: "center", paddingVertical: 30 },
   emptyIconBox: { width: 68, height: 68, borderRadius: 34, backgroundColor: COLORS.primaryPale, alignItems: "center", justifyContent: "center", marginBottom: 12 },
   emptyText: { fontSize: 14, color: COLORS.textMuted, marginBottom: 14 },
+  emptyHint: { fontSize: 12.5, color: COLORS.textMuted, textAlign: "center", marginTop: -6 },
   emptyBtn: { backgroundColor: COLORS.primary, borderRadius: RADIUS.md, paddingHorizontal: 20, paddingVertical: 11 },
   emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 13 },
   starSelector: { alignItems: "center", marginBottom: 12 },

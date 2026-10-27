@@ -282,7 +282,7 @@ export default function AppNavigator() {
         navRef.navigate('Main', { screen: 'Profile' });
       } else if (nav === 'profile') {
         if (data.profileId) {
-          navRef.navigate('SellerProfile', { sellerId: data.profileId, sellerName: data.profileName || 'User', openRating: data.rate === '1' });
+          navRef.navigate('SellerProfile', { sellerId: data.profileId, sellerName: data.profileName || 'User', openRating: data.rate === '1', dealId: data.dealId });
         } else {
           navRef.navigate('Main', { screen: 'Profile' });
         }

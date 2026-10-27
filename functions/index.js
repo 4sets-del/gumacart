@@ -289,9 +289,10 @@ exports.onNewReview = functions
     if (!sellerId) return null;
     const reviewerName = review.reviewerName || "Someone";
     const stars = review.rating ? "★".repeat(review.rating) : "";
+    const item = review.listingName ? ` for "${review.listingName}"` : "";
     const body = review.comment
-      ? `${reviewerName}: "${String(review.comment).slice(0, 80)}"`
-      : `${reviewerName} rated you ${review.rating || ""} stars`;
+      ? `${reviewerName}${item}: "${String(review.comment).slice(0, 80)}"`
+      : `${reviewerName} rated you ${review.rating || ""} stars${item}`;
     await notifyUser(sellerId, {
       storeType: "review",
       styleKey: "review",
@@ -455,11 +456,12 @@ exports.onListingStatusChange = functions
       storeType: "listing_update", styleKey: "system", title, body, data: listingLink,
     });
     // A sale to a specific buyer is recorded (deals/{id}) and the buyer is
-    // invited to rate. Only buyers with a recorded sale can rate a seller, so
-    // reviews come from real deals.
+    // invited to rate it. Each purchase can be rated once (the review's id is
+    // the deal's id), so reviews come from real deals and a second item
+    // bought from the same seller gets its own rating.
     const ratePrompt = async (buyerId) => {
       const buyer = (await db.collection("users").doc(buyerId).get()).data() || {};
-      await db.collection("deals").add({
+      const deal = await db.collection("deals").add({
         listingId,
         listingName: itemName,
         listingImage: (after.images && after.images[0]) || after.image || null,
@@ -475,7 +477,7 @@ exports.onListingStatusChange = functions
         styleKey: "review",
         title: "How was your purchase?",
         body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
-        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1" },
+        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1", dealId: deal.id },
       });
     };
 
