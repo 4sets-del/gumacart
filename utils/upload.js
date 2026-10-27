@@ -43,3 +43,19 @@ export async function uploadFile(uri, path, { compress = true, contentType, ...o
   await uploadBytes(storageRef, blob, compress ? { contentType: 'image/jpeg' } : contentType ? { contentType } : undefined);
   return getDownloadURL(storageRef);
 }
+
+// Runs fn over items at most `limit` at a time and returns the results in
+// order. Used for photo uploads: each photo is decoded and compressed in
+// memory first, so uploading dozens at once can run a phone out of memory.
+export async function mapLimit(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}

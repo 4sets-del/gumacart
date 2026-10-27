@@ -9,10 +9,9 @@ import {
 } from "firebase/firestore";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
-import { auth, db, storage } from "../firebaseConfig";
-import { ref, deleteObject } from "firebase/storage";
+import { auth, db } from "../firebaseConfig";
 import ZoomableImage from "../components/ZoomableImage";
-import { uploadFile } from "../utils/upload";
+import { uploadFile, mapLimit } from "../utils/upload";
 import { ProductRow } from "../components/ProductCard";
 import { LinearGradient } from "expo-linear-gradient";
 import { RADIUS, SHADOWS, GRADIENTS, colorForName, FONTS, BRAND_DEEP } from "../constants/theme";
@@ -236,11 +235,9 @@ export default function SellerProfileScreen({ route, navigation }) {
 
   // Uploads new picks to reviews/<reviewer>/<review>/ (Storage); already
   // uploaded photos are kept as they are.
-  const uploadReviewPhotos = (reviewId) => Promise.all(reviewPhotos.map((uri, i) => (isLocal(uri)
+  const uploadReviewPhotos = (reviewId) => mapLimit(reviewPhotos, 3, (uri, i) => (isLocal(uri)
     ? uploadFile(uri, `reviews/${currentUser.uid}/${reviewId}/${Date.now()}_${i}.jpg`, { maxSize: 1280 })
-    : uri)));
-
-  const deletePhotoFiles = (urls) => Promise.all((urls || []).map((u) => deleteObject(ref(storage, u)).catch(() => {})));
+    : uri));
 
   // The seller's stored avgRating/totalReviews are recalculated by the
   // onReviewWrite Cloud Function; this screen shows the live average from
@@ -250,10 +247,9 @@ export default function SellerProfileScreen({ route, navigation }) {
     setSubmittingReview(true);
     try {
       if (editingReviewId) {
-        const before = reviews.find((r) => r.id === editingReviewId)?.photos || [];
+        // Photos removed here are deleted by the server (onReviewWrite).
         const photos = await uploadReviewPhotos(editingReviewId);
         await updateDoc(doc(db, "reviews", editingReviewId), { rating: myRating, comment: myReview.trim(), photos, editedAt: serverTimestamp() });
-        deletePhotoFiles(before.filter((u) => !photos.includes(u))); // ones removed while editing
         setShowRatingModal(false); setEditingReviewId(null); setMyRating(0); setMyReview(""); setReviewPhotos([]);
         await loadAll();
         Alert.alert("Review Updated!");
@@ -296,8 +292,7 @@ export default function SellerProfileScreen({ route, navigation }) {
       { text: "Cancel", style: "cancel" },
       { text: "Delete", style: "destructive", onPress: async () => {
         try {
-          await deleteDoc(doc(db, "reviews", review.id));
-          deletePhotoFiles(review.photos);
+          await deleteDoc(doc(db, "reviews", review.id)); // the server deletes its photos
           refreshPurchases(); // that purchase can be rated again
           await loadAll();
         } catch (e) { Alert.alert("Error", "Failed to delete review."); }

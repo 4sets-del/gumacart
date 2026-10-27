@@ -70,6 +70,25 @@ npx eas-cli build --platform android --profile preview
 
 The download link appears when the build finishes (expo.dev → GumaCart → Builds). Version numbers are managed by EAS (`appVersionSource: remote`).
 
+### Building on this computer (free, no monthly limit)
+
+EAS's free plan has a monthly build limit. A local build makes the same APK, signed with the same key (fetched from your Expo account):
+
+```bash
+env JAVA_HOME=/usr/lib/jvm/java-17-openjdk ANDROID_HOME=$HOME/Android/Sdk \
+  npx eas-cli build --platform android --profile preview --local --output ~/gumacart-apk/gumacart.apk
+```
+
+It needs Java 17 (`jdk17-openjdk`) and the Android SDK command-line tools in `~/Android/Sdk`. The first build takes ~25 minutes.
+
+## Push notifications
+
+- The server (`notifyUser` in `functions/index.js`) sends **directly through Firebase** to phones that paired their Firebase token with their Expo token (`fcmFor` on the user doc), and through Expo's push service to the rest (older APKs). Each phone gets one notification.
+- Direct pushes are data-only, so the app draws them: one card per chat that updates (`tag`), the sender's round picture, Messenger-style conversation layout for chats. While the app is open, the chat on screen doesn't pop up (`setActiveConversation`).
+- These come from a patch to **expo-notifications 57.0.24** (`patches/`, applied on `npm install`), and `package.json → expo.autolinking.android.buildFromSource` makes the build compile it (the package otherwise ships a prebuilt copy, which ignores the patch).
+- **If expo-notifications is ever upgraded, the patch has to be redone** for the new version; otherwise the install fails or the notification fixes silently disappear.
+- `scripts/check-push.js` (read-only) shows which accounts have paired phones.
+
 ## Deploying the backend
 
 ```bash

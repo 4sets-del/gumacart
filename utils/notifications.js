@@ -8,17 +8,24 @@ const isExpoGo = Constants.appOwnership === 'expo';
 
 let Notifications = null;
 
+// The chat on screen (set by ChatScreen while it's focused). Its new
+// messages are already visible, so they don't also pop up as notifications.
+let activeConversationId = null;
+export function setActiveConversation(id) {
+  activeConversationId = id || null;
+}
+
 if (!isExpoGo) {
   try {
     Notifications = require('expo-notifications');
 
+    // Decides how notifications that arrive while the app is open are shown.
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: true,
-      }),
+      handleNotification: async (notification) => {
+        const data = notification?.request?.content?.data || {};
+        const show = !(activeConversationId && data.conversationId === activeConversationId);
+        return { shouldShowBanner: show, shouldShowList: show, shouldPlaySound: show, shouldSetBadge: show };
+      },
     });
   } catch (e) {
     Notifications = null;
@@ -136,6 +143,8 @@ export async function registerForPushNotifications(userId) {
 // Stop sending this account's notifications to this phone. Must run while
 // still signed in (the user doc is only writable by its owner).
 export async function unregisterPushToken(userId) {
+  // The previous user's notifications shouldn't stay in the tray.
+  if (Notifications) Notifications.dismissAllNotificationsAsync().catch(() => {});
   if (!userId || !currentToken) return;
   try {
     // fcmTokens: the older, unpaired list, cleaned up too.

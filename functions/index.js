@@ -58,11 +58,14 @@ async function sendExpoPush(messages) {
 //  - `image` (patches/expo-notifications…) is the round picture beside the
 //    text, which stays put when the card is expanded to show every line.
 // Expo's push service drops both. Returns tokens FCM reports as invalid.
-async function sendFcmPush(tokens, { title, body, data, tag, image, channelId, color }) {
+async function sendFcmPush(tokens, { title, body, data, tag, image, channelId, color, conversation }) {
   const payload = {
     title, message: body, body: JSON.stringify(data || {}), channelId, color,
     ...(tag ? { tag } : {}),
     ...(image ? { image } : {}),
+    // Chat messages: shown as an Android conversation (sender's picture on
+    // the left), see patches/expo-notifications….
+    ...(conversation ? { conv: conversation.id, sender: conversation.sender } : {}),
   };
   const messages = tokens.map((token) => ({ token, data: payload, android: { priority: "high" } }));
   try {
@@ -70,8 +73,11 @@ async function sendFcmPush(tokens, { title, body, data, tag, image, channelId, c
     return res.responses
       .map((r, i) => {
         const code = r.error?.code;
-        return code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token"
-          ? tokens[i] : null;
+        if (code === "messaging/registration-token-not-registered" || code === "messaging/invalid-registration-token") {
+          return tokens[i];
+        }
+        if (r.error) console.error("FCM push rejected:", code, r.error.message);
+        return null;
       })
       .filter(Boolean);
   } catch (e) {
@@ -82,7 +88,7 @@ async function sendFcmPush(tokens, { title, body, data, tag, image, channelId, c
 
 // `image`: a person's profile photo URL (or letter avatar), shown as the
 // picture on the notification.
-async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey, image }) {
+async function notifyUser(userId, { storeType, styleKey, title, body, data, groupTag, collapseKey, image, conversation }) {
   const style = NOTIF_STYLES[styleKey] || NOTIF_STYLES.system;
   const notifCol = db.collection("users").doc(userId).collection("notifications");
 
@@ -134,7 +140,7 @@ async function notifyUser(userId, { storeType, styleKey, title, body, data, grou
   if (fcmTargets.length) {
     const dead = await sendFcmPush(fcmTargets, {
       title: style.titlePrefix + title, body, data: { type: storeType, ...(data || {}) },
-      tag: groupTag, image, channelId: style.channelId, color: style.color,
+      tag: groupTag, image, channelId: style.channelId, color: style.color, conversation,
     });
     // Unpair dead Firebase tokens; those phones fall back to Expo push.
     const deadPairs = Object.keys(pairs).filter((t) => dead.includes(pairs[t]));
@@ -191,6 +197,20 @@ async function photoOf(uid) {
     return undefined;
   }
 }
+
+// Deletes uploaded files given their download URLs (listing and review
+// photos), so removed photos don't keep using storage. Missing files are
+// ignored.
+async function deleteStorageUrls(urls) {
+  const bucket = getStorage().bucket();
+  await Promise.all([...new Set(urls)].filter(Boolean).map(async (url) => {
+    const m = /\/o\/([^?]+)/.exec(url);
+    if (!m) return;
+    await bucket.file(decodeURIComponent(m[1])).delete().catch(() => {});
+  }));
+}
+
+const listingPhotos = (l) => [...(l?.images || []), ...(l?.image ? [l.image] : [])];
 
 function suspensionPhrase(bannedUntil) {
   if (!bannedUntil) return "Your account has been permanently suspended by an admin.";
@@ -280,6 +300,7 @@ exports.onNewMessage = functions
       data: { nav: "chat", conversationId: context.params.convId },
       groupTag: "chat_" + context.params.convId,
       collapseKey: "chat_" + context.params.convId,
+      conversation: { id: context.params.convId, sender: senderName },
       image: await photoOf(message.senderId),
     });
     return null;
@@ -317,6 +338,9 @@ exports.onUserDocUpdate = functions
   .onUpdate(async (change, context) => {
     const before = change.before.data();
     const after = change.after.data();
+    // Photos removed while editing the listing.
+    const kept = new Set(listingPhotos(after));
+    await deleteStorageUrls(listingPhotos(before).filter((u) => !kept.has(u)));
 
     const prevV = before.verificationStatus;
     const nextV = after.verificationStatus;
@@ -570,6 +594,8 @@ exports.onListingDeleted = functions
   .document("listings/{listingId}")
   .onDelete(async (snap) => {
     await db.recursiveDelete(snap.ref.collection("interested"));
+    // Its photos, whoever deleted it (seller, admin, account deletion).
+    await deleteStorageUrls(listingPhotos(snap.data()));
     return null;
   });
 
@@ -751,6 +777,9 @@ exports.onReviewWrite = functions
   .firestore
   .document("reviews/{reviewId}")
   .onWrite(async (change) => {
+    // Review photos removed while editing, or with the review.
+    const keptPhotos = new Set(change.after.data()?.photos || []);
+    await deleteStorageUrls((change.before.data()?.photos || []).filter((u) => !keptPhotos.has(u)));
     const sellerIds = new Set(
       [change.before.data()?.sellerId, change.after.data()?.sellerId].filter(Boolean),
     );

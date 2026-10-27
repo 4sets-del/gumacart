@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Platform, StatusBar, TextInput, KeyboardAvoidingView, ActivityIndicator, Keyboard,
 } from "react-native";
@@ -23,7 +23,8 @@ import ZoomableImage from "../components/ZoomableImage";
 import * as Haptics from "expo-haptics";
 import { markSoldTo } from "../utils/sales";
 import { usePresence } from "../utils/presence";
-import { dismissChatNotification } from "../utils/notifications";
+import { dismissChatNotification, setActiveConversation } from "../utils/notifications";
+import { useFocusEffect } from "@react-navigation/native";
 import { useBlocked, blockUser, unblockUser, hasBlockedMe } from "../utils/blocking";
 import ReportSheet from "../components/ReportSheet";
 import { reportMessage, messageSummary, MESSAGE_REPORT_REASONS } from "../utils/reportMessage";
@@ -361,8 +362,13 @@ export default function ChatScreen({ route, navigation }) {
     if (failed) Alert.alert("Upload failed", failed === assets.length ? "Failed to upload media." : `${failed} of ${assets.length} couldn't be sent.`);
   };
 
-  // Opening the chat clears its notification from the phone's tray.
+  // Opening the chat clears its notification from the phone's tray, and
+  // while it's on screen its new messages don't pop up as notifications.
   useEffect(() => { dismissChatNotification(conversationId); }, [conversationId]);
+  useFocusEffect(useCallback(() => {
+    setActiveConversation(conversationId);
+    return () => setActiveConversation(null);
+  }, [conversationId]));
 
 
   // ── Blocking ──

@@ -1,5 +1,5 @@
 diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
-index cdbc237..b27c4fa 100644
+index cdbc237..9f0b8c2 100644
 --- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
 +++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/model/RemoteNotificationContent.kt
 @@ -2,12 +2,18 @@ package expo.modules.notifications.notifications.model
@@ -22,7 +22,7 @@ index cdbc237..b27c4fa 100644
  
  /**
   * A POJO representing a remote notification content: title, message, body, etc.
-@@ -22,13 +28,35 @@ class RemoteNotificationContent(private val remoteMessage: RemoteMessage) : INot
+@@ -22,13 +28,42 @@ class RemoteNotificationContent(private val remoteMessage: RemoteMessage) : INot
  
    private val notificationData = NotificationData(remoteMessage.data)
  
@@ -30,6 +30,13 @@ index cdbc237..b27c4fa 100644
 +  // (shown as the large icon beside the text, which stays put when expanded).
 +  private val imageUri: Uri?
 +    get() = remoteMessage.notification?.imageUrl ?: remoteMessage.data["image"]?.let { Uri.parse(it) }
++
++  // GumaCart patch: chat pushes carry the conversation id and the sender's
++  // name, so the notification can be shown as an Android conversation.
++  val conversationId: String?
++    get() = remoteMessage.data["conv"]
++  val senderName: String?
++    get() = remoteMessage.data["sender"]
 +
    override suspend fun getImage(context: Context): Bitmap? {
 -    val uri = remoteMessage.notification?.imageUrl
@@ -62,28 +69,136 @@ index cdbc237..b27c4fa 100644
  
    override val title = remoteMessage.notification?.title ?: notificationData.title
 diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
-index 626038b..8803516 100644
+index 626038b..697c106 100644
 --- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
 +++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/handling/NotificationsHandler.kt
-@@ -11,6 +11,7 @@ import expo.modules.notifications.notifications.interfaces.NotificationListener
- import expo.modules.notifications.notifications.model.Notification
- import expo.modules.notifications.notifications.model.NotificationBehaviorRecord
- import expo.modules.notifications.notifications.model.RemoteNotificationContent
-+import expo.modules.notifications.service.NotificationsService
- 
- /**
-  * [NotificationListener] responsible for managing app's reaction to incoming
-@@ -99,6 +100,13 @@ open class NotificationsHandler : Module(), NotificationListener {
+@@ -99,7 +99,14 @@ open class NotificationsHandler : Module(), NotificationListener {
        // We do not notify JS about data-only notifications, for consistency with iOS.
        // onDidReceiveNotification is triggered
        // and JS task will run if set up
+-      return
 +      // GumaCart patch: GumaCart's own pushes are data-only (so a chat's
-+      // notification can be replaced and show the sender's picture); show
-+      // them while the app is open too, as the library already does in the
-+      // background, instead of dropping them.
-+      if (!content.title.isNullOrEmpty() || !content.text.isNullOrEmpty()) {
-+        NotificationsService.present(context, notification)
++      // notification can be replaced and show the sender's picture). Those
++      // with a title or text go to the app's notification handler like any
++      // other push (it stays quiet for the chat that's open), instead of
++      // being dropped.
++      if (content.title.isNullOrEmpty() && content.text.isNullOrEmpty()) {
++        return
 +      }
-       return
      }
      val task = SingleNotificationHandlerTask(
+       context,
+diff --git a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/ExpoNotificationBuilder.kt b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/ExpoNotificationBuilder.kt
+index 610d303..1f837f0 100644
+--- a/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/ExpoNotificationBuilder.kt
++++ b/node_modules/expo-notifications/android/src/main/java/expo/modules/notifications/notifications/presentation/builders/ExpoNotificationBuilder.kt
+@@ -2,15 +2,24 @@ package expo.modules.notifications.notifications.presentation.builders
+ 
+ import android.app.Notification
+ import android.content.Context
++import android.content.Intent
+ import android.content.pm.PackageManager
+ import android.graphics.Bitmap
+ import android.graphics.BitmapFactory
++import android.graphics.BitmapShader
++import android.graphics.Canvas
++import android.graphics.Paint
++import android.graphics.Shader
+ import android.os.Build
+ import android.os.Bundle
+ import android.os.Parcel
+ import android.provider.Settings
+ import android.util.Log
+ import androidx.core.app.NotificationCompat
++import androidx.core.app.Person
++import androidx.core.content.pm.ShortcutInfoCompat
++import androidx.core.content.pm.ShortcutManagerCompat
++import androidx.core.graphics.drawable.IconCompat
+ import androidx.core.app.RemoteInput
+ import expo.modules.notifications.notifications.SoundResolver
+ import expo.modules.notifications.notifications.enums.NotificationPriority
+@@ -19,6 +28,7 @@ import expo.modules.notifications.notifications.model.NotificationAction
+ import expo.modules.notifications.notifications.model.NotificationCategory
+ import expo.modules.notifications.notifications.model.NotificationRequest
+ import expo.modules.notifications.notifications.model.NotificationResponse
++import expo.modules.notifications.notifications.model.RemoteNotificationContent
+ import expo.modules.notifications.notifications.model.TextInputNotificationAction
+ import expo.modules.notifications.service.NotificationsService
+ import expo.modules.notifications.service.NotificationsService.Companion.createNotificationResponseIntent
+@@ -147,15 +157,74 @@ open class ExpoNotificationBuilder(
+       )
+     )
+ 
++    // GumaCart patch: pictures are profile photos / letter avatars, so they
++    // are cropped to a circle (some phones, e.g. OPPO, show them as given).
++    val picture = if (notificationContent.containsImage()) notificationContent.getImage(context)?.let { circleCrop(it) } else null
+     if (notificationContent.containsImage()) {
+-      val bitmap = notificationContent.getImage(context)
+-      bitmap?.let { builder.setLargeIcon(it) }
++      picture?.let { builder.setLargeIcon(it) }
+     } else {
+       builder.setLargeIcon(largeIcon)
+     }
++    // GumaCart patch: chat messages become an Android conversation (sender's
++    // picture on the left, messages under their name), like Messenger.
++    (notificationContent as? RemoteNotificationContent)?.let { remote ->
++      remote.conversationId?.let { applyConversationStyle(builder, it, remote, picture) }
++    }
+     return builder.build()
+   }
+ 
++  // Square-crops the middle of the picture, scales it to 192px and masks it
++  // to a circle.
++  private fun circleCrop(src: Bitmap): Bitmap {
++    val side = min(src.width, src.height)
++    val square = Bitmap.createBitmap(src, (src.width - side) / 2, (src.height - side) / 2, side, side)
++    val scaled = Bitmap.createScaledBitmap(square, 192, 192, true)
++    val out = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888)
++    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++      shader = BitmapShader(scaled, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
++    }
++    Canvas(out).drawCircle(96f, 96f, 96f, paint)
++    return out
++  }
++
++  private fun applyConversationStyle(
++    builder: NotificationCompat.Builder,
++    conversationId: String,
++    content: RemoteNotificationContent,
++    picture: Bitmap?
++  ) {
++    try {
++      val avatar = picture?.let { IconCompat.createWithBitmap(it) }
++      val sender = Person.Builder()
++        .setName(content.senderName ?: content.title ?: "")
++        .setKey(conversationId)
++        .apply { avatar?.let { setIcon(it) } }
++        .build()
++      val style = NotificationCompat.MessagingStyle(Person.Builder().setName("You").build())
++      val now = System.currentTimeMillis()
++      (content.text ?: "").split("\n").filter { it.isNotBlank() }.forEach { style.addMessage(it, now, sender) }
++      builder.setStyle(style)
++      // Android only uses the conversation layout for notifications linked
++      // to a long-lived sharing shortcut for that chat.
++      context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { launch ->
++        launch.action = Intent.ACTION_VIEW
++        val shortcut = ShortcutInfoCompat.Builder(context, conversationId)
++          .setLongLived(true)
++          .setShortLabel(sender.name ?: "Chat")
++          .setPerson(sender)
++          .setIcon(avatar ?: IconCompat.createWithResource(context, icon))
++          .setIntent(launch)
++          .build()
++        ShortcutManagerCompat.pushDynamicShortcut(context, shortcut)
++        builder.setShortcutId(conversationId)
++      }
++      // The picture is shown on the left instead.
++      builder.setLargeIcon(null as Bitmap?)
++    } catch (e: Exception) {
++      Log.w("GumaCartPush", "Conversation style failed", e)
++    }
++  }
++
+   private fun applySoundsAndVibrations(content: INotificationContent, builder: NotificationCompat.Builder) {
+     val shouldPlaySound = shouldPlaySound()
+     val shouldVibrate = shouldVibrate()

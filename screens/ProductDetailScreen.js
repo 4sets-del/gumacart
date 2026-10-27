@@ -8,10 +8,9 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import {
   doc, deleteDoc, collection, addDoc, serverTimestamp, updateDoc, increment, query, where, getDocs, orderBy, limit, onSnapshot, getCountFromServer,
 } from "firebase/firestore";
-import { ref as sRef, deleteObject } from "firebase/storage";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
-import { auth, db, storage } from "../firebaseConfig";
+import { auth, db } from "../firebaseConfig";
 import { Image as CachedImage } from "expo-image";
 import { uploadFile } from "../utils/upload";
 import { RADIUS, FONTS, colorForName } from "../constants/theme";
@@ -396,10 +395,7 @@ export default function ProductDetailScreen({ route, navigation }) {
       { text: "Delete", style: "destructive", onPress: async () => {
         setDeleting(true);
         try {
-          const allUrls = [...new Set([...(product.images || []), ...(product.image ? [product.image] : [])])];
-          if (allUrls.length > 0) {
-            await Promise.all(allUrls.map(async (url) => { try { await deleteObject(sRef(storage, url)); } catch (e) {} }));
-          }
+          // Its photos are deleted by the server (onListingDeleted).
           await deleteDoc(doc(db, "listings", product.id));
           Alert.alert("Deleted", "Listing removed.", [{ text: "OK", onPress: () => navigation.goBack() }]);
         } catch (e) { Alert.alert("Error", "Failed to delete."); }

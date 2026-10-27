@@ -11,7 +11,7 @@ import { Alert } from '../components/AppAlert';
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
-import { uploadFile } from "../utils/upload";
+import { uploadFile, mapLimit } from "../utils/upload";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
 import { CATEGORIES, normalizeCategory, MAX_PRICE } from "../constants/listings";
@@ -203,13 +203,12 @@ export default function CreateListingScreen({ navigation, route }) {
       const newCount = images.filter((uri) => !uri.startsWith("http")).length;
       let done = 0;
       setUploadProgress({ done, total: newCount });
-      const imageUrls = await Promise.all(
-        images.map((uri) => (uri.startsWith("http") ? Promise.resolve(uri) : uploadImage(uri).then((url) => {
-          done += 1;
-          setUploadProgress({ done, total: newCount });
-          return url;
-        })))
-      );
+      // Three at a time: a listing can have any number of photos.
+      const imageUrls = await mapLimit(images, 3, (uri) => (uri.startsWith("http") ? uri : uploadImage(uri).then((url) => {
+        done += 1;
+        setUploadProgress({ done, total: newCount });
+        return url;
+      })));
 
       const payload = {
         type: listingType, title: title.trim(), name: title.trim(),
