@@ -16,7 +16,7 @@ export const PRIVACY_SECTIONS = [
       'Account details: your name, SLSU email address (@slsu.edu.ph, required to sign up), address, age, and whether you signed up as a student or requested faculty status. Your password is handled by Firebase Authentication; we never see it.',
       'Seller verification: your student ID number and a photo of your student ID, which admins use to confirm your identity before you can post listings.',
       'Profile photo, if you add one.',
-      'Listings: photos, title, description, price, quantity, category, condition and meet-up location. We do not ask for or show phone numbers; buyers and sellers talk through the in-app chat.',
+      'Listings: photos and videos, title, description, price, quantity, category, condition and meet-up location. We do not ask for or show phone numbers; buyers and sellers talk through the in-app chat.',
       'Messages, including photos and videos you send in chat.',
       'Reviews you write: the star rating, your comment, any photos you add, and the item you bought.',
       'Reviews and ratings you write, items you save, searches you ask to be notified about, people you block, reports, feedback and ban appeals.',

@@ -6,7 +6,7 @@ Only `@slsu.edu.ph` accounts can use the app (admins are the one exception), and
 
 ## Features
 
-- **Listings:** For Sale, Looking For, Barter, Donate; any number of photos, quantity, condition, campus meet-up spot. New and edited listings are approved by an admin. Listings expire after 30 days and can be renewed.
+- **Listings:** For Sale, Looking For, Barter, Donate; any number of photos and videos, quantity, condition, campus meet-up spot. New and edited listings are approved by an admin. Listings expire after 30 days and can be renewed.
 - **Browse:** Home (featured, from your course, latest), categories, search with sort and filters, "Notify me" search alerts, saved items ❤️ with price-drop alerts, similar items.
 - **Chat:** product cards, photos and videos (any number at once), voice messages, quick replies, reactions, replies, read receipts, typing and "Active now", mark an item sold right from the chat.
 - **Selling:** reserve an item for one buyer, mark sold (or "sold one" for stock), ratings from buyers who bought from you, "Usually replies within…", stats (views, saves, interested), drafts, share as image.

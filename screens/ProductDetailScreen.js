@@ -1,3 +1,4 @@
+import { useIsFocused } from "@react-navigation/native";
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, StatusBar, Share, Dimensions, Modal, FlatList, Platform, ActivityIndicator,
@@ -18,6 +19,7 @@ import { SaveButton, ProductCard } from "../components/ProductCard";
 import { useActiveListings } from "../utils/useListings";
 import { renewListing, LISTING_LIFETIME_DAYS } from "../utils/renewListing";
 import ZoomableImage from "../components/ZoomableImage";
+import VideoPlayerModal, { VideoTile, InlineVideo } from "../components/VideoPlayerModal";
 import { useReplyTime } from "../utils/replyTime";
 import { ensureConversation } from "../utils/chat";
 import { messagingBlockedReason } from "../utils/blocking";
@@ -96,6 +98,12 @@ export default function ProductDetailScreen({ route, navigation }) {
   const unavailable = removed || (!isOwner && !["active", "sold", "reserved"].includes(product.status));
 
   const images = product.images?.length > 0 ? product.images : product.image ? [product.image] : [];
+  const videos = product.videos || [];
+  // The swiper shows videos first, then photos (the first photo is still the
+  // listing's thumbnail elsewhere). The full-screen viewer is photos only.
+  const media = [...videos.map((uri) => ({ uri, video: true })), ...images.map((uri) => ({ uri, video: false }))];
+  const [playingVideo, setPlayingVideo] = useState(null);
+  const isFocused = useIsFocused();
   const galleryRef = useRef(null);
   const sellerRating = useSellerRatings([product])[product.sellerId];
 
@@ -439,21 +447,28 @@ export default function ProductDetailScreen({ route, navigation }) {
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
-          {images.length > 0 ? (
+          {media.length > 0 ? (
             <FlatList
               ref={galleryRef}
-              data={images}
+              data={media}
               keyExtractor={(_, i) => String(i)}
               horizontal pagingEnabled
               showsHorizontalScrollIndicator={false}
               bounces={false}
               getItemLayout={(_, index) => ({ length: SCREEN_WIDTH, offset: SCREEN_WIDTH * index, index })}
               onMomentumScrollEnd={(e) => setActiveImageIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH))}
-              renderItem={({ item, index }) => (
-                <TouchableOpacity activeOpacity={0.95} onPress={() => openFullscreen(index)}>
-                  <CachedImage source={{ uri: item }} style={styles.galleryImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
+              renderItem={({ item, index }) => (item.video ? (
+                <InlineVideo
+                  uri={item.uri}
+                  active={isFocused && !playingVideo && activeImageIndex === index}
+                  style={styles.galleryImage}
+                  onPress={() => setPlayingVideo(item.uri)}
+                />
+              ) : (
+                <TouchableOpacity activeOpacity={0.95} onPress={() => openFullscreen(index - videos.length)}>
+                  <CachedImage source={{ uri: item.uri }} style={styles.galleryImage} contentFit="cover" transition={200} cachePolicy="memory-disk" />
                 </TouchableOpacity>
-              )}
+              ))}
             />
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -462,11 +477,11 @@ export default function ProductDetailScreen({ route, navigation }) {
             </View>
           )}
 
-          {images.length > 1 && (
+          {media.length > 1 && (
             <View style={styles.dotsRow}>
-              {images.length > MAX_DOTS
-                ? <Text style={styles.photoCounter}>{activeImageIndex + 1} / {images.length}</Text>
-                : images.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
+              {media.length > MAX_DOTS
+                ? <Text style={styles.photoCounter}>{activeImageIndex + 1} / {media.length}</Text>
+                : media.map((_, i) => <View key={i} style={[styles.dot, activeImageIndex === i && styles.dotActive]} />)}
             </View>
           )}
           {isSold && (
@@ -478,13 +493,15 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
         </View>
 
-        {images.length > 1 && (
+        {media.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.thumbRow}>
-            {images.map((uri, i) => (
-              <TouchableOpacity key={uri + i} activeOpacity={0.8} onPress={() => showImage(i)}>
-                <CachedImage source={{ uri }} style={[styles.thumb, activeImageIndex === i && styles.thumbActive]} contentFit="cover" cachePolicy="memory-disk" />
+            {media.map((m, i) => (m.video ? (
+              <VideoTile key={m.uri + i} uri={m.uri} playing={isFocused && !playingVideo} size={62} radius={RADIUS.md} onPress={() => showImage(i)} style={[styles.thumb, activeImageIndex === i && styles.thumbActive]} />
+            ) : (
+              <TouchableOpacity key={m.uri + i} activeOpacity={0.8} onPress={() => showImage(i)}>
+                <CachedImage source={{ uri: m.uri }} style={[styles.thumb, activeImageIndex === i && styles.thumbActive]} contentFit="cover" cachePolicy="memory-disk" />
               </TouchableOpacity>
-            ))}
+            )))}
           </ScrollView>
         )}
 
@@ -671,6 +688,8 @@ export default function ProductDetailScreen({ route, navigation }) {
           )}
         </View>
       </Modal>
+
+      <VideoPlayerModal uri={playingVideo} onClose={() => setPlayingVideo(null)} />
 
       {unavailable && !isOwner ? null : isOwner ? (
         <View style={[styles.bottomBar, { paddingBottom: 12 + insets.bottom }]}>

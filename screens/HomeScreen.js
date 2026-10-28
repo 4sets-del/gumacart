@@ -128,7 +128,7 @@ export default function HomeScreen({ navigation, route }) {
     { ref: categoriesRef, icon: 'grid', title: 'Categories', text: 'Jump straight to Food & Drinks, Clothes, Academic and more.' },
     { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, save it, or chat with the seller.', optional: true },
     { ref: typeChipsRef, icon: 'pricetags', title: 'Listing types', text: 'Show only For Sale, Wanted, Barter or Free items.', optional: true },
-    { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add as many photos as you like, and a quantity.' },
+    { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add as many photos and videos as you like, and a quantity.' },
     { ref: tabTarget(2), icon: 'shield-checkmark', shape: 'circle', title: 'Get verified first', text: 'Before your first post, send your student ID once. An admin approves it, usually within 1–2 days.' },
     { ref: tabTarget(3), icon: 'chatbubbles', title: 'Messages', text: 'Chat with buyers and sellers. Send photos and videos, react or reply with a long-press, and see when it\'s Seen.' },
     { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it sold. Interested buyers are notified automatically.' },

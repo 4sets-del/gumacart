@@ -210,7 +210,8 @@ async function deleteStorageUrls(urls) {
   }));
 }
 
-const listingPhotos = (l) => [...(l?.images || []), ...(l?.image ? [l.image] : [])];
+// A listing's uploaded files: photos and videos.
+const listingPhotos = (l) => [...(l?.images || []), ...(l?.image ? [l.image] : []), ...(l?.videos || [])];
 
 function suspensionPhrase(bannedUntil) {
   if (!bannedUntil) return "Your account has been permanently suspended by an admin.";

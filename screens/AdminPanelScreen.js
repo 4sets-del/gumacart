@@ -812,7 +812,7 @@ export default function AdminPanelScreen({ navigation, route }) {
                     </View>
                     <View style={styles.cardInfo}>
                       <Text style={styles.cardName} numberOfLines={1}>{listing.name}</Text>
-                      <Text style={styles.cardSub}>by {listing.sellerName}</Text>
+                      <Text style={styles.cardSub}>by {listing.sellerName}{listing.videos?.length ? ` · 🎥 ${listing.videos.length} video${listing.videos.length !== 1 ? "s" : ""} (tap to watch)` : ""}</Text>
                       <Text style={[styles.cardSub, { fontWeight: "700", color: COLORS.primary, marginTop: 2 }]}>
                         {listing.type === "donate" ? "FREE" : listing.type === "barter" ? "For Barter" : `₱${listing.price?.toLocaleString()}`}
                       </Text>

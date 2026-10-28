@@ -12,6 +12,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { doc, getDoc, collection, addDoc, serverTimestamp, updateDoc, deleteField } from "firebase/firestore";
 import { auth, db } from "../firebaseConfig";
 import { uploadFile, mapLimit } from "../utils/upload";
+import { VideoTile } from "../components/VideoPlayerModal";
 import * as ImagePicker from "expo-image-picker";
 import { pickFromGallery } from "../utils/pickFromGallery";
 import { CATEGORIES, normalizeCategory, MAX_PRICE } from "../constants/listings";
@@ -63,6 +64,8 @@ export default function CreateListingScreen({ navigation, route }) {
   const location = spotChoice === "Other" ? otherPlace.trim() : spotChoice;
   // Existing images are remote URLs; newly picked ones are local file URIs.
   const [images, setImages]                 = useState(editListing?.images || (editListing?.image ? [editListing.image] : []));
+  // Optional videos (after the photos; the first photo stays the cover).
+  const [videos, setVideos]                 = useState(editListing?.videos || []);
 
   // ── Draft: a new post is saved on the phone as it's typed, so leaving
   // halfway doesn't lose it. Editing an existing listing doesn't use drafts.
@@ -83,16 +86,16 @@ export default function CreateListingScreen({ navigation, route }) {
       const empty = !title && !description && images.length === 0;
       if (empty) AsyncStorage.removeItem(draftKey).catch(() => {});
       else AsyncStorage.setItem(draftKey, JSON.stringify({
-        listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images, savedAt: Date.now(),
+        listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images, videos, savedAt: Date.now(),
       })).catch(() => {});
     }, 600);
     return () => clearTimeout(id);
-  }, [isEditing, draftKey, listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images]);
+  }, [isEditing, draftKey, listingType, title, description, price, quantity, category, condition, spotChoice, otherPlace, images, videos]);
   const restoreDraft = () => {
     const d = savedDraft;
     setListingType(d.listingType || listingType); setTitle(d.title || ""); setDescription(d.description || "");
     setPrice(d.price || ""); setQuantity(d.quantity || 1); setCategory(d.category || ""); setCondition(d.condition || "");
-    setSpotChoice(d.spotChoice || ""); setOtherPlace(d.otherPlace || ""); setImages(d.images || []);
+    setSpotChoice(d.spotChoice || ""); setOtherPlace(d.otherPlace || ""); setImages(d.images || []); setVideos(d.videos || []);
     setTypeChosen(true); setTypePicker(false);
     setSavedDraft(null); draftReady.current = true;
   };
@@ -132,11 +135,21 @@ export default function CreateListingScreen({ navigation, route }) {
   const pickImages = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your photo library."); return; }
-    // No limit on how many photos a listing has.
+    // Photos and videos, no limit on how many.
     const result = await pickFromGallery({
-      mediaTypes: ["images"], allowsMultipleSelection: true, selectionLimit: 0, quality: 0.7,
+      mediaTypes: ["images", "videos"], allowsMultipleSelection: true, selectionLimit: 0, quality: 0.7,
     });
-    if (!result.canceled) setImages((prev) => [...prev, ...result.assets.map((a) => a.uri)]);
+    if (result.canceled) return;
+    const isVideo = (a) => a.type === "video";
+    setImages((prev) => [...prev, ...result.assets.filter((a) => !isVideo(a)).map((a) => a.uri)]);
+    setVideos((prev) => [...prev, ...result.assets.filter(isVideo).map((a) => a.uri)]);
+  };
+
+  const recordVideo = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) { Alert.alert("Permission needed", "Please allow access to your camera."); return; }
+    const result = await ImagePicker.launchCameraAsync({ mediaTypes: ["videos"] });
+    if (!result.canceled) setVideos((prev) => [...prev, result.assets[0].uri]);
   };
 
   const takePhoto = async () => {
@@ -147,14 +160,16 @@ export default function CreateListingScreen({ navigation, route }) {
   };
 
   const showImageOptions = () => {
-    Alert.alert("Add Photo", "Choose an option", [
+    Alert.alert("Add Photos or Videos", "Choose an option", [
       { text: "Take Photo", onPress: takePhoto },
+      { text: "Record Video", onPress: recordVideo },
       { text: "Choose from Gallery", onPress: pickImages },
       { text: "Cancel", style: "cancel" },
     ]);
   };
 
   const removeImage = (index) => setImages((prev) => prev.filter((_, i) => i !== index));
+  const removeVideo = (index) => setVideos((prev) => prev.filter((_, i) => i !== index));
 
   const uploadImage = async (uri) => {
     const filename = `listings/${auth.currentUser.uid}/${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
@@ -200,7 +215,8 @@ export default function CreateListingScreen({ navigation, route }) {
       // Only upload images that are new local files. Existing ones are already
       // remote URLs (start with http) and should be kept as-is.
       // Upload new photos in parallel, counting each one as it finishes.
-      const newCount = images.filter((uri) => !uri.startsWith("http")).length;
+      const isNew = (uri) => !uri.startsWith("http");
+      const newCount = images.filter(isNew).length + videos.filter(isNew).length;
       let done = 0;
       setUploadProgress({ done, total: newCount });
       // Three at a time: a listing can have any number of photos.
@@ -209,6 +225,15 @@ export default function CreateListingScreen({ navigation, route }) {
         setUploadProgress({ done, total: newCount });
         return url;
       })));
+      // Videos upload one at a time (they're large) and aren't compressed.
+      const videoUrls = [];
+      for (const uri of videos) {
+        if (!isNew(uri)) { videoUrls.push(uri); continue; }
+        const path = `listings/${auth.currentUser.uid}/${Date.now()}_${Math.random().toString(36).slice(2)}.mp4`;
+        videoUrls.push(await uploadFile(uri, path, { compress: false, contentType: "video/mp4" }));
+        done += 1;
+        setUploadProgress({ done, total: newCount });
+      }
 
       const payload = {
         type: listingType, title: title.trim(), name: title.trim(),
@@ -217,7 +242,7 @@ export default function CreateListingScreen({ navigation, route }) {
         price: showPrice ? Number(price) || 0 : 0,
         quantity: showQuantity ? quantity : 1,
         category, condition, location,
-        image: imageUrls[0], images: imageUrls,
+        image: imageUrls[0], images: imageUrls, videos: videoUrls,
       };
 
       // Lowering only the price of a live listing needs no new review: it
@@ -226,7 +251,8 @@ export default function CreateListingScreen({ navigation, route }) {
       const onlyPriceDropped = isEditing && editListing.status === "active"
         && payload.price < (editListing.price || 0)
         && ["type", "name", "description", "quantity", "category", "condition", "location"].every((k) => same(payload[k], editListing[k]))
-        && same(payload.images, editListing.images || (editListing.image ? [editListing.image] : []));
+        && same(payload.images, editListing.images || (editListing.image ? [editListing.image] : []))
+        && same(payload.videos, editListing.videos || []);
 
       if (onlyPriceDropped) {
         await updateDoc(doc(db, "listings", editListing.id), { price: payload.price, updatedAt: serverTimestamp() });
@@ -326,10 +352,23 @@ export default function CreateListingScreen({ navigation, route }) {
 
           {/* Photos */}
           <View style={styles.sectionLabelRow}>
-            <Text style={styles.sectionLabel}>Photos</Text>
-            {images.length > 0 ? <Text style={[styles.required, { color: COLORS.primary }]}>{images.length} added</Text> : null}
+            <Text style={styles.sectionLabel}>Photos & videos</Text>
+            {images.length + videos.length > 0 ? (
+              <Text style={[styles.required, { color: COLORS.primary }]}>
+                {[images.length && `${images.length} photo${images.length !== 1 ? "s" : ""}`, videos.length && `${videos.length} video${videos.length !== 1 ? "s" : ""}`].filter(Boolean).join(" · ")}
+              </Text>
+            ) : null}
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosRow}>
+            {/* Videos first; the first photo is the cover (thumbnail on cards). */}
+            {videos.map((uri, index) => (
+              <View key={uri} style={styles.photoThumb}>
+                <VideoTile uri={uri} size={96} radius={RADIUS.md} />
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel="Remove video" style={styles.removePhotoBtn} activeOpacity={0.7} onPress={() => removeVideo(index)}>
+                  <Ionicons name="close" size={13} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ))}
             {images.map((uri, index) => (
               <View key={index} style={styles.photoThumb}>
                 <Image source={{ uri }} style={styles.photoThumbImg} />
@@ -343,8 +382,8 @@ export default function CreateListingScreen({ navigation, route }) {
             ))}
             <TouchableOpacity style={styles.addPhotoBtn} activeOpacity={0.7} onPress={showImageOptions}>
               <Ionicons name="camera" size={26} color={COLORS.primary} style={{ marginBottom: 4 }} />
-              <Text style={styles.addPhotoText}>{images.length === 0 ? "Add Photos" : "Add More"}</Text>
-              {images.length > 0 && <Text style={styles.addPhotoSub}>{images.length} added</Text>}
+              <Text style={styles.addPhotoText}>{images.length + videos.length === 0 ? "Add Photos" : "Add More"}</Text>
+              <Text style={styles.addPhotoSub}>or videos</Text>
             </TouchableOpacity>
           </ScrollView>
 
