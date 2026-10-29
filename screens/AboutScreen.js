@@ -15,22 +15,21 @@ const MAKERS = [
     name: "Raymark Barrios",
     role: "Researcher",
     initial: "R",
-    // To show a real photo: add the file to /assets and set e.g. photo: require("../assets/team-raymark.jpg")
-    photo: null,
+    photo: require("../assets/Raymark.png"),
     desc: "Conceptualized the idea behind SLSU-GumaCart after recognizing the need for a dedicated marketplace within the university, and provided the overall direction of the project.",
   },
   {
     name: "Omar Gerez",
     role: "Lead Developer",
     initial: "O",
-    photo: null,
+    photo: require("../assets/Omar.png"),
     desc: "Led the development of the application, overseeing its features and functionality to ensure that the system effectively meets the needs of the SLSU community.",
   },
   {
     name: "Mechaella Alday",
     role: "Co-Researcher",
     initial: "M",
-    photo: null,
+    photo: require("../assets/Mechaella.jpg"),
     desc: "Worked together with Raymark in shaping the idea behind SLSU-GumaCart, helping plan its goals and features to make sure the app truly fits the needs of the SLSU community.",
   },
 ];
@@ -153,7 +152,7 @@ const createStyles = (COLORS) => StyleSheet.create({
 
   // Hero
   heroBanner: { margin: 16, backgroundColor: COLORS.primary, borderRadius: 24, padding: 28, alignItems: "center", overflow: "hidden" },
-  heroPhoto: { position: "absolute", left: 0, right: 0, bottom: 0, width: "100%", height: 420 },
+  heroPhoto: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 },
   heroLogo: { width: 72, height: 72, borderRadius: 18, marginBottom: 14, borderWidth: 2, borderColor: "rgba(255,255,255,0.4)" },
   heroAppName: { fontSize: 26, fontFamily: FONTS.heading, color: "#fff", marginBottom: 6, letterSpacing: -0.3 },
   heroTagline: { fontSize: 13, color: "rgba(255,255,255,0.85)", marginBottom: 14, textAlign: "center" },
