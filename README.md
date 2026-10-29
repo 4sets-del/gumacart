@@ -42,7 +42,8 @@ firestore.indexes.json Composite / collection-group indexes
 storage.rules          Storage security rules
 scripts/               export-privacy.js (writes PRIVACY.md), make-splash.sh,
                        make-avatars.sh, remove-phone-numbers.js,
-                       check-push.js (read-only: who gets direct pushes)
+                       check-push.js (read-only: who gets direct pushes),
+                       delete-non-slsu.js (removes non-SLSU accounts)
 patches/               expo-notifications: notification picture from push data
                        (applied by patch-package on npm install)
 hosting/               Firebase Hosting: icon, letter avatars, App Links file

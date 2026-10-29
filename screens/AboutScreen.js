@@ -54,9 +54,9 @@ export default function AboutScreen({ navigation }) {
 
         {/* App Hero */}
         <View style={styles.heroBanner}>
-          {/* Campus photo under a green tint */}
-          <Image source={require("../assets/slsu-campus.jpg")} style={styles.heroPhoto} resizeMode="cover" />
-          <LinearGradient colors={["rgba(20,83,43,0.55)", "rgba(20,83,43,0.92)"]} style={StyleSheet.absoluteFill} />
+          {/* SLSU Gumaca campus building under a green tint */}
+          <Image source={require("../assets/about-banner.jpg")} style={styles.heroPhoto} resizeMode="cover" />
+          <LinearGradient colors={["rgba(20,83,43,0.35)", "rgba(20,83,43,0.88)"]} style={StyleSheet.absoluteFill} />
           <Image source={require("../assets/icon.png")} style={styles.heroLogo} />
           <Text style={styles.heroAppName}>SLSU-GumaCart</Text>
           <Text style={styles.heroTagline}>The Official SLSU Student Marketplace</Text>
