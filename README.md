@@ -2,7 +2,7 @@
 
 The campus marketplace for **Southern Luzon State University – Gumaca**. Students and faculty buy, sell, barter and donate items with each other, chat, and meet up on campus.
 
-Only `@slsu.edu.ph` accounts can use the app (admins are the one exception), and sellers verify their student ID before posting.
+Only `@slsu.edu.ph` accounts can use the app (admins included), and sellers verify their student ID before posting.
 
 ## Features
 

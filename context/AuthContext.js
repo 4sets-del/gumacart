@@ -81,7 +81,7 @@ export const AuthProvider = ({ children }) => {
         }
         setUser(firebaseUser);
         setEmailVerified(firebaseUser.emailVerified);
-        if (firebaseUser.emailVerified && hasSchoolAccess(firebaseUser, profile)) {
+        if (firebaseUser.emailVerified && hasSchoolAccess(firebaseUser)) {
           registerForPushNotifications(firebaseUser.uid);
         }
       } else {
@@ -135,7 +135,7 @@ export const AuthProvider = ({ children }) => {
   }, [uid, userProfile]);
 
   const { banned: isBanned } = computeBanState(userProfile);
-  const schoolAccess = hasSchoolAccess(user, userProfile);
+  const schoolAccess = hasSchoolAccess(user);
 
   return (
     <AuthContext.Provider value={{ user, userProfile, setUserProfile, loading, emailVerified, isBanned, schoolAccess }}>

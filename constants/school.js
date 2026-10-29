@@ -6,9 +6,9 @@ export function isSchoolEmail(email) {
   return typeof email === 'string' && email.trim().toLowerCase().endsWith(`@${SCHOOL_DOMAIN}`);
 }
 
-// Admins may use any email (e.g. the project owner's account).
-export function hasSchoolAccess(user, profile) {
-  return isSchoolEmail(user?.email) || profile?.role === 'admin';
+// No exceptions, admins included.
+export function hasSchoolAccess(user) {
+  return isSchoolEmail(user?.email);
 }
 
 // Courses (with majors) offered at SLSU Gumaca. The short code is what shows
