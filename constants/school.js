@@ -16,7 +16,7 @@ export function hasSchoolAccess(user) {
 export const COURSES = [
   { code: 'BSBA-HRM', name: 'BS Business Administration', major: 'Human Resource Management' },
   { code: 'BSN', name: 'BS Nursing' },
-  { code: 'BSIT-CPT', name: 'BS Industrial Technology', major: 'Computer Technology' },
+  { code: 'BIT-CPT', name: 'Bachelor in Industrial Technology', major: 'Computer Technology' },
   { code: 'BSEd-SS', name: 'Bachelor of Secondary Education', major: 'Social Studies' },
   { code: 'BSEd-Math', name: 'Bachelor of Secondary Education', major: 'Mathematics' },
   { code: 'Other', name: 'Other / Not listed' },
@@ -24,7 +24,7 @@ export const COURSES = [
 
 // Codes that were renamed; profiles saved before keep the old code and are
 // read as the new one.
-const RENAMED_COURSES = { 'BSBA-HR': 'BSBA-HRM', 'BSIT-CT': 'BSIT-CPT' };
+const RENAMED_COURSES = { 'BSBA-HR': 'BSBA-HRM', 'BSIT-CT': 'BIT-CPT', 'BSIT-CPT': 'BIT-CPT', 'BIT': 'BIT-CPT' };
 
 export function normalizeCourse(code) {
   return RENAMED_COURSES[code] || code || null;
@@ -51,7 +51,7 @@ export function courseName(code) {
   return c.major ? `${c.name}, major in ${c.major}` : c.name;
 }
 
-// One line describing someone, e.g. "BSIT-CPT · 3rd Year", "BSN · Faculty",
+// One line describing someone, e.g. "BIT-CPT · 3rd Year", "BSN · Faculty",
 // or "SLSU Student" for accounts that haven't filled these in yet.
 export function academicLabel(profile) {
   const isFaculty = profile?.role === 'faculty';

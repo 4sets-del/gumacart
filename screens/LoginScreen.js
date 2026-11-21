@@ -16,7 +16,7 @@ import StatusBarScrim from '../components/StatusBarScrim';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const HERO_HEIGHT = Math.round(SCREEN_H * 0.44);
-// Campus photo is 1086x1448; anchor its bottom so the building and SLSU sign show.
+// Campus photo is 1086x1448; anchor its bottom so the main building shows.
 const PHOTO_HEIGHT = Math.round(SCREEN_W * (1448 / 1086));
 
 export default function LoginScreen({ navigation }) {

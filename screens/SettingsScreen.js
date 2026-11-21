@@ -233,7 +233,7 @@ export default function SettingsScreen({ navigation }) {
       <ScrollView showsVerticalScrollIndicator={false}>
         <Text style={styles.sectionLabel}>Account</Text>
         <View style={styles.card}>
-          <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, course, year, address" onPress={openEditModal} />
+          <SettingRow icon="person" iconColor="#2563EB" label="Edit Profile" sub="Name, course, year, current address" onPress={openEditModal} />
           {verificationStatus !== "verified" && (
             <SettingRow
               icon="school"
@@ -361,10 +361,8 @@ export default function SettingsScreen({ navigation }) {
 
         <SheetSection title="Personal info" />
         <FormField label="Name" icon="person-outline" value={name} onChangeText={setName} placeholder="Your full name" maxLength={40} />
-        <View style={styles.fieldRow}>
-          <FormField style={{ flex: 2 }} label="Address" icon="location-outline" value={address} onChangeText={setAddress} placeholder="Your address" />
-          <FormField style={{ flex: 1 }} label="Age" icon="calendar-outline" value={age} onChangeText={setAge} placeholder="Age" keyboardType="numeric" maxLength={3} />
-        </View>
+        <FormField label="Current Address" icon="location-outline" value={address} onChangeText={setAddress} placeholder="Barangay | Municipality" />
+        <FormField label="Age" icon="calendar-outline" value={age} onChangeText={setAge} placeholder="Age" keyboardType="numeric" maxLength={3} />
 
         <SheetSection title="School" />
         <AcademicFields
@@ -487,7 +485,6 @@ const createStyles = (COLORS) => StyleSheet.create({
   blockedName: { flex: 1, fontSize: 15, fontWeight: "600", color: COLORS.textPrimary },
   unblockBtn: { backgroundColor: COLORS.primaryPale, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 7 },
   unblockText: { color: COLORS.primary, fontWeight: "800", fontSize: 13 },
-  fieldRow: { flexDirection: "row", gap: 10 },
   dangerNote: { flexDirection: "row", gap: 10, backgroundColor: COLORS.errorLight, borderRadius: RADIUS.md, padding: 12, marginTop: 14 },
   dangerNoteText: { flex: 1, fontSize: 13, lineHeight: 19, color: COLORS.error },
 });

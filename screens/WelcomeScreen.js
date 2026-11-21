@@ -8,7 +8,7 @@ import GradientButton from '../components/GradientButton';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 // Campus photo is 1086x1448; fill the screen and anchor the bottom so the
-// building and SLSU sign stay in view on any phone size.
+// SLSU Gumaca main building stays in view on any phone size.
 const PHOTO_H = Math.max(SCREEN_H, Math.round(SCREEN_W * (1448 / 1086)));
 
 export default function WelcomeScreen({ navigation }) {

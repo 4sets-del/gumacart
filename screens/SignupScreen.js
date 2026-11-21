@@ -183,13 +183,13 @@ export default function SignupScreen({ navigation }) {
               />
             </View>
 
-            <Text style={styles.fieldLabel}>Address</Text>
+            <Text style={styles.fieldLabel}>Current Address</Text>
             <View style={styles.inputBox}>
               <Ionicons name="location-outline" size={20} color={COLORS.textMuted} style={styles.inputIcon} />
               <TextInput
                 ref={addressRef}
                 style={styles.input}
-                placeholder="Enter your address"
+                placeholder="Barangay | Municipality"
                 placeholderTextColor={COLORS.textMuted}
                 value={address}
                 onChangeText={setAddress}
