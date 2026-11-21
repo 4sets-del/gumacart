@@ -4,6 +4,8 @@ The campus marketplace for **Southern Luzon State University – Gumaca**. Stude
 
 Only `@slsu.edu.ph` accounts can use the app (admins included), and sellers verify their student ID before posting.
 
+> **Full documentation** (technologies, every feature, backend, how it was built): [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)
+
 ## Features
 
 - **Listings:** For Sale, Looking For, Barter, Donate; any number of photos and videos, quantity, condition, campus meet-up spot. New and edited listings are approved by an admin. Listings expire after 30 days and can be renewed.
