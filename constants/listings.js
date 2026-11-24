@@ -47,6 +47,46 @@ export const LISTING_TYPES = {
   donate: { label: 'Free',     badge: 'FREE' },
 };
 
+// How a finished deal is worded for each listing type. "Mark as sold" only
+// fits For Sale: a Looking For post is done when the poster *found* the item
+// (they're the buyer), a barter is exchanged, a donation is given away.
+// The listing status is "sold" for all of them.
+export const DEAL_WORDS = {
+  sell: {
+    done: 'Sold', banner: 'SOLD', mark: 'Mark as Sold', one: 'Sold one',
+    pickTitle: 'Who bought it?', skip: 'Skip, sold to someone else',
+    pickSub: "We'll invite them to rate you, and let others who were interested know it's sold.",
+    toWhom: (n) => `sold to ${n}`, rateNote: "They'll be asked to rate you.",
+    chat: (item) => `✅ Marked "${item}" as sold to you. Salamat po!`,
+    review: 'Bought', rateTitle: 'How was this purchase?',
+  },
+  buy: {
+    done: 'Found', banner: 'FOUND', mark: 'Mark as Found', one: 'Got one',
+    pickTitle: 'Who did you get it from?', skip: 'Skip, got it somewhere else',
+    pickSub: "You'll be asked to rate them, and others who offered are told you found one.",
+    toWhom: (n) => `got from ${n}`, rateNote: "You'll be asked to rate them.",
+    chat: (item) => `✅ Got "${item}" from you. Salamat po!`,
+    review: 'Bought', rateTitle: 'How was this purchase?',
+  },
+  barter: {
+    done: 'Exchanged', banner: 'EXCHANGED', mark: 'Mark as Exchanged', one: 'Exchanged one',
+    pickTitle: 'Who did you exchange with?', skip: 'Skip, exchanged with someone else',
+    pickSub: "We'll invite them to rate the exchange, and let others who were interested know it's done.",
+    toWhom: (n) => `exchanged with ${n}`, rateNote: "They'll be asked to rate the exchange.",
+    chat: (item) => `✅ Marked "${item}" as exchanged with you. Salamat po!`,
+    review: 'Exchanged', rateTitle: 'How was the exchange?',
+  },
+  donate: {
+    done: 'Given away', banner: 'GIVEN', mark: 'Mark as Given', one: 'Gave one',
+    pickTitle: 'Who did you give it to?', skip: 'Skip, given to someone else',
+    pickSub: "We'll invite them to rate you, and let others who were interested know it's been given away.",
+    toWhom: (n) => `given to ${n}`, rateNote: "They'll be asked to rate you.",
+    chat: (item) => `✅ Marked "${item}" as given to you. Salamat po!`,
+    review: 'Received', rateTitle: 'How was it?',
+  },
+};
+export const dealWords = (type) => DEAL_WORDS[type] || DEAL_WORDS.sell;
+
 // Label, badge text and colors for a listing type (sell/buy/barter/donate).
 export function typeMeta(type) {
   const key = LISTING_TYPES[type] ? type : 'sell';

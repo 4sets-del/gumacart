@@ -486,29 +486,42 @@ exports.onListingStatusChange = functions
     const notifyListing = (uid, title, body) => notifyUser(uid, {
       storeType: "listing_update", styleKey: "system", title, body, data: listingLink,
     });
-    // A sale to a specific buyer is recorded (deals/{id}) and the buyer is
-    // invited to rate it. Each purchase can be rated once (the review's id is
-    // the deal's id), so reviews come from real deals and a second item
-    // bought from the same seller gets its own rating.
-    const ratePrompt = async (buyerId) => {
-      const buyer = (await db.collection("users").doc(buyerId).get()).data() || {};
+    // A finished deal with a specific person is recorded (deals/{id}) and the
+    // person who received the item is invited to rate the one who gave it.
+    // Each deal can be rated once (the review's id is the deal's id), so
+    // reviews come from real deals. For a Looking For post the roles are
+    // reversed: the poster is the one who got the item, so the poster rates
+    // the person they got it from (that person is the deal's "seller").
+    const type = after.type || "sell";
+    const ratePrompt = async (otherId) => {
+      const other = (await db.collection("users").doc(otherId).get()).data() || {};
+      const otherName = other.name || "them";
+      const posterGotIt = type === "buy";
+      const giver = posterGotIt ? { id: otherId, name: otherName } : { id: sellerId, name: sellerName };
+      const getter = posterGotIt ? { id: sellerId, name: sellerName } : { id: otherId, name: other.name || "Buyer" };
       const deal = await db.collection("deals").add({
         listingId,
         listingName: itemName,
         listingImage: (after.images && after.images[0]) || after.image || null,
-        price: after.type === "sell" ? (after.price || 0) : 0,
-        type: after.type || "sell",
-        sellerId, sellerName,
-        buyerId, buyerName: buyer.name || "Buyer",
+        price: type === "sell" ? (after.price || 0) : 0,
+        type,
+        sellerId: giver.id, sellerName: giver.name,
+        buyerId: getter.id, buyerName: getter.name,
         status: "completed",
         createdAt: FieldValue.serverTimestamp(),
       });
-      await notifyUser(buyerId, {
+      const [title, body] = {
+        sell: ["How was your purchase?", `You got "${itemName}" from ${giver.name}. Tap to leave a rating.`],
+        buy: ["How was it?", `You got "${itemName}" from ${giver.name}. Tap to rate them.`],
+        barter: ["How was the exchange?", `You exchanged with ${giver.name} for "${itemName}". Tap to rate them.`],
+        donate: ["How was it?", `${giver.name} gave you "${itemName}". Tap to leave a rating.`],
+      }[type] || [];
+      await notifyUser(getter.id, {
         storeType: "rate_prompt",
         styleKey: "review",
-        title: "How was your purchase?",
-        body: `You got "${itemName}" from ${sellerName}. Tap to leave a rating.`,
-        data: { nav: "profile", profileId: sellerId, profileName: sellerName, rate: "1", dealId: deal.id },
+        title: title || "How was your purchase?",
+        body: body || `You got "${itemName}" from ${giver.name}. Tap to leave a rating.`,
+        data: { nav: "profile", profileId: giver.id, profileName: giver.name, rate: "1", dealId: deal.id },
       });
     };
 
@@ -558,12 +571,17 @@ exports.onListingStatusChange = functions
     }
 
     if (statusChanged && after.status === "sold") {
-      // The buyer rates the seller; everyone else who was interested is told
-      // it's gone.
+      // The person who got the item rates the deal; everyone else who was
+      // interested is told it's done.
       if (after.soldTo && after.soldTo !== sellerId) await ratePrompt(after.soldTo);
+      const [doneTitle, doneBody] = {
+        buy: ["Request fulfilled", `${sellerName} already found "${itemName}". Thanks for offering!`],
+        barter: ["Item exchanged", `Sorry, "${itemName}" has already been exchanged.`],
+        donate: ["Item given away", `Sorry, "${itemName}" has already been given away.`],
+      }[type] || ["Item sold", `Sorry, "${itemName}" has been sold.`];
       const others = (await interestedIds(listingId)).filter((uid) => uid !== after.soldTo && uid !== sellerId);
       await Promise.all(others.map(async (uid) => {
-        await notifyListing(uid, "Item sold", `Sorry, "${itemName}" has been sold.`);
+        await notifyListing(uid, doneTitle, doneBody);
       }));
       return null;
     }
@@ -629,7 +647,7 @@ exports.checkReservations = functions
         await notifyUser(d.sellerId, {
           storeType: "listing_update", styleKey: "system", data: link,
           title: "Still reserved?",
-          body: `"${itemName}" has been reserved for 2 days. Mark it sold or release it; otherwise it's released automatically in 2 days.`,
+          body: `"${itemName}" has been reserved for 2 days. Mark it done or release it; otherwise it's released automatically in 2 days.`,
         });
       }
     }
@@ -671,7 +689,9 @@ exports.expireListings = functions
         await notifyUser(d.sellerId, {
           storeType: "listing_expired", styleKey: "system", data: link,
           title: "Expiring in 3 days",
-          body: `"${itemName}" will be hidden soon. Sold it? Mark it sold. Still selling? Renew it from the listing.`,
+          body: d.type === "buy"
+            ? `"${itemName}" will be hidden soon. Found one? Mark it as found. Still looking? Renew it from the listing.`
+            : `"${itemName}" will be hidden soon. Already done? Mark it from the listing. Still available? Renew it.`,
         });
       }
     }

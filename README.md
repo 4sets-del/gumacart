@@ -42,7 +42,7 @@ functions/             Cloud Functions (notifications, moderation, reservations,
 firestore.rules        Firestore security rules
 firestore.indexes.json Composite / collection-group indexes
 storage.rules          Storage security rules
-scripts/               export-privacy.js (writes PRIVACY.md), make-splash.sh,
+scripts/               export-privacy.js (writes PRIVACY.md), logo.png, make-icons.sh, make-splash.sh,
                        make-avatars.sh, remove-phone-numbers.js,
                        check-push.js (read-only: who gets direct pushes),
                        delete-non-slsu.js (removes non-SLSU accounts)
@@ -115,4 +115,5 @@ Admins have `role: "admin"` on their `users/{uid}` document; set it in the Fireb
 - **Long forms** use `KeyboardScrollView`, so the focused field stays above the keyboard.
 - **SLSU domain:** keep `constants/school.js` and `isSlsuEmail()` in `firestore.rules` in sync.
 - **Privacy policy:** after editing `constants/privacy.js`, run `npm run privacy` to regenerate `PRIVACY.md`.
-- **Splash:** `assets/splash-icon.png` (Android's system splash) and `assets/splash.jpg` (the full splash) come from `scripts/make-splash.sh`; edit and rerun it to change them.
+- **Logo and icons:** the logo is `scripts/logo.png`. `scripts/make-icons.sh` builds every icon from it (and cuts out `scripts/logo-emblem.png`) (app icon, Android adaptive and themed icons, notification icon, favicon, `hosting/icon.png`).
+- **Splash:** `assets/splash-icon.png` (Android's system splash) and `assets/splash.jpg` (the full splash) come from `scripts/make-splash.sh`; edit and rerun it to change them. It uses `scripts/logo-emblem.png`, so after changing the logo run `make-icons.sh` then `make-splash.sh`.

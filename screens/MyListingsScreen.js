@@ -10,6 +10,7 @@ import { ProductRow } from '../components/ProductCard';
 import { SPACING, RADIUS, FONTS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 import GradientButton from '../components/GradientButton';
+import { dealWords } from '../constants/listings';
 
 const STATUS_PILLS = (COLORS) => ({
   active:   { label: 'Active',         color: COLORS.primary, bg: COLORS.primaryPale },
@@ -65,7 +66,7 @@ export default function MyListingsScreen({ navigation }) {
       </View>
 
       <View style={styles.segment}>
-        {[['active', `Active (${activeListings.length})`], ['sold', `Sold (${soldListings.length})`]].map(([id, label]) => (
+        {[['active', `Active (${activeListings.length})`], ['sold', `Done (${soldListings.length})`]].map(([id, label]) => (
           <TouchableOpacity key={id} style={[styles.segmentItem, tab === id && styles.segmentItemOn]} activeOpacity={0.85} onPress={() => setTab(id)}>
             <Text style={[styles.segmentText, tab === id && styles.segmentTextOn]}>{label}</Text>
           </TouchableOpacity>
@@ -84,13 +85,15 @@ export default function MyListingsScreen({ navigation }) {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Ionicons name="pricetags-outline" size={40} color={COLORS.textMuted} />
-              <Text style={styles.emptyTitle}>{tab === 'active' ? 'No active listings' : 'No sold items yet'}</Text>
+              <Text style={styles.emptyTitle}>{tab === 'active' ? 'No active listings' : 'Nothing completed yet'}</Text>
               {tab === 'active' && <Text style={styles.emptySub}>Post something to get started!</Text>}
             </View>
           }
           renderItem={({ item }) => {
             const pills = STATUS_PILLS(COLORS);
-            const pill = item.status === 'active' && item.reserved ? pills.reserved : pills[item.status] || pills.active;
+            const pill = item.status === 'active' && item.reserved ? pills.reserved
+              : item.status === 'sold' ? { ...pills.sold, label: dealWords(item.type).done }
+              : pills[item.status] || pills.active;
             return (
               <ProductRow
                 item={item}

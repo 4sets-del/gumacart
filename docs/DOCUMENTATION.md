@@ -547,7 +547,8 @@ npx expo export --platform android   # the bundle builds
 | Script | What it does |
 |---|---|
 | `npm run privacy` (`scripts/export-privacy.js`) | Regenerates `PRIVACY.md` from `constants/privacy.js` |
-| `scripts/make-splash.sh` | Generates the splash images |
+| `scripts/make-icons.sh` | Generates every app icon from the logo (`scripts/logo.png`) |
+| `scripts/make-splash.sh` | Generates the splash images (uses the same logo) |
 | `scripts/make-avatars.sh` | Generates the letter avatars in `hosting/avatars/` |
 | `scripts/check-push.js <key.json>` | Read-only: which accounts have paired phones (direct notifications) |
 | `scripts/delete-non-slsu.js <key.json> [--delete]` | Lists (or deletes) accounts that aren't `@slsu.edu.ph` |

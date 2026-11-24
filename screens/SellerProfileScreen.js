@@ -24,7 +24,7 @@ import ReportSheet from "../components/ReportSheet";
 import Sheet, { FormField, SheetOption } from "../components/Sheet";
 import { useBlocked, blockUser, unblockUser } from "../utils/blocking";
 import { useTheme } from '../context/ThemeContext';
-import { listedMs } from "../constants/listings";
+import { listedMs, dealWords } from "../constants/listings";
 
 
 function StarRating({ rating, size = 20, onPress }) {
@@ -101,10 +101,10 @@ export default function SellerProfileScreen({ route, navigation }) {
       return;
     }
     Alert.alert(
-      purchases.length ? "All purchases rated" : "Rate after a purchase",
+      purchases.length ? "All deals rated" : "Rate after a deal",
       purchases.length
-        ? `You've rated every item you bought from ${sellerName}. You can edit your reviews below.`
-        : `Reviews come from buyers. Once ${sellerName} marks an item as sold to you, you'll get a notification to rate that purchase.`,
+        ? `You've rated every deal with ${sellerName}. You can edit your reviews below.`
+        : `Reviews come from real deals. Once a deal with ${sellerName} is marked done (sold, found, exchanged or given), you'll get a notification to rate it.`,
       [{ text: "OK" }],
     );
   };
@@ -269,6 +269,7 @@ export default function SellerProfileScreen({ route, navigation }) {
         reviewerName: currentUser.displayName || "Anonymous",
         rating: myRating, comment: myReview.trim(), photos, createdAt: serverTimestamp(),
         dealId: ratingDeal.id,
+        dealType: ratingDeal.type || "sell",
         listingId: ratingDeal.listingId || null,
         listingName: ratingDeal.listingName || null,
         listingImage: ratingDeal.listingImage || null,
@@ -444,10 +445,10 @@ export default function SellerProfileScreen({ route, navigation }) {
               <Text style={styles.emptyText}>No reviews yet</Text>
               {!isOwnProfile && canRate ? (
                 <TouchableOpacity style={styles.emptyBtn} activeOpacity={0.85} onPress={() => startRating()}>
-                  <Text style={styles.emptyBtnText}>Rate your purchase</Text>
+                  <Text style={styles.emptyBtnText}>Rate your deal</Text>
                 </TouchableOpacity>
               ) : !isOwnProfile ? (
-                <Text style={styles.emptyHint}>Buyers can rate {sellerName} after buying from them.</Text>
+                <Text style={styles.emptyHint}>People can rate {sellerName} after a deal with them.</Text>
               ) : null}
             </View>
           ) : (
@@ -479,7 +480,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                 {review.listingName ? (
                   <View style={styles.reviewItem}>
                     {review.listingImage ? <Image source={{ uri: review.listingImage }} style={styles.reviewItemImg} /> : <Ionicons name="bag-handle-outline" size={14} color={COLORS.textMuted} />}
-                    <Text style={styles.reviewItemText} numberOfLines={1}>Bought: {review.listingName}</Text>
+                    <Text style={styles.reviewItemText} numberOfLines={1}>{dealWords(review.dealType).review}: {review.listingName}</Text>
                   </View>
                 ) : null}
                 {review.comment ? <Text style={styles.reviewComment}>{review.comment}</Text> : null}
@@ -515,7 +516,7 @@ export default function SellerProfileScreen({ route, navigation }) {
             {["active", "sold"].map((tab) => (
               <TouchableOpacity key={tab} style={[styles.tab, activeTab === tab && styles.tabActive]} activeOpacity={0.7} onPress={() => setActiveTab(tab)}>
                 <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-                  {tab === "active" ? `Active (${activeListings.length})` : `Sold (${soldListings.length})`}
+                  {tab === "active" ? `Active (${activeListings.length})` : `Done (${soldListings.length})`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -534,7 +535,7 @@ export default function SellerProfileScreen({ route, navigation }) {
                   item={item}
                   onPress={() => navigation.navigate("ProductDetail", { product: item })}
                   right={item.status === "sold" ? (
-                    <View style={styles.soldPill}><Text style={styles.soldPillText}>Sold</Text></View>
+                    <View style={styles.soldPill}><Text style={styles.soldPillText}>{dealWords(item.type).done}</Text></View>
                   ) : null}
                 >
                   {item.status === "sold" && !isOwnProfile && (
@@ -555,7 +556,7 @@ export default function SellerProfileScreen({ route, navigation }) {
         visible={showRatingModal}
         onClose={() => { setShowRatingModal(false); setEditingReviewId(null); setRatingDeal(null); }}
         title={editingReviewId ? "Edit your review" : `Rate ${sellerName}`}
-        subtitle={editingReviewId ? "How was your experience with this seller?" : "How was this purchase?"}
+        subtitle={editingReviewId ? "How was your experience with them?" : dealWords(ratingDeal?.type).rateTitle}
         icon="star"
         busy={submittingReview}
         action={{ title: editingReviewId ? "Update Review" : "Submit Review", icon: "send", onPress: handleSubmitReview, loading: submittingReview }}
@@ -577,7 +578,7 @@ export default function SellerProfileScreen({ route, navigation }) {
           ) : (
             <View style={[styles.reviewItem, styles.dealSingle]}>
               {ratingDeal.listingImage ? <Image source={{ uri: ratingDeal.listingImage }} style={styles.reviewItemImg} /> : null}
-              <Text style={styles.reviewItemText} numberOfLines={1}>Bought: {ratingDeal.listingName || "Item"}</Text>
+              <Text style={styles.reviewItemText} numberOfLines={1}>{dealWords(ratingDeal.type).review}: {ratingDeal.listingName || "Item"}</Text>
             </View>
           )
         ) : null}

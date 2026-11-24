@@ -131,8 +131,8 @@ export default function HomeScreen({ navigation, route }) {
     { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add as many photos and videos as you like, and a quantity.' },
     { ref: tabTarget(2), icon: 'shield-checkmark', shape: 'circle', title: 'Get verified first', text: 'Before your first post, send your student ID once. An admin approves it, usually within 1–2 days.' },
     { ref: tabTarget(3), icon: 'chatbubbles', title: 'Messages', text: 'Chat with buyers and sellers. Send photos and videos, react or reply with a long-press, and see when it\'s Seen.' },
-    { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it sold. Interested buyers are notified automatically.' },
-    { ref: tabTarget(4), icon: 'star', title: 'Ratings', text: 'Buyers rate sellers after a sale. Good ratings help your items get Featured.' },
+    { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it done (sold, found, exchanged or given). Interested people are notified automatically.' },
+    { ref: tabTarget(4), icon: 'star', title: 'Ratings', text: 'After a deal is marked done, the other person rates it. Good ratings help your items get Featured.' },
     { icon: 'flag', title: 'Stay safe', text: 'Meet in public places on campus and check items before paying. See something wrong? Tap the 🚩 flag on any listing or profile to report it.' },
     { ref: tabTarget(4), icon: 'settings', title: 'Settings', text: 'In Profile → Settings: edit your course and year, switch to dark mode, choose notifications, and replay this tour anytime.' },
   ], []);

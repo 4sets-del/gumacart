@@ -35,7 +35,7 @@ import { recordView } from "../utils/views";
 import { getUserBasics } from "../utils/userCache";
 import { academicLabel } from "../constants/school";
 import { markInterested, getInterested } from "../utils/interest";
-import { normalizeCategory, priceLabel, typeMeta, listingImage, listingShareUrl } from "../constants/listings";
+import { normalizeCategory, priceLabel, typeMeta, listingImage, listingShareUrl, dealWords } from "../constants/listings";
 import { useSellerRatings } from "../utils/sellerRatings";
 
 const STATUSBAR_TOP = Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0;
@@ -78,6 +78,7 @@ export default function ProductDetailScreen({ route, navigation }) {
   const isSold = product.status === "sold";
   // Listings can have several identical items; each sale takes one.
   const stock = Math.max(1, Number(product.quantity) || 1);
+  const words = dealWords(product.type); // "Sold" / "Found" / "Exchanged" / "Given away"
   // Promised to a buyer but not sold yet; still listed, marked "Reserved".
   const isReserved = !isSold && product.reserved === true;
   const reservedForMe = isReserved && product.reservedFor === currentUser?.uid;
@@ -305,7 +306,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         ? { status: "sold", soldTo: buyerId, soldAt: serverTimestamp(), reserved: false, reservedFor: null }
         : { status: "active", soldTo: null });
       setProduct((p) => ({ ...p, status: sold ? "sold" : "active" })); // instant; the live update confirms it
-      if (sold && buyerId) Alert.alert("Marked as sold", "We'll ask the buyer to rate you.");
+      if (sold && buyerId) Alert.alert(`Marked as ${words.done.toLowerCase()}`, words.rateNote);
     } catch (e) {
       Alert.alert("Error", "Failed to update.");
     } finally {
@@ -383,7 +384,7 @@ export default function ProductDetailScreen({ route, navigation }) {
         lastSaleAt: serverTimestamp(),
       });
       setProduct((p) => ({ ...p, quantity: stock - 1 }));
-      Alert.alert("Sold one", `${stock - 1} left.${buyerId ? " We'll ask the buyer to rate you." : ""}`);
+      Alert.alert(words.one, `${stock - 1} left.${buyerId ? ` ${words.rateNote}` : ""}`);
     } catch (e) {
       Alert.alert("Error", "Failed to update.");
     } finally {
@@ -487,7 +488,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           {isSold && (
             <View style={styles.soldBanner} pointerEvents="none">
               <View style={styles.soldBannerPill}>
-                <Text style={styles.soldBannerText}>SOLD</Text>
+                <Text style={styles.soldBannerText}>{words.banner}</Text>
               </View>
             </View>
           )}
@@ -572,7 +573,7 @@ export default function ProductDetailScreen({ route, navigation }) {
                 size={16}
                 color={isSold ? COLORS.error : isReserved ? COLORS.warning : COLORS.primary}
               />
-              <Text style={styles.metaText}>{isSold ? "Sold" : reservedForMe ? "Reserved for you" : isReserved ? "Reserved for a buyer" : stock > 1 ? `${stock} available` : "Available"}</Text>
+              <Text style={styles.metaText}>{isSold ? words.done : reservedForMe ? "Reserved for you" : isReserved ? "Reserved for a buyer" : stock > 1 ? `${stock} available` : "Available"}</Text>
             </View>
             {product.location ? (
               <View style={styles.metaItem}>
@@ -697,7 +698,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             <Ionicons name="create-outline" size={19} color={COLORS.primary} />
             <Text style={styles.editBtnText}>Edit</Text>
           </TouchableOpacity>
-          {!isSold && stock === 1 && (
+          {!isSold && stock === 1 && product.type !== "buy" && (
             <TouchableOpacity
               style={[styles.reserveBtn, isReserved && styles.reserveBtnOn]}
               activeOpacity={0.85}
@@ -711,7 +712,7 @@ export default function ProductDetailScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
           <TouchableOpacity style={[styles.primaryBtn, isSold && styles.markActiveBtn, (marking || deleting) && { opacity: 0.6 }]} activeOpacity={0.85} onPress={handleMarkSold} disabled={marking || deleting}>
-            <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : stock > 1 ? `Sold one (${stock} left)` : "Mark as Sold"}</Text>
+            <Text style={styles.primaryBtnText}>{marking ? "Updating..." : isSold ? "Mark as Active" : stock > 1 ? `${words.one} (${stock} left)` : words.mark}</Text>
           </TouchableOpacity>
           <TouchableOpacity accessibilityRole="button" accessibilityLabel="Delete listing" style={[styles.deleteIconBtn, deleting && { opacity: 0.6 }]} activeOpacity={0.8} onPress={handleDelete} disabled={deleting || marking}>
             <Ionicons name="trash-outline" size={21} color={COLORS.error} />
@@ -722,7 +723,7 @@ export default function ProductDetailScreen({ route, navigation }) {
           <SaveButton item={product} size={22} plain style={styles.chatBtn} />
           {isSold ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
-              <Text style={styles.primaryBtnText}>Ask if Still Available</Text>
+              <Text style={styles.primaryBtnText}>{product.type === "sell" || !product.type ? "Ask if Still Available" : "Message"}</Text>
             </TouchableOpacity>
           ) : reservedForMe ? (
             <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={handleMessageSeller}>
@@ -735,25 +736,25 @@ export default function ProductDetailScreen({ route, navigation }) {
               <Text style={[styles.primaryBtnText, { color: COLORS.warning }]}>Reserved · Ask to be next</Text>
             </TouchableOpacity>
           ) : (
-            <GradientButton title="Message Seller" icon="chatbubble-ellipses-outline" onPress={handleMessageSeller} style={{ flex: 1 }} />
+            <GradientButton title={{ buy: "I Have One · Message", barter: "Offer an Exchange", donate: "Ask for It" }[product.type] || "Message Seller"} icon="chatbubble-ellipses-outline" onPress={handleMessageSeller} style={{ flex: 1 }} />
           )}
         </View>
       )}
 
-      {/* Mark as sold → who bought it? */}
+      {/* Mark as sold / found / exchanged / given → with whom? */}
       <Sheet
         visible={buyerPickerVisible}
         onClose={() => setBuyerPickerVisible(false)}
-        title={pickerMode === "reserve" ? "Reserve for whom?" : "Who bought it?"}
+        title={pickerMode === "reserve" ? "Reserve for whom?" : words.pickTitle}
         subtitle={pickerMode === "reserve"
           ? "They'll see it's reserved for them. Others who were interested are told it's reserved."
-          : "We'll invite them to rate you, and let others who were interested know it's sold."}
+          : words.pickSub}
         icon={pickerMode === "reserve" ? "bookmark" : "bag-check"}
         footer={
           <View style={styles.pickerFooter}>
             <TouchableOpacity style={styles.pickerSkip} activeOpacity={0.8} onPress={() => chooseBuyer(null)}>
               <Text style={styles.pickerSkipText}>
-                {pickerMode === "reserve" ? "Someone not on this list" : "Skip, sold to someone else"}
+                {pickerMode === "reserve" ? "Someone not on this list" : words.skip}
               </Text>
             </TouchableOpacity>
           </View>

@@ -22,6 +22,7 @@ import { VoiceRecorder, VoiceBubble } from "../components/VoiceMessage";
 import ZoomableImage from "../components/ZoomableImage";
 import * as Haptics from "expo-haptics";
 import { markSoldTo } from "../utils/sales";
+import { dealWords } from "../constants/listings";
 import { usePresence } from "../utils/presence";
 import { dismissChatNotification, setActiveConversation } from "../utils/notifications";
 import { useFocusEffect } from "@react-navigation/native";
@@ -438,7 +439,7 @@ export default function ChatScreen({ route, navigation }) {
   }, [messages, activeListings]);
   const iAmSeller = chatListings.some((l) => l.sellerId === user.uid);
 
-  // ── Mark as sold from the chat (for my items) ──
+  // ── Mark as sold / found / exchanged / given from the chat (my items) ──
   const myListings = useMemo(() => {
     const talked = new Set(chatListings.map((l) => l.id));
     return activeListings
@@ -450,19 +451,20 @@ export default function ChatScreen({ route, navigation }) {
   const confirmSold = (listing) => {
     setSoldPicker(false);
     const stock = Math.max(1, Number(listing.quantity) || 1);
+    const words = dealWords(listing.type);
     Alert.alert(
-      stock > 1 ? "Sold one to them?" : "Mark as sold?",
+      stock > 1 ? `${words.one}?` : `${words.mark}?`,
       stock > 1
-        ? `One "${listing.name}" sold to ${otherUserName} (${stock - 1} left after this). They'll be asked to rate you.`
-        : `"${listing.name}" will be marked sold to ${otherUserName}. They'll be asked to rate you, and others who were interested are told.`,
+        ? `One "${listing.name}" ${words.toWhom(otherUserName)} (${stock - 1} left after this). ${words.rateNote}`
+        : `"${listing.name}" will be marked ${words.toWhom(otherUserName)}. ${words.rateNote}`,
       [
         { text: "Cancel", style: "cancel" },
-        { text: stock > 1 ? "Sold one" : "Mark sold", icon: "bag-check", onPress: async () => {
+        { text: stock > 1 ? words.one : words.mark, icon: "bag-check", onPress: async () => {
           try {
             await markSoldTo(listing, otherUserId);
-            await sendMessage({ type: "text", text: `✅ Marked "${listing.name}" as sold to you. Salamat po!` }, { withReply: false });
+            await sendMessage({ type: "text", text: words.chat(listing.name) }, { withReply: false });
           } catch (e) {
-            Alert.alert("Error", "Could not mark it as sold.");
+            Alert.alert("Error", "Could not update the listing.");
           }
         } },
       ],
@@ -691,26 +693,26 @@ export default function ChatScreen({ route, navigation }) {
         </TouchableOpacity>
       </View>
 
-      {/* The item this chat is about (if it's mine): mark it sold here. */}
+      {/* The item this chat is about (if it's mine): mark it done here. */}
       {talkedAboutMine.length > 0 && !iBlocked && !blockedByThem ? (
         <View style={styles.soldBar}>
           <Ionicons name="bag-handle" size={16} color={COLORS.primary} />
           <Text style={styles.soldBarText} numberOfLines={1}>
             {talkedAboutMine.length === 1 ? talkedAboutMine[0].name : `${talkedAboutMine.length} of your items`}
           </Text>
-          <TouchableOpacity style={styles.soldBarBtn} onPress={openSold} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Mark as sold">
-            <Text style={styles.soldBarBtnText}>Mark as sold</Text>
+          <TouchableOpacity style={styles.soldBarBtn} onPress={openSold} activeOpacity={0.85} accessibilityRole="button" accessibilityLabel="Mark as done">
+            <Text style={styles.soldBarBtnText}>{talkedAboutMine.length === 1 ? dealWords(talkedAboutMine[0].type).mark : "Mark as done"}</Text>
           </TouchableOpacity>
         </View>
       ) : null}
 
-      <Sheet visible={soldPicker} onClose={() => setSoldPicker(false)} title="Which item did they get?" subtitle={`Marked sold to ${otherUserName}`} icon="bag-check" footer={null}>
+      <Sheet visible={soldPicker} onClose={() => setSoldPicker(false)} title="Which item is it?" subtitle={`Done with ${otherUserName}`} icon="bag-check" footer={null}>
         {myListings.map((l) => (
           <SheetOption
             key={l.id}
             icon="pricetag"
             label={l.name}
-            sub={`${chatListings.some((c) => c.id === l.id) ? "Talked about in this chat · " : ""}${(Number(l.quantity) || 1) > 1 ? `${l.quantity} in stock` : "1 item"}`}
+            sub={`${dealWords(l.type).mark} · ${chatListings.some((c) => c.id === l.id) ? "Talked about in this chat · " : ""}${(Number(l.quantity) || 1) > 1 ? `${l.quantity} in stock` : "1 item"}`}
             onPress={() => confirmSold(l)}
           />
         ))}
@@ -950,7 +952,7 @@ export default function ChatScreen({ route, navigation }) {
           <SheetOption icon="ban" tone="danger" label="Block" sub="They can't message you, and you won't see their listings" onPress={confirmBlock} />
         )}
         {myListings.length > 0 && !iBlocked && !blockedByThem ? (
-          <SheetOption icon="bag-check" label={`Mark an item as sold to ${otherUserName.split(" ")[0]}`} sub="They'll be asked to rate you" onPress={openSold} />
+          <SheetOption icon="bag-check" label={`Mark a deal with ${otherUserName.split(" ")[0]} as done`} sub="Sold, found, exchanged or given away" onPress={openSold} />
         ) : null}
         <SheetOption icon="flag" tone="danger" label="Report a message" sub="Long-press the message you want to report" onPress={() => { setMenuOpen(false); Alert.alert("Report a message", "Press and hold the message you want to report, then choose Report message."); }} />
       </Sheet>
