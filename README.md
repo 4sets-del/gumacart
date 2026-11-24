@@ -48,6 +48,7 @@ scripts/               export-privacy.js (writes PRIVACY.md), logo.png, make-ico
                        delete-non-slsu.js (removes non-SLSU accounts)
                        demo-data.js (demo students + listings, photos in demo/),
                        reset-data.js (deletes all but admin + demo data)
+                       demo-chat.js (plays a demo student in live demos: chats, notifications)
 patches/               expo-notifications: notification picture from push data
                        (applied by patch-package on npm install)
 hosting/               Firebase Hosting: icon, letter avatars, App Links file

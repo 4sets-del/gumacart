@@ -553,6 +553,7 @@ npx expo export --platform android   # the bundle builds
 | `scripts/delete-non-slsu.js <key.json> [--delete]` | Lists (or deletes) accounts that aren't `@slsu.edu.ph` |
 | `scripts/demo-data.js <key.json> [--create \| --delete]` | Demo data: 8 student accounts (different courses and years) and 20 approved listings with photos (`scripts/demo/`, credits in `CREDITS.md`); everything is marked `demo: true` |
 | `scripts/reset-data.js <key.json> [--keep email] [--apply]` | Fresh start: previews, then deletes every old account and listing (with chats, reviews, reports, files), keeping the admin account and the demo data |
+| `scripts/demo-chat.js <key.json> <demo> <you@slsu.edu.ph> <action>` | Plays a demo student during a live demo: chat messages, typing, Seen, reactions, reserve / sold / price drop, approving your listing or student ID (real notifications) |
 | `scripts/remove-phone-numbers.js <key.json> [--apply]` | One-time: removed phone numbers from old listings |
 
 Scripts that take `<key.json>` need a Firebase **service-account key** (Firebase console → Project settings → Service accounts). **Keep it outside the project, never commit it, and delete it after use** — it gives full access to the project.
