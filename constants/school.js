@@ -17,14 +17,17 @@ export const COURSES = [
   { code: 'BSBA-HRM', name: 'BS Business Administration', major: 'Human Resource Management' },
   { code: 'BSN', name: 'BS Nursing' },
   { code: 'BIT-CPT', name: 'Bachelor in Industrial Technology', major: 'Computer Technology' },
-  { code: 'BSEd-SS', name: 'Bachelor of Secondary Education', major: 'Social Studies' },
-  { code: 'BSEd-Math', name: 'Bachelor of Secondary Education', major: 'Mathematics' },
+  { code: 'BSED-SS', name: 'Bachelor of Secondary Education', major: 'Social Studies' },
+  { code: 'BSED-MATH', name: 'Bachelor of Secondary Education', major: 'Mathematics' },
   { code: 'Other', name: 'Other / Not listed' },
 ];
 
 // Codes that were renamed; profiles saved before keep the old code and are
 // read as the new one.
-const RENAMED_COURSES = { 'BSBA-HR': 'BSBA-HRM', 'BSIT-CT': 'BIT-CPT', 'BSIT-CPT': 'BIT-CPT', 'BIT': 'BIT-CPT' };
+const RENAMED_COURSES = {
+  'BSBA-HR': 'BSBA-HRM', 'BSIT-CT': 'BIT-CPT', 'BSIT-CPT': 'BIT-CPT', 'BIT': 'BIT-CPT',
+  'BSEd-SS': 'BSED-SS', 'BSEd-Math': 'BSED-MATH',
+};
 
 export function normalizeCourse(code) {
   return RENAMED_COURSES[code] || code || null;

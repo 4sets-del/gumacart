@@ -77,7 +77,7 @@ function Thumb({ item, style, emojiSize, details = false }) {
   );
 }
 
-// Vertical card used in the Home "Featured" row and listing grids.
+// Vertical card used in the Home "From your course" row and listing grids.
 // `onPress` receives the item, so screens can pass one stable function.
 // Shows the item at a glance: photo with type / condition / age, title,
 // price, category + meet-up spot, and who is selling it.

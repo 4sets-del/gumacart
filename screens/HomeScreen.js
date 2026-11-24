@@ -31,7 +31,6 @@ import { normalizeCourse } from '../constants/school';
 import { CATEGORIES, categoryTint } from '../constants/listings';
 import { useActiveListings } from '../utils/useListings';
 import { useSellerRatings } from '../utils/sellerRatings';
-import { popularityScore } from '../utils/views';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const BANNER_W = SCREEN_W - SPACING.lg * 2;
@@ -114,7 +113,6 @@ export default function HomeScreen({ navigation, route }) {
   const savedRef = useRef(null);
   const searchRef = useRef(null);
   const categoriesRef = useRef(null);
-  const featuredRef = useRef(null);
   const typeChipsRef = useRef(null);
   const rootRef = useRef(null);
 
@@ -126,13 +124,12 @@ export default function HomeScreen({ navigation, route }) {
     { ref: savedRef, icon: 'heart', shape: 'circle', title: 'Saved items', text: 'Tap ♡ on any item to save it for later. Your saved items are kept here, and you\'re told if the price drops.' },
     { ref: notifRef, icon: 'notifications', shape: 'circle', title: 'Notifications', text: 'Messages, reviews, price drops, and updates when an item you want is reserved or sold.' },
     { ref: categoriesRef, icon: 'grid', title: 'Categories', text: 'Jump straight to Food & Drinks, Clothes, Academic and more.' },
-    { ref: featuredRef, icon: 'flame', title: 'Featured listings', text: 'Popular items from well-rated sellers. Open one to see photos, save it, or chat with the seller.', optional: true },
     { ref: typeChipsRef, icon: 'pricetags', title: 'Listing types', text: 'Show only For Sale, Wanted, Barter or Free items.', optional: true },
     { ref: tabTarget(2), icon: 'add-circle', shape: 'circle', title: 'Post a listing', text: 'Tap + and choose: For Sale, Looking For, Barter, or Donate. Add as many photos and videos as you like, and a quantity.' },
     { ref: tabTarget(2), icon: 'shield-checkmark', shape: 'circle', title: 'Get verified first', text: 'Before your first post, send your student ID once. An admin approves it, usually within 1–2 days.' },
     { ref: tabTarget(3), icon: 'chatbubbles', title: 'Messages', text: 'Chat with buyers and sellers. Send photos and videos, react or reply with a long-press, and see when it\'s Seen.' },
     { ref: tabTarget(4), icon: 'bookmark', title: 'Your listings', text: 'In Profile → My Listings: edit, reserve an item for one buyer, or mark it done (sold, found, exchanged or given). Interested people are notified automatically.' },
-    { ref: tabTarget(4), icon: 'star', title: 'Ratings', text: 'After a deal is marked done, the other person rates it. Good ratings help your items get Featured.' },
+    { ref: tabTarget(4), icon: 'star', title: 'Ratings', text: 'After a deal is marked done, the other person rates it. Ratings show on your profile and listings, so buyers know they can trust you.' },
     { icon: 'flag', title: 'Stay safe', text: 'Meet in public places on campus and check items before paying. See something wrong? Tap the 🚩 flag on any listing or profile to report it.' },
     { ref: tabTarget(4), icon: 'settings', title: 'Settings', text: 'In Profile → Settings: edit your course and year, switch to dark mode, choose notifications, and replay this tour anytime.' },
   ], []);
@@ -179,15 +176,6 @@ export default function HomeScreen({ navigation, route }) {
   const openCategory = (name) => navigation.navigate('Search', { category: name });
   const openProduct = useCallback((item) => navigation.navigate('ProductDetail', { product: item }), [navigation]);
 
-  // Featured = the 8 most popular active listings (seller rating + views).
-  // `listings` is newest-first and the sort is stable, so ties — including
-  // when nothing has ratings or views yet — fall back to the newest.
-  const featured = useMemo(
-    () => [...listings]
-      .sort((a, b) => popularityScore(b, ratings[b.sellerId]) - popularityScore(a, ratings[a.sellerId]))
-      .slice(0, 8),
-    [listings, ratings],
-  );
   const [typeFilter, setTypeFilter] = useState('all');
   const shownListings = typeFilter === 'all' ? listings : listings.filter((l) => (l.type || 'sell') === typeFilter);
 
@@ -255,12 +243,6 @@ export default function HomeScreen({ navigation, route }) {
       {listingsLoading && listings.length === 0 ? (
         <>
           <View style={styles.sectionHeader}>
-            <View style={[styles.skeletonTitle, { width: 170 }]} />
-          </View>
-          <ScrollView horizontal scrollEnabled={false} showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
-            {[0, 1, 2].map((i) => <SkeletonCard key={i} width={150} />)}
-          </ScrollView>
-          <View style={styles.sectionHeader}>
             <View style={[styles.skeletonTitle, { width: 140 }]} />
           </View>
           <View style={styles.grid}>
@@ -281,22 +263,6 @@ export default function HomeScreen({ navigation, route }) {
         </View>
       ) : (
         <>
-          {/* ── FEATURED ── */}
-          <View style={styles.sectionHeader} ref={featuredRef} collapsable={false}>
-            <View style={styles.sectionTitleRow}>
-              <View style={[styles.sectionIcon, { backgroundColor: '#F59E0B2E' }]}><Ionicons name="flame" size={15} color="#F59E0B" /></View>
-              <Text style={styles.sectionTitle}>Featured Listings</Text>
-            </View>
-            <TouchableOpacity onPress={() => navigation.navigate('Search')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.seeAll}>See All</Text>
-            </TouchableOpacity>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
-            {featured.map((item) => (
-              <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={150} onPress={openProduct} />
-            ))}
-          </ScrollView>
-
           {/* ── FROM YOUR COURSE ── */}
           {courseListings.length >= MIN_COURSE_LISTINGS && (
             <>
@@ -309,7 +275,7 @@ export default function HomeScreen({ navigation, route }) {
                   <Text style={styles.seeAll}>See All</Text>
                 </TouchableOpacity>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.featuredRow}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.cardRow}>
                 {courseListings.map((item) => (
                   <ProductCard key={item.id} item={item} rating={ratings[item.sellerId]} width={150} onPress={openProduct} />
                 ))}
@@ -466,7 +432,7 @@ const createStyles = (COLORS) => StyleSheet.create({
   sectionIcon: { width: 28, height: 28, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   seeAll: { fontSize: 13.5, fontWeight: '700', color: COLORS.primary },
   sectionCount: { fontSize: 12.5, color: COLORS.textMuted },
-  featuredRow: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: 4 },
+  cardRow: { paddingHorizontal: SPACING.lg, gap: SPACING.md, paddingBottom: 4 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: SPACING.lg, gap: GRID_GAP },
   gridRow: { paddingHorizontal: SPACING.lg, gap: GRID_GAP },
   skeletonTitle: { height: 18, borderRadius: 9, backgroundColor: COLORS.surfaceAlt },

@@ -248,7 +248,6 @@ Deleting a listing (by the seller, an admin, or account deletion) also deletes i
 **Home (`screens/HomeScreen.js`):**
 - Greeting, search bar, shortcuts to Saved and Notifications (with unread badges).
 - Banner carousel and category shortcuts.
-- **Featured Listings** — the 8 most popular active listings (seller rating + views).
 - **From BIT-CPT students** — listings from sellers in *your* course. Shown only once there are **at least 6**, so it never looks empty; **See All** opens Search filtered to your course.
 - **All Listings · newest first** — every active listing, with type chips (All / For Sale / Looking For / Barter / Donate), as a virtualized grid (only cards near the screen are drawn).
 
@@ -257,9 +256,9 @@ Deleting a listing (by the seller, an admin, or account deletion) also deletes i
 **Search (`screens/SearchScreen.js`):**
 - Search by title, description, place or category; recent searches; a **Sellers** tab to find people.
 - **Sort:** Most Relevant, Newest First, Price Low→High, Price High→Low, Highest Rated (seller).
-- **Filter sheet:** price range, categories, posted within (any time / last 24 hours / this week / this month), listing type, and **seller's course** (BSBA-HRM, BSN, BIT-CPT, BSEd-SS, BSEd-Math).
+- **Filter sheet:** price range, categories, posted within (any time / last 24 hours / this week / this month), listing type, and **seller's course** (BSBA-HRM, BSN, BIT-CPT, BSED-SS, BSED-MATH).
 
-**How it's built.** Active listings are loaded once into a **shared store** (`utils/useListings.js`): one live Firestore listener, updated incrementally, cached on the phone (AsyncStorage) so Home appears instantly even offline, and filtered for blocked sellers. Seller names, photos, courses and ratings come from a **5-minute shared profile cache** (`utils/userCache.js`) so each profile is downloaded once. Courses are defined in `constants/school.js`; old codes (BSIT-CT and BSIT-CPT, BSBA-HR) are read as the new ones (BIT-CPT, BSBA-HRM).
+**How it's built.** Active listings are loaded once into a **shared store** (`utils/useListings.js`): one live Firestore listener, updated incrementally, cached on the phone (AsyncStorage) so Home appears instantly even offline, and filtered for blocked sellers. Seller names, photos, courses and ratings come from a **5-minute shared profile cache** (`utils/userCache.js`) so each profile is downloaded once. Courses are defined in `constants/school.js`; old codes (BSIT-CT and BSIT-CPT, BSBA-HR, BSEd-SS, BSEd-Math) are read as the new ones (BIT-CPT, BSBA-HRM, BSED-SS, BSED-MATH).
 
 ### 5.5 Saved items, search alerts and price drops
 
@@ -552,6 +551,8 @@ npx expo export --platform android   # the bundle builds
 | `scripts/make-avatars.sh` | Generates the letter avatars in `hosting/avatars/` |
 | `scripts/check-push.js <key.json>` | Read-only: which accounts have paired phones (direct notifications) |
 | `scripts/delete-non-slsu.js <key.json> [--delete]` | Lists (or deletes) accounts that aren't `@slsu.edu.ph` |
+| `scripts/demo-data.js <key.json> [--create \| --delete]` | Demo data: 8 student accounts (different courses and years) and 20 approved listings with photos (`scripts/demo/`, credits in `CREDITS.md`); everything is marked `demo: true` |
+| `scripts/reset-data.js <key.json> [--keep email] [--apply]` | Fresh start: previews, then deletes every old account and listing (with chats, reviews, reports, files), keeping the admin account and the demo data |
 | `scripts/remove-phone-numbers.js <key.json> [--apply]` | One-time: removed phone numbers from old listings |
 
 Scripts that take `<key.json>` need a Firebase **service-account key** (Firebase console → Project settings → Service accounts). **Keep it outside the project, never commit it, and delete it after use** — it gives full access to the project.
